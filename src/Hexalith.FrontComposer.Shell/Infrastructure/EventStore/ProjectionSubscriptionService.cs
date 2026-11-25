@@ -54,7 +54,30 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
     private int _disposeStarted;
     private bool _disposed;
 
+    /// <summary>Initializes projection subscriptions from the user context.</summary>
     public ProjectionSubscriptionService(
+        IOptions<EventStoreOptions> options,
+        IProjectionHubConnectionFactory connectionFactory,
+        IProjectionConnectionState connectionState,
+        IProjectionFallbackRefreshScheduler refreshScheduler,
+        IProjectionChangeNotifier notifier,
+        ILogger<ProjectionSubscriptionService> logger,
+        ProjectionFallbackPollingDriver? fallbackDriver = null,
+        IReconnectionReconciliationCoordinator? reconciliationCoordinator = null,
+        IPendingCommandPollingCoordinator? pendingCommandPolling = null,
+        IUserContextAccessor? userContextAccessor = null,
+        IOptions<FcShellOptions>? shellOptions = null,
+        PendingCommandPollingDriver? commandPollingDriver = null,
+        FrontComposerAccessTokenProvider? frontComposerAccessTokenProvider = null,
+        IOptionsMonitor<FcShellOptions>? shellOptionsMonitor = null,
+        TimeProvider? timeProvider = null)
+        : this(null, options, connectionFactory, connectionState, refreshScheduler, notifier, logger, fallbackDriver,
+            reconciliationCoordinator, pendingCommandPolling, userContextAccessor, shellOptions, commandPollingDriver,
+            frontComposerAccessTokenProvider, shellOptionsMonitor, timeProvider) {
+    }
+
+    public ProjectionSubscriptionService(
+        IFrontComposerTenantContextAccessor? tenantContextAccessor,
         IOptions<EventStoreOptions> options,
         IProjectionHubConnectionFactory connectionFactory,
         IProjectionConnectionState connectionState,
@@ -86,9 +109,11 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
         _reconciliationCoordinator = reconciliationCoordinator;
         _pendingCommandPolling = pendingCommandPolling;
         _frontComposerAccessTokenProvider = frontComposerAccessTokenProvider;
-        _userContextAccessor = userContextAccessor;
         _shellOptions = shellOptions;
         _shellOptionsMonitor = shellOptionsMonitor;
+        _tenantContextAccessor = tenantContextAccessor ?? (userContextAccessor is null
+            ? null
+            : new FrontComposerTenantContextAccessor(userContextAccessor, CurrentShellOptions, logger));
         EventStoreOptions current = options.Value;
         _requireAccessToken = current.RequireAccessToken;
         _configuredAccessTokenProvider = current.AccessTokenProvider;
@@ -106,7 +131,7 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
         _commandPollingDriver?.Start();
     }
 
-    private readonly IUserContextAccessor? _userContextAccessor;
+    private readonly IFrontComposerTenantContextAccessor? _tenantContextAccessor;
     private readonly IOptions<FcShellOptions>? _shellOptions;
     private readonly IOptionsMonitor<FcShellOptions>? _shellOptionsMonitor;
 
@@ -845,58 +870,32 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
             : EventStoreValidation.RequireNonColonSegment(scope, nameof(scope));
 
     private TenantContextSnapshot ResolveTenantContext(string? requestedTenant, string operationKind) {
-        if (_userContextAccessor is null) {
+        if (_tenantContextAccessor is null) {
             throw new TenantContextException(TenantContextFailureCategory.TenantMissing, Guid.NewGuid().ToString("N"));
         }
 
-        return FrontComposerTenantContextAccessor
-            .Resolve(
-                _userContextAccessor,
-                CurrentShellOptions(),
-                _logger,
-                requestedTenant,
-                operationKind)
-            .EnsureSuccess();
+        return _tenantContextAccessor.TryGetContext(requestedTenant, operationKind).EnsureSuccess();
     }
 
     private void EnsureCapturedContextCurrent(TenantContextSnapshot? origin, string operationKind) {
-        if (origin is null || _userContextAccessor is null) {
+        if (origin is null || _tenantContextAccessor is null) {
             throw new TenantContextException(TenantContextFailureCategory.TenantMissing, Guid.NewGuid().ToString("N"));
         }
 
-        TenantContextResult current = FrontComposerTenantContextAccessor.Resolve(
-            _userContextAccessor, CurrentShellOptions(), _logger, requestedTenant: null, operationKind);
-        if (!current.Succeeded || current.Context is null
-            || !string.Equals(current.Context.TenantId, origin.TenantId, StringComparison.Ordinal)
-            || !string.Equals(current.Context.UserId, origin.UserId, StringComparison.Ordinal)) {
+        TenantContextResult current = _tenantContextAccessor.Revalidate(origin, operationKind);
+        if (!current.Succeeded || current.Context is null) {
             throw new TenantContextException(TenantContextFailureCategory.StaleTenantContext, origin.CorrelationId);
         }
     }
 
     private bool IsGroupContextCurrent(GroupKey key, GroupState state, string operationKind, bool promoteActive = true) {
-        if (_userContextAccessor is null || state.TenantContext is null) {
+        if (_tenantContextAccessor is null || state.TenantContext is null) {
             _ = _activeGroups.TryUpdate(key, state with { Health = GroupHealth.Blocked }, state);
             return false;
         }
 
-        // P5 — explicitly compare BOTH tenant and user against the original snapshot, do NOT
-        // pass key.TenantId as requestedTenant (which would categorize a tenant change as
-        // TenantMismatch (HFC2017) instead of StaleTenantContext (HFC2019)).
-        TenantContextResult current = FrontComposerTenantContextAccessor.Resolve(
-            _userContextAccessor,
-            CurrentShellOptions(),
-            _logger,
-            requestedTenant: null,
-            operationKind);
-        if (!current.Succeeded || current.Context is null) {
-            // P4 — TryUpdate so we don't fabricate a default GroupState entry for a key
-            // that was concurrently unsubscribed.
-            _ = _activeGroups.TryUpdate(key, state with { Health = GroupHealth.Blocked }, state);
-            return false;
-        }
-
-        bool matches = string.Equals(current.Context.TenantId, state.TenantContext.TenantId, StringComparison.Ordinal)
-            && string.Equals(current.Context.UserId, state.TenantContext.UserId, StringComparison.Ordinal);
+        TenantContextResult current = _tenantContextAccessor.Revalidate(state.TenantContext, operationKind);
+        bool matches = current.Succeeded && current.Context is not null;
         if (!matches) {
             // P3/P4 — flip to Blocked atomically; recovery happens when the user re-authenticates
             // with the matching context and a subsequent rejoin loop re-evaluates.

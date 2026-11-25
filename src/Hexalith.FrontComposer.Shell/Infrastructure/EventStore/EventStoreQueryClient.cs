@@ -29,6 +29,7 @@ namespace Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
 /// the no-change signal in <see cref="QueryResult{T}.IsNotModified"/>.
 /// </summary>
 public sealed class EventStoreQueryClient(
+    IFrontComposerTenantContextAccessor? tenantContextAccessor,
     IHttpClientFactory httpClientFactory,
     IOptions<EventStoreOptions> options,
     IUserContextAccessor userContextAccessor,
@@ -37,19 +38,29 @@ public sealed class EventStoreQueryClient(
     IAuthRedirector authRedirector,
     ILogger<EventStoreQueryClient> logger,
     IOptions<FcShellOptions>? shellOptions = null) : IQueryService {
+    private readonly IFrontComposerTenantContextAccessor _tenantContextAccessor = tenantContextAccessor
+        ?? new FrontComposerTenantContextAccessor(userContextAccessor, () => shellOptions?.Value ?? new FcShellOptions(), logger);
+
+    /// <summary>Initializes the EventStore query client from the user context.</summary>
+    public EventStoreQueryClient(
+        IHttpClientFactory httpClientFactory,
+        IOptions<EventStoreOptions> options,
+        IUserContextAccessor userContextAccessor,
+        EventStoreResponseClassifier classifier,
+        IETagCache cache,
+        IAuthRedirector authRedirector,
+        ILogger<EventStoreQueryClient> logger,
+        IOptions<FcShellOptions>? shellOptions = null)
+        : this(null, httpClientFactory, options, userContextAccessor, classifier, cache, authRedirector, logger, shellOptions) {
+    }
     internal const string HttpClientName = "Hexalith.FrontComposer.EventStore.Queries";
 
     public async Task<QueryResult<T>> QueryAsync<T>(QueryRequest request, CancellationToken cancellationToken = default) {
         ArgumentNullException.ThrowIfNull(request);
 
         EventStoreOptions current = options.Value;
-        TenantContextSnapshot tenantContext = FrontComposerTenantContextAccessor
-            .Resolve(
-                userContextAccessor,
-                shellOptions?.Value ?? new FcShellOptions(),
-                logger,
-                request.TenantId,
-                "query-execute")
+        TenantContextSnapshot tenantContext = _tenantContextAccessor
+            .TryGetContext(request.TenantId, "query-execute")
             .EnsureSuccess();
         (string tenant, string userId) = EventStoreIdentity.RequireUserContext(tenantContext);
         string? cacheKey = ResolveCacheKey(request, tenant, userId);
@@ -347,23 +358,9 @@ public sealed class EventStoreQueryClient(
                 : null;
 
     private void RevalidateSnapshot(TenantContextSnapshot snapshot) {
-        // P5 — explicitly compare BOTH tenant and user against the original snapshot.
-        // Passing snapshot.TenantId as requestedTenant to the validator would have categorized a
-        // tenant-id change as TenantMismatch instead of StaleTenantContext, hiding the
-        // delayed-effect race classification in HFC2017 instead of HFC2019.
-        TenantContextResult current = FrontComposerTenantContextAccessor.Resolve(
-            userContextAccessor,
-            shellOptions?.Value ?? new FcShellOptions(),
-            logger,
-            requestedTenant: null,
-            "query-delayed-effect");
+        TenantContextResult current = _tenantContextAccessor.Revalidate(snapshot, "query-delayed-effect");
         if (!current.Succeeded || current.Context is null) {
             throw new TenantContextException(current.FailureCategory, snapshot.CorrelationId);
-        }
-
-        if (!string.Equals(current.Context.TenantId, snapshot.TenantId, StringComparison.Ordinal)
-            || !string.Equals(current.Context.UserId, snapshot.UserId, StringComparison.Ordinal)) {
-            throw new TenantContextException(TenantContextFailureCategory.StaleTenantContext, snapshot.CorrelationId);
         }
     }
 

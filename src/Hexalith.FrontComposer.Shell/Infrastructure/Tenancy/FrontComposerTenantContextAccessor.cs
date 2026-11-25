@@ -13,10 +13,37 @@ namespace Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
 /// <summary>
 /// Default tenant-context accessor backed by <see cref="IUserContextAccessor"/>.
 /// </summary>
-public sealed class FrontComposerTenantContextAccessor(
-    IUserContextAccessor userContextAccessor,
-    IOptions<FcShellOptions> options,
-    ILogger<FrontComposerTenantContextAccessor> logger) : IFrontComposerTenantContextAccessor {
+public sealed class FrontComposerTenantContextAccessor : IFrontComposerTenantContextAccessor {
+    private readonly IUserContextAccessor _userContextAccessor;
+    private readonly Func<FcShellOptions> _getOptions;
+    private readonly ILogger _logger;
+
+    /// <summary>Initializes the accessor using Shell options.</summary>
+    public FrontComposerTenantContextAccessor(
+        IUserContextAccessor userContextAccessor,
+        IOptions<FcShellOptions> options,
+        ILogger<FrontComposerTenantContextAccessor> logger)
+        : this(userContextAccessor, options, logger, optionsMonitor: null) {
+    }
+
+    /// <summary>Initializes the accessor using the current monitored Shell options when available.</summary>
+    public FrontComposerTenantContextAccessor(
+        IUserContextAccessor userContextAccessor,
+        IOptions<FcShellOptions> options,
+        ILogger<FrontComposerTenantContextAccessor> logger,
+        IOptionsMonitor<FcShellOptions>? optionsMonitor)
+        : this(userContextAccessor, () => optionsMonitor?.CurrentValue ?? options.Value, logger) {
+    }
+
+    /// <summary>Adapts direct EventStore client construction to the same tenant resolver.</summary>
+    internal FrontComposerTenantContextAccessor(
+        IUserContextAccessor userContextAccessor,
+        Func<FcShellOptions> getOptions,
+        ILogger logger) {
+        _userContextAccessor = userContextAccessor;
+        _getOptions = getOptions;
+        _logger = logger;
+    }
     private static readonly string[] SyntheticIdentifiers = [
         "default",
         "anonymous",
@@ -29,12 +56,12 @@ public sealed class FrontComposerTenantContextAccessor(
 
     /// <inheritdoc />
     public TenantContextResult TryGetContext(string? requestedTenant = null, string operationKind = "tenant-scoped")
-        => Resolve(userContextAccessor, options.Value, logger, requestedTenant, operationKind);
+        => Resolve(_userContextAccessor, _getOptions(), _logger, requestedTenant, operationKind);
 
     /// <inheritdoc />
     public TenantContextResult Revalidate(TenantContextSnapshot snapshot, string operationKind = "tenant-scoped") {
         ArgumentNullException.ThrowIfNull(snapshot);
-        TenantContextResult current = TryGetContext(snapshot.TenantId, operationKind);
+        TenantContextResult current = TryGetContext(operationKind: operationKind);
         if (!current.Succeeded || current.Context is null) {
             return current;
         }
@@ -45,7 +72,7 @@ public sealed class FrontComposerTenantContextAccessor(
         }
 
         return Block(
-            logger,
+            _logger,
             TenantContextFailureCategory.StaleTenantContext,
             operationKind,
             requestedTenantPresent: true,

@@ -131,11 +131,13 @@ public sealed class TenantContextValidationMatrixTests {
         FailureCases.Select(failure => failure.Category).ToHashSet().SetEquals(expected).ShouldBeTrue();
     }
 
-    /// <summary>DW-892 — a snapshot whose user changed logs one HFC2019 Warning with a fresh correlation id.</summary>
-    [Fact]
-    public void RevalidateLogsTheStaleContextDiagnosticId() {
+    /// <summary>A tenant or user change logs one HFC2019 warning with a fresh correlation id.</summary>
+    [Theory]
+    [InlineData("tenant", "alice")]
+    [InlineData("other-tenant", "bob")]
+    public void RevalidateLogsTheStaleContextDiagnosticId(string tenant, string user) {
         CapturingLogger<FrontComposerTenantContextAccessor> logger = new();
-        FrontComposerTenantContextAccessor sut = NewAccessor("tenant", "alice", logger: logger);
+        FrontComposerTenantContextAccessor sut = NewAccessor(tenant, user, logger: logger);
         TenantContextSnapshot snapshot = new(
             "tenant",
             "bob",

@@ -6,6 +6,7 @@ using Hexalith.FrontComposer.Shell.Extensions;
 using Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
 using Hexalith.FrontComposer.Shell.Infrastructure.PendingCommands;
 using Hexalith.FrontComposer.Shell.Infrastructure.ProjectionConnection;
+using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
 using Hexalith.FrontComposer.Shell.State.PendingCommands;
 using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
 using Hexalith.FrontComposer.Shell.Tests.Infrastructure.EventStore.FaultInjection;
@@ -133,6 +134,58 @@ public sealed class RelocatedInfrastructureRegistrationTests {
         stateSubscription.Received(1).Dispose();
         timeProvider.Advance(TimeSpan.FromSeconds(2));
         _ = pendingCoordinator.Received(1).PollOnceAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task EventStoreAdaptersUseTheRegisteredTenantAccessorAsync() {
+        ServiceCollection services = CreateProductionComposition();
+        IFrontComposerTenantContextAccessor accessor = Substitute.For<IFrontComposerTenantContextAccessor>();
+        TenantContextResult denied = TenantContextResult.Failure(TenantContextFailureCategory.UserMissing, "registered");
+        accessor.TryGetContext(Arg.Any<string?>(), Arg.Any<string>()).Returns(denied);
+        services.Replace(ServiceDescriptor.Scoped(_ => accessor));
+
+        await using ServiceProvider provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
+        await using AsyncServiceScope scope = provider.CreateAsyncScope();
+        IServiceProvider scoped = scope.ServiceProvider;
+        CancellationToken token = TestContext.Current.CancellationToken;
+
+        TenantContextException dispatch = await Should.ThrowAsync<TenantContextException>(() => scoped
+            .GetRequiredService<EventStoreCommandClient>()
+            .DispatchAsync(new object(), token));
+        TenantContextException query = await Should.ThrowAsync<TenantContextException>(() => scoped
+            .GetRequiredService<IQueryService>()
+            .QueryAsync<object>(QueryRequest.Create(new ProjectionQuery("Orders.Row"), "tenant-a"), token));
+        TenantContextException subscription = await Should.ThrowAsync<TenantContextException>(() => scoped
+            .GetRequiredService<IProjectionSubscription>()
+            .SubscribeAsync("Orders.Row", "tenant-a", token));
+
+        dispatch.CorrelationId.ShouldBe("registered");
+        query.CorrelationId.ShouldBe("registered");
+        subscription.CorrelationId.ShouldBe("registered");
+        _ = accessor.Received(1).TryGetContext(null, "command-dispatch");
+        _ = accessor.Received(1).TryGetContext("tenant-a", "query-execute");
+        _ = accessor.Received(1).TryGetContext("tenant-a", "projection-subscribe");
+    }
+
+    [Fact]
+    public async Task SubscriptionHonorsRegisteredSnapshotRevalidationAsync() {
+        ServiceCollection services = CreateProductionComposition();
+        TenantContextSnapshot captured = new("tenant-a", "user-a", IsAuthenticated: true, CorrelationId: "captured");
+        IFrontComposerTenantContextAccessor accessor = Substitute.For<IFrontComposerTenantContextAccessor>();
+        accessor.TryGetContext("tenant-a", "projection-subscribe").Returns(TenantContextResult.Success(captured));
+        accessor.Revalidate(captured, "projection-subscribe")
+            .Returns(TenantContextResult.Failure(TenantContextFailureCategory.StaleTenantContext, "stale"));
+        services.Replace(ServiceDescriptor.Scoped(_ => accessor));
+
+        await using ServiceProvider provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
+        await using AsyncServiceScope scope = provider.CreateAsyncScope();
+        IProjectionSubscription subscriptions = scope.ServiceProvider.GetRequiredService<IProjectionSubscription>();
+
+        TenantContextException failure = await Should.ThrowAsync<TenantContextException>(() => subscriptions
+            .SubscribeAsync("Orders.Row", "tenant-a", TestContext.Current.CancellationToken));
+        failure.FailureCategory.ShouldBe(TenantContextFailureCategory.StaleTenantContext);
+        failure.CorrelationId.ShouldBe("captured");
+        _ = accessor.Received(1).Revalidate(captured, "projection-subscribe");
     }
 
     private static void AssertScopedImplementation<TService, TImplementation>(IServiceCollection services)

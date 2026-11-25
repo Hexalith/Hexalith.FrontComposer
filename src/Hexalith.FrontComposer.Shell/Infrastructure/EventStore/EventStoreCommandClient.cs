@@ -28,6 +28,7 @@ namespace Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
 /// without the gate.
 /// </summary>
 public sealed class EventStoreCommandClient(
+    IFrontComposerTenantContextAccessor? tenantContextAccessor,
     IHttpClientFactory httpClientFactory,
     IOptions<EventStoreOptions> options,
     IUlidFactory ulidFactory,
@@ -37,6 +38,22 @@ public sealed class EventStoreCommandClient(
     IOptions<FcShellOptions>? shellOptions = null,
     TimeProvider? timeProvider = null) : ICommandServiceWithLifecycle, ICommandServiceWithLifecycleObservations {
     internal const string HttpClientName = "Hexalith.FrontComposer.EventStore.Commands";
+
+    private readonly IFrontComposerTenantContextAccessor _tenantContextAccessor = tenantContextAccessor
+        ?? new FrontComposerTenantContextAccessor(userContextAccessor, () => shellOptions?.Value ?? new FcShellOptions(), logger);
+
+    /// <summary>Initializes the EventStore command client with an explicit clock.</summary>
+    public EventStoreCommandClient(
+        IHttpClientFactory httpClientFactory,
+        IOptions<EventStoreOptions> options,
+        IUlidFactory ulidFactory,
+        IUserContextAccessor userContextAccessor,
+        EventStoreResponseClassifier classifier,
+        ILogger<EventStoreCommandClient> logger,
+        IOptions<FcShellOptions>? shellOptions = null,
+        TimeProvider? timeProvider = null)
+        : this(null, httpClientFactory, options, ulidFactory, userContextAccessor, classifier, logger, shellOptions, timeProvider) {
+    }
 
     /// <summary>Initializes the EventStore command client using the system clock.</summary>
     public EventStoreCommandClient(
@@ -84,13 +101,8 @@ public sealed class EventStoreCommandClient(
         EventStoreOptions current = options.Value;
         FcShellOptions currentShellOptions = shellOptions?.Value ?? new FcShellOptions();
         string messageId = ulidFactory.NewUlid();
-        TenantContextSnapshot tenantContext = FrontComposerTenantContextAccessor
-            .Resolve(
-                userContextAccessor,
-                currentShellOptions,
-                logger,
-                ReadStringProperty(command, "TenantId"),
-                "command-dispatch")
+        TenantContextSnapshot tenantContext = _tenantContextAccessor
+            .TryGetContext(ReadStringProperty(command, "TenantId"), "command-dispatch")
             .EnsureSuccess();
         (string tenant, _) = EventStoreIdentity.RequireUserContext(tenantContext);
         string domain = EventStoreIdentity.GetDomain(typeof(TCommand));
