@@ -28,8 +28,7 @@ public partial class GeneratorDriverTests {
                 public string Name { get; set; } = string.Empty;
             }
             """;
-        string caseVariant = source.Replace("@class.Sample", "Class.Sample", StringComparison.Ordinal)
-            .Replace("KeywordExample", "CaseVariant", StringComparison.Ordinal);
+        string caseVariant = source.Replace("@class.Sample", "Class.Sample", StringComparison.Ordinal);
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation([source, caseVariant]);
         GeneratorDriver driver = CSharpGeneratorDriver.Create(new FrontComposerGenerator())
@@ -45,6 +44,8 @@ public partial class GeneratorDriverTests {
         manifest.ShouldContain("\"class.Sample.SampleCommand\"");
         manifest.ShouldContain("\"class.Sample.SampleProjection\"");
         manifest.ShouldNotContain("@class.Sample");
+        manifest.ShouldContain("KeywordExample.-class.Sample.SampleCommand.Execute");
+        manifest.ShouldContain("KeywordExample.Class.Sample.SampleCommand.Execute");
         output.GetDiagnostics(ct).Where(d => d.Severity == DiagnosticSeverity.Error).ShouldBeEmpty();
     }
 

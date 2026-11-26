@@ -26,7 +26,7 @@ public static class McpManifestEmitter {
             if (command.Namespace.IndexOf('@') >= 0) {
                 string metadataNamespace = command.Namespace.Replace("@", string.Empty);
                 descriptor = new McpCommandDescriptorModel(
-                    McpManifestTransform.BuildCommandProtocolName(descriptor.BoundedContext, metadataNamespace, command.TypeName, disambiguate),
+                    descriptor.ProtocolName,
                     metadataNamespace + "." + command.TypeName,
                     descriptor.BoundedContext, descriptor.Title, descriptor.Description, descriptor.AuthorizationPolicyName,
                     descriptor.Parameters, descriptor.DerivablePropertyNames);
@@ -43,7 +43,7 @@ public static class McpManifestEmitter {
             if (projection.Namespace.IndexOf('@') >= 0) {
                 string metadataNamespace = projection.Namespace.Replace("@", string.Empty);
                 descriptor = new McpResourceDescriptorModel(
-                    McpManifestTransform.BuildProjectionUri(descriptor.BoundedContext, metadataNamespace, projection.TypeName, disambiguate),
+                    descriptor.ProtocolUri,
                     descriptor.Name, metadataNamespace + "." + projection.TypeName,
                     descriptor.BoundedContext, descriptor.Title, descriptor.Description, descriptor.Fields,
                     descriptor.RenderStrategy, descriptor.EntityPluralLabel, descriptor.EmptyStateCtaCommandName);
