@@ -387,7 +387,7 @@ public sealed class BadgeCountServiceTests {
     }
 
     [Fact]
-    public async Task TotalActionableItems_SaturatesWhenOnlyTwoProjectionCountsOverflow() {
+    public async Task TotalActionableItemsSaturatesWhenOnlyTwoProjectionCountsOverflow() {
         StubCatalog catalog = new(typeof(ProjectionAlpha), typeof(ProjectionBeta));
         StubReader reader = new((type, _) => new ValueTask<int>(type == typeof(ProjectionAlpha) ? int.MaxValue : 1));
         using ServiceProvider provider = EmptyProvider();
