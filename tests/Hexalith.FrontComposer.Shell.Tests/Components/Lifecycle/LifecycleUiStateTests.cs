@@ -27,7 +27,8 @@ public sealed class LifecycleUiStateTests {
     public void IdleSingletonExplicitlySetsEveryStateProperty() {
         string path = Path.Combine(InfrastructureGovernanceTests.RepositoryRoot(),
             "src", "Hexalith.FrontComposer.Shell", "Components", "Lifecycle", "LifecycleUiState.cs");
-        var root = CSharpSyntaxTree.ParseText(File.ReadAllText(path)).GetRoot(TestContext.Current.CancellationToken);
+        CancellationToken ct = TestContext.Current.CancellationToken;
+        var root = CSharpSyntaxTree.ParseText(File.ReadAllText(path), cancellationToken: ct).GetRoot(ct);
         InitializerExpressionSyntax initializer = root.DescendantNodes().OfType<VariableDeclaratorSyntax>()
             .Single(node => node.Identifier.ValueText == nameof(LifecycleUiState.Idle))
             .Initializer!.Value.ShouldBeOfType<ImplicitObjectCreationExpressionSyntax>()
