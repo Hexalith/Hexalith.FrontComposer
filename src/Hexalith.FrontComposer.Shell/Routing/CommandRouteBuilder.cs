@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Text;
 
 using Hexalith.FrontComposer.Contracts.Routing;
@@ -25,41 +24,38 @@ public static class CommandRouteBuilder {
     /// </remarks>
     /// <param name="pascalCase">The input identifier (e.g., <c>"SubmitOrderCommand"</c>).</param>
     /// <returns>The kebab-cased form (e.g., <c>"submit-order-command"</c>).</returns>
+    /// <exception cref="ArgumentException">The identifier contains whitespace, empty segments, or invalid Unicode.</exception>
     public static string KebabCase(string pascalCase) {
         ArgumentException.ThrowIfNullOrWhiteSpace(pascalCase);
-
-        StringBuilder builder = new(pascalCase.Length + 8);
-        for (int i = 0; i < pascalCase.Length; i++) {
-            char ch = pascalCase[i];
-            if (ch == '.') {
-                // Drop namespace separators — only the type name segment is the URL slug.
-                _ = builder.Clear();
-                continue;
-            }
-
-            if (char.IsUpper(ch)) {
-                bool prevIsLower = i > 0 && char.IsLower(pascalCase[i - 1]);
-                bool prevIsDigit = i > 0 && char.IsDigit(pascalCase[i - 1]);
-                bool prevIsUpper = i > 0 && char.IsUpper(pascalCase[i - 1]);
-                bool nextIsLower = i + 1 < pascalCase.Length && char.IsLower(pascalCase[i + 1]);
-                bool boundary = prevIsLower || prevIsDigit || (prevIsUpper && nextIsLower);
-                if (boundary && builder.Length > 0) {
-                    _ = builder.Append('-');
-                }
-
-                _ = builder.Append(char.ToLower(ch, CultureInfo.InvariantCulture));
-            }
-            else {
-                _ = builder.Append(char.ToLower(ch, CultureInfo.InvariantCulture));
-            }
+        if (pascalCase.StartsWith('.') || pascalCase.EndsWith('.')
+            || pascalCase.Contains("..", StringComparison.Ordinal) || pascalCase.Any(char.IsWhiteSpace)) {
+            throw new ArgumentException("The identifier must have nonempty segments without whitespace.", nameof(pascalCase));
         }
 
-        string kebab = builder.ToString();
-        if (string.IsNullOrWhiteSpace(kebab)) {
-            throw new ArgumentException($"KebabCase produced an empty slug from '{pascalCase}'.", nameof(pascalCase));
+        int typeStart = pascalCase.LastIndexOf('.') + 1;
+        StringBuilder builder = new(pascalCase.Length - typeStart);
+        Span<char> encodedRune = stackalloc char[2];
+        Rune previous = default;
+        int index = typeStart;
+        while (index < pascalCase.Length) {
+            if (!Rune.TryGetRuneAt(pascalCase, index, out Rune current)) {
+                throw new ArgumentException("The identifier contains invalid Unicode.", nameof(pascalCase));
+            }
+
+            index += current.Utf16SequenceLength;
+            if (Rune.IsUpper(current)
+                && (Rune.IsLower(previous) || Rune.IsDigit(previous)
+                    || (Rune.IsUpper(previous) && index < pascalCase.Length
+                        && Rune.TryGetRuneAt(pascalCase, index, out Rune next) && Rune.IsLower(next)))) {
+                _ = builder.Append('-');
+            }
+
+            int length = Rune.ToLowerInvariant(current).EncodeToUtf16(encodedRune);
+            _ = builder.Append(encodedRune[..length]);
+            previous = current;
         }
 
-        return kebab;
+        return builder.ToString();
     }
 
     /// <summary>

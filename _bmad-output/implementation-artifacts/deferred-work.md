@@ -2677,13 +2677,15 @@ origin: migrated from legacy ledger ("Deferred from: code review of story 3-4-fc
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 reason: **`BoundedContextRouteParser` Turkish-I (`İ` → `i̇`) casing via `ToLowerInvariant`** — v1 BCs are ASCII only per adopter convention; culture-sensitive BC names arrive with Epic 7 tenant scoping. Reconciliation: Row: DW-0305; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC18, AC21-AC22, AC37; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of story 3-4-fccommandpalette-and-keyboard-shortcuts — Chunk 3 re-review (2026-04-21 pass 4).
 status: open
+decision: 2026-11-26 Skipped. Registered bounded-context segments are ASCII under the route contract. Turkish-I matching would require extending that contract.
 
 ### DW-1037: `CommandRouteBuilder.KebabCase` non-ASCII / embedded-whitespace / trailing-dot input
 
 origin: migrated from legacy ledger ("Deferred from: code review of story 3-4-fccommandpalette-and-keyboard-shortcuts — Chunk 3 re-review (2026-04-21 pass 4)"), 2026-08-27
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 reason: **`CommandRouteBuilder.KebabCase` non-ASCII / embedded-whitespace / trailing-dot input** — C# PascalCase type names are ASCII letters-only by language rules; inputs violating this are already a compiler error upstream. Guard is unnecessary for in-assembly types. Reconciliation: Row: DW-0306; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of story 3-4-fccommandpalette-and-keyboard-shortcuts — Chunk 3 re-review (2026-04-21 pass 4).
-status: open
+status: done 2026-11-26
+resolution: Rejects whitespace and empty qualified-name segments, and applies invariant casing to Unicode identifiers.
 
 ### DW-1038: `CommandRouteBuilder.IsInternalRoute` unicode path separators (U+2044 fullwidth slash, etc.)
 

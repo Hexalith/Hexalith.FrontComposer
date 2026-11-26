@@ -10,8 +10,22 @@ public class CommandRouteBuilderTests {
     [InlineData("SubmitOrderCommand", "submit-order-command")]
     [InlineData("IncrementCommand", "increment-command")]
     [InlineData("XMLParser", "xml-parser")]
+    [InlineData("GenerateXML", "generate-xml")]
     [InlineData("Counter.Domain.IncrementCommand", "increment-command")]
+    [InlineData("Domaine.CaféCommande", "café-commande")]
+    [InlineData("Domaine.Café\U00010400View", "café-\U00010428-view")]
     public void KebabCase_ProducesExpectedSlug(string input, string expected) => CommandRouteBuilder.KebabCase(input).ShouldBe(expected);
+
+    [Theory]
+    [InlineData("Orders.Checkout Command")]
+    [InlineData("Orders\t.CheckoutCommand")]
+    [InlineData("Checkout\u00a0Command")]
+    [InlineData(".CheckoutCommand")]
+    [InlineData("Orders..CheckoutCommand")]
+    [InlineData("Orders.")]
+    public void KebabCase_RejectsWhitespaceOrEmptySegments(string input)
+        => Should.Throw<ArgumentException>(() => CommandRouteBuilder.KebabCase(input))
+            .ParamName.ShouldBe("pascalCase");
 
     [Fact]
     public void BuildRoute_ProducesCanonicalGeneratedCommandUrl() => CommandRouteBuilder.BuildRoute("Commerce", "Commerce.Commands.SubmitOrderCommand")
