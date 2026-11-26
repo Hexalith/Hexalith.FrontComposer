@@ -249,6 +249,35 @@ public class DerivedValueProviderChainTests {
     }
 
     [Fact]
+    public async Task LastUsed_ConcurrentScopeRefusals_PublishOneDiagnostic() {
+        IStorageService storage = Substitute.For<IStorageService>();
+        var sink = new InMemoryDiagnosticSink(EnabledLoggerSubstitute.Create<InMemoryDiagnosticSink>());
+        ILogger<LastUsedValueProvider> logger = EnabledLoggerSubstitute.Create<LastUsedValueProvider>();
+        var provider = new LastUsedValueProvider(storage, StubUser(tenant: null), sink, logger);
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+        TaskCompletionSource start = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        Task[] attempts = Enumerable.Range(0, 16).Select(async index => {
+            await start.Task.ConfigureAwait(false);
+            if (index % 2 == 0) {
+                DerivedValueResult result = await provider.ResolveAsync(typeof(TestCommand), "Note", null, cancellationToken).ConfigureAwait(false);
+                result.HasValue.ShouldBeFalse();
+            }
+            else {
+                await provider.RecordAsync(new TestCommand { Note = "value" }, cancellationToken).ConfigureAwait(false);
+            }
+        }).ToArray();
+
+        start.SetResult();
+        await Task.WhenAll(attempts);
+
+        provider.TenantGuardTripped.ShouldBeTrue();
+        sink.RecentEvents.Count(e => e.Code == "D31").ShouldBe(1);
+        logger.ReceivedCalls().Count(call => call.GetMethodInfo().Name == nameof(ILogger.Log)).ShouldBe(1);
+        storage.ReceivedCalls().ShouldBeEmpty();
+    }
+
+    [Fact]
     public async Task LastUsed_Record_NullValue_RemovesStoredKey() {
         IStorageService storage = Substitute.For<IStorageService>();
         var p = new LastUsedValueProvider(storage, StubUser());

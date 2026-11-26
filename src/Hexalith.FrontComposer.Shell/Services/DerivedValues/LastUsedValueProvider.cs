@@ -23,8 +23,10 @@ public sealed class LastUsedValueProvider : IDerivedValueProvider, ILastUsedReco
     private readonly ILogger<LastUsedValueProvider>? _logger;
     private readonly ConcurrentDictionary<(Type, string), PropertyInfo> _propertyCache = new();
 
+    private int _tenantGuardTripped;
+
     /// <summary>Gets a per-circuit flag set when a tenant/user guard refusal occurred.</summary>
-    public bool TenantGuardTripped { get; private set; }
+    public bool TenantGuardTripped => Volatile.Read(ref _tenantGuardTripped) != 0;
 
     public LastUsedValueProvider(
         IStorageService storage,
@@ -144,8 +146,7 @@ public sealed class LastUsedValueProvider : IDerivedValueProvider, ILastUsedReco
         userId = _userContext?.UserId;
 
         if (string.IsNullOrWhiteSpace(tenantId) || string.IsNullOrWhiteSpace(userId)) {
-            if (!TenantGuardTripped) {
-                TenantGuardTripped = true;
+            if (Interlocked.Exchange(ref _tenantGuardTripped, 1) == 0) {
                 _sink?.Publish(new DevDiagnosticEvent(
                     "D31",
                     "LastUsed",

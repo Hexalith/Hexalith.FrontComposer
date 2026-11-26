@@ -3315,13 +3315,15 @@ origin: migrated from legacy ledger ("Deferred from: code review of story 2-2-ac
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 reason: **`ProjectionContext` lacks a structural-equality override for `Fields`** — analogous to `GridViewSnapshot`'s override, but `ProjectionContext` is cascaded via Blazor `<CascadingValue>` which uses reference equality anyway. Low impact; revisit if downstream consumers start relying on structural equality. Reconciliation: Row: DW-0395; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of story 2-2-action-density-rules-and-rendering-modes (2026-04-16) — Group A (Contracts) second pass.
 status: open
+decision: 2026-11-26 Skipped. The recorded reopening condition is a consumer needing structural equality. The current consumers use the projection context as a cascading value and do not require it.
 
 ### DW-1127: `LastUsedValueProvider.TenantGuardTripped` single-fire diagnostic flag is not thread-safe
 
 origin: migrated from legacy ledger ("Deferred from: code review of 2-2-action-density-rules-and-rendering-modes (2026-04-16) — Group B (Shell + Tests + Counter sample) chunk"), 2026-08-27
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 reason: **`LastUsedValueProvider.TenantGuardTripped` single-fire diagnostic flag is not thread-safe** — the `if (!TenantGuardTripped) { TenantGuardTripped = true; … }` pattern can fire twice if two `RecordAsync` calls overlap on the same scoped instance (Blazor JS-interop callbacks can interleave awaits). Worst case: dev-mode diagnostic logs twice instead of once. Pre-existing, unchanged by Group B; revisit during a dedicated Shell-runtime thread-safety pass (Group C). Reconciliation: Row: DW-0396; Final classification 2026-05-13: accepted-with-risk; Decision owner: Story 11.6 release owner; AC coverage: AC5-AC13, AC26-AC29, AC33-AC34; Score: impact=low/medium; risk=low; cost=medium/high; adjacency=accepted; Rationale: Low release-readiness risk or existing lower-level evidence is sufficient for this release pass.; Validation/evidence: focused Story 11.6 Shell/Counter validation plus historical source row; revisit on matching regression or adopter request; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of 2-2-action-density-rules-and-rendering-modes (2026-04-16) — Group B (Shell + Tests + Counter sample) chunk.
-status: open
+status: done 2026-11-26
+resolution: Uses an atomic per-circuit guard so concurrent invalid-scope reads and writes emit one D31 event and one warning without touching storage.
 
 ### DW-1128: [HIGH] `LastUsedSubscriberEmitter` does not pass `CancellationToken` to `RecordAsync`
 
