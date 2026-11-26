@@ -3049,7 +3049,8 @@ archived: 2026-09-18
 origin: migrated from legacy ledger ("Deferred from: code review of story 2-1 (2026-04-15)"), 2026-08-27
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 reason: **CounterProjectionEffects increment race** — Concurrent `ConfirmedAction` events read `_state.Value.Items[0].Count` before the prior `LoadedAction` commits, dropping increments under rapid clicks. Sample code only; documented in Completion Notes. Reconciliation: Row: DW-0358; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC17-AC20, AC35; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of story 2-1 (2026-04-15).
-status: open
+status: done 2026-11-26
+resolution: Applies confirmed increment deltas inside the sample projection reducer and rejects queued deltas from a prior scope.
 
 ### DW-1090: DateOnly / DateOnly? `FluentDatePicker` emission
 

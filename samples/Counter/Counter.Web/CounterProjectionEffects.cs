@@ -7,9 +7,8 @@ namespace Counter.Web;
 
 /// <summary>
 /// Sample-code effect that simulates SignalR projection catch-up. When a Counter command is
-/// confirmed, it re-dispatches <see cref="CounterProjectionLoadRequestedAction"/> so the demo
-/// visibly updates the Counter grid. In the real EventStore pipeline (Story 5.1+), this behaviour
-/// is driven by incoming SignalR notifications rather than a client-local effect.
+/// confirmed, it sends a delta to the projection reducer so the demo visibly updates the Counter grid.
+/// In the real EventStore pipeline (Story 5.1+), incoming SignalR notifications drive the update.
 /// </summary>
 public sealed class CounterProjectionEffects {
     private readonly IState<CounterProjectionState> _state;
@@ -94,18 +93,41 @@ public sealed class CounterProjectionEffects {
             return Task.CompletedTask;
         }
 
-        CounterProjection updated = new() {
-            Id = "counter-1",
-            Count = (_state.Value.Items is { Count: > 0 } items ? items[0]?.Count ?? 0 : 0) + delta,
-            LastUpdated = DateTimeOffset.UtcNow,
-        };
-
         if (_tenantContext.Revalidate(scope, operationKind: "counter-projection-dispatch").Succeeded) {
-            dispatcher.Dispatch(new CounterProjectionLoadRequestedAction(correlationId) { ScopeTenantId = scope.TenantId, ScopeUserId = scope.UserId, OriginScopeGeneration = scopeGeneration });
-            if (_tenantContext.Revalidate(scope, operationKind: "counter-projection-result").Succeeded) {
-                dispatcher.Dispatch(new CounterProjectionLoadedAction(correlationId, [updated]) { ScopeTenantId = scope.TenantId, ScopeUserId = scope.UserId, OriginScopeGeneration = scopeGeneration });
-            }
+            dispatcher.Dispatch(new CounterProjectionDeltaAction(correlationId, delta, scope.TenantId, scope.UserId, scopeGeneration, DateTimeOffset.UtcNow));
         }
         return Task.CompletedTask;
+    }
+
+    /// <summary>Applies a confirmed delta to the state being reduced, including prior queued deltas.</summary>
+    [ReducerMethod]
+    public static CounterProjectionState ApplyConfirmedDelta(CounterProjectionState state, CounterProjectionDeltaAction action)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(action);
+        if (state.ScopeGeneration != action.ScopeGeneration)
+        {
+            return state;
+        }
+
+        CounterProjectionState requested = CounterProjectionReducers.OnCounterProjectionLoadRequested(state,
+            new CounterProjectionLoadRequestedAction(action.CorrelationId)
+            {
+                ScopeTenantId = action.TenantId,
+                ScopeUserId = action.UserId,
+                OriginScopeGeneration = action.ScopeGeneration,
+            });
+        CounterProjection? current = state.Items is { Count: > 0 } items ? items[0] : null;
+        CounterProjection updated = new()
+        {
+            Id = "counter-1",
+            Count = (current?.Count ?? 0) + action.Delta,
+            LastUpdated = current is not null && current.LastUpdated > action.Timestamp ? current.LastUpdated : action.Timestamp,
+        };
+        return CounterProjectionReducers.OnCounterProjectionLoaded(requested,
+            new CounterProjectionLoadedAction(action.CorrelationId, [updated])
+            {
+                OriginScopeGeneration = action.ScopeGeneration,
+            });
     }
 }
