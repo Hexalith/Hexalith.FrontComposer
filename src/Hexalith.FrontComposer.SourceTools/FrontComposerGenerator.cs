@@ -298,7 +298,9 @@ public sealed class FrontComposerGenerator : IIncrementalGenerator {
     }
 
     private static string GetQualifiedHintPrefix(string @namespace, string typeName)
-        => string.IsNullOrEmpty(@namespace) ? typeName : @namespace + "." + typeName;
+        // Roslyn escapes C# keywords in a namespace display string, but AddSource
+        // requires a hint name without the identifier escape.
+        => string.IsNullOrEmpty(@namespace) ? typeName : @namespace.Replace("@", string.Empty) + "." + typeName;
 
     /// <summary>
     /// Story 9-1 P-D1 (AC14): scans the compilation for any non-default

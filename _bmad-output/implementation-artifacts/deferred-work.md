@@ -2909,7 +2909,8 @@ archived: 2026-09-18
 origin: migrated from legacy ledger ("Deferred from: code review of story 1-5 round 2 (2026-04-14)"), 2026-08-27
 location: GetQualifiedHintPrefix
 reason: **Hint name sanitization for exotic namespace formats** — `GetQualifiedHintPrefix` does not sanitize namespaces from `ToDisplayString()`. Theoretical risk with `global::` or generic types. Pre-existing. Reconciliation: Row: DW-0338; Split to Story 11.4 SourceTools hint-name diagnostics 2026-05-13; Disposition: split-to-named-story; Reason: namespace sanitization is source-generator governance; Residual release-gate risk: low.; Evidence: section: code review of story 1-5 round 2 (2026-04-14).
-status: open
+status: done 2026-11-26
+resolution: Removes C# keyword escapes from namespace-qualified generated hint names and verifies projection and command sources compile with escaped namespaces.
 
 ### DW-1070: XML doc comment escaping
 

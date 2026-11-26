@@ -9,6 +9,38 @@ namespace Hexalith.FrontComposer.SourceTools.Tests.Integration;
 
 public partial class GeneratorDriverTests {
     [Fact]
+    public void KeywordNamespaceUsesValidHintsAndCompilableSource() {
+        const string source = """
+            using Hexalith.FrontComposer.Contracts.Attributes;
+
+            namespace @class.Sample;
+
+            [BoundedContext("KeywordExample")]
+            [Projection]
+            public partial class SampleProjection {
+                public string Name { get; set; } = string.Empty;
+            }
+
+            [BoundedContext("KeywordExample")]
+            [Command]
+            public sealed class SampleCommand {
+                public string MessageId { get; set; } = string.Empty;
+                public string Name { get; set; } = string.Empty;
+            }
+            """;
+        CancellationToken ct = TestContext.Current.CancellationToken;
+        CSharpCompilation compilation = CompilationHelper.CreateCompilation(source);
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(new FrontComposerGenerator())
+            .RunGeneratorsAndUpdateCompilation(compilation, out Compilation output, out var diagnostics, ct);
+
+        diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ShouldBeEmpty();
+        string[] hints = driver.GetRunResult().Results.Single().GeneratedSources.Select(s => s.HintName).ToArray();
+        hints.ShouldContain("class.Sample.SampleProjection.g.razor.cs");
+        hints.ShouldContain("class.Sample.SampleCommand.CommandForm.g.razor.cs");
+        output.GetDiagnostics(ct).Where(d => d.Severity == DiagnosticSeverity.Error).ShouldBeEmpty();
+    }
+
+    [Fact]
     public void RunGenerators_LiteralEdgeCases_ViewAndMcpSourcesCompileAndRoundTripConstants() {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
         const string edge = "quote:\" slash:\\ controls:\0\a\b\f\n\r\t\v next:\u0085 line:\u2028 paragraph:\u2029 end";
