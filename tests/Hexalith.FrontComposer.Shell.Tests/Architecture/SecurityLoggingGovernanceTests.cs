@@ -315,8 +315,8 @@ public sealed class SecurityLoggingGovernanceTests
         }
 
         LoggerEvent[] warningEvents = [.. events.Where(static entry => entry.Path.EndsWith("/FrontComposerWarningLog.cs", StringComparison.Ordinal))];
-        warningEvents.Select(static entry => entry.EventId).Order().ShouldBe(Enumerable.Range(5800, 55));
-        warningEvents.Count(static entry => entry.Level == "Warning").ShouldBe(49);
+        warningEvents.Select(static entry => entry.EventId).Order().ShouldBe(Enumerable.Range(5800, 56));
+        warningEvents.Count(static entry => entry.Level == "Warning").ShouldBe(50);
         warningEvents.Count(static entry => entry.Level == "Error").ShouldBe(6);
         foreach (LoggerEvent entry in warningEvents)
         {

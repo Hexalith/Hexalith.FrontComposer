@@ -4,6 +4,7 @@ using Hexalith.FrontComposer.Contracts.Registration;
 using Hexalith.FrontComposer.Shell.Extensions;
 using Hexalith.FrontComposer.Shell.Registration;
 using Hexalith.FrontComposer.Shell.Services.Authorization;
+using Hexalith.FrontComposer.Shell.Tests.Infrastructure.Telemetry;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -109,6 +110,38 @@ public class FrontComposerRegistryTests {
         warning.Name.ShouldBe("RegistryRegistrationSkipped");
         loggerProvider.Messages.ShouldContain(message => message.Contains("RegistrationTypeDigest=sha256:", StringComparison.Ordinal));
         loggerProvider.Messages.ShouldAllBe(message => !message.Contains("PartialLoggingRegistration", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData("Counter", "First label", "First label", false)]
+    [InlineData("First label", "Counter", "First label", false)]
+    [InlineData("First label", " ", "First label", false)]
+    [InlineData("First label", "First label", "First label", false)]
+    [InlineData("First label", "Second label", "First label", true)]
+    [InlineData("Second label", "First label", "Second label", true)]
+    public void MergeReportsOnlyConflictingExplicitDisplayLabels(
+        string firstLabel, string secondLabel, string expectedLabel, bool expectedWarning) {
+        const string context = "Counter";
+        CapturingLogger<FrontComposerRegistry> logger = new();
+        FrontComposerRegistry registry = new([], [], logger);
+        registry.RegisterDomain(new DomainManifest(firstLabel, context, ["Sample.FirstProjection"], []));
+        registry.RegisterDomain(new DomainManifest(secondLabel, context, ["Sample.SecondProjection"], []));
+
+        DomainManifest manifest = registry.GetManifests().ShouldHaveSingleItem();
+        manifest.Name.ShouldBe(expectedLabel);
+        manifest.Projections.ShouldBe(["Sample.FirstProjection", "Sample.SecondProjection"]);
+
+        if (expectedWarning) {
+            CapturedLogEntry warning = logger.Entries.ShouldHaveSingleItem();
+            warning.Level.ShouldBe(LogLevel.Warning);
+            warning.EventId.Name.ShouldBe("RegistryDisplayLabelConflict");
+            warning.State["BoundedContextDigest"].ShouldBeOfType<string>().ShouldStartWith("sha256:");
+            warning.Message.ShouldNotContain(firstLabel);
+            warning.Message.ShouldNotContain(secondLabel);
+        }
+        else {
+            logger.Entries.ShouldBeEmpty();
+        }
     }
 
     [Fact]

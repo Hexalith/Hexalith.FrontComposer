@@ -395,15 +395,22 @@ internal sealed class FrontComposerRegistry : IFrontComposerRegistry, IFrontComp
         return merged;
     }
 
-    private static string ChooseName(string currentName, string candidateName, string boundedContext) {
+    private string ChooseName(string currentName, string candidateName, string boundedContext) {
         if (string.IsNullOrWhiteSpace(currentName)) {
             return candidateName;
         }
 
-        if (string.Equals(currentName, boundedContext, StringComparison.Ordinal)
-            && !string.IsNullOrWhiteSpace(candidateName)
-            && !string.Equals(candidateName, boundedContext, StringComparison.Ordinal)) {
+        if (string.IsNullOrWhiteSpace(candidateName)
+            || string.Equals(candidateName, boundedContext, StringComparison.Ordinal)) {
+            return currentName;
+        }
+
+        if (string.Equals(currentName, boundedContext, StringComparison.Ordinal)) {
             return candidateName;
+        }
+
+        if (!string.Equals(currentName, candidateName, StringComparison.Ordinal)) {
+            FrontComposerWarningLog.RegistryDisplayLabelConflict(_logger, boundedContext);
         }
 
         return currentName;

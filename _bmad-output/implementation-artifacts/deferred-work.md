@@ -2895,7 +2895,8 @@ archived: 2026-09-18
 origin: migrated from legacy ledger ("Deferred from: code review of story 1-5 round 2 (2026-04-14)"), 2026-08-27
 location: _bmad-output/implementation-artifacts/11-4-drift-detection-and-source-generator-coverage-hardening.md
 reason: **Conflicting DisplayLabels across BoundedContext** — Two projections sharing the same `[BoundedContext]` but specifying different `DisplayLabel` values emit silently with no diagnostic. Deferred until bounded-context aggregation is implemented (likely Story 1-6 or later). Reconciliation: Row: DW-0336; Accepted constraint 2026-05-14; Decision owner: FrontComposer SourceTools maintainers; Evidence: DisplayLabel propagation tests and `_bmad-output/implementation-artifacts/11-4-drift-detection-and-source-generator-coverage-hardening.md`; Likelihood: low; Impact: low; Release risk: low because duplicate bounded-context label arbitration is aggregation/product policy, not generated-code validity; Downstream impact: consumers with conflicting labels receive per-declaration propagation but no single aggregate-label arbitration; Review trigger: bounded-context aggregation introduces a single shared descriptor label; Previous owner was Story 11.4.
-status: open
+status: done 2026-11-26
+resolution: Reports distinct explicit display labels when registrations merge into one bounded context. Keeps the first explicit label and merges both memberships.
 
 ### DW-1068: BoundedContext name with invalid C# identifier chars
 
