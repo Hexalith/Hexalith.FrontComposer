@@ -148,6 +148,33 @@ public class WipeCacheCommand
     }
 
     [Theory]
+    [InlineData("Delete2Items")]
+    [InlineData("Remove0Entries")]
+    [InlineData("Wipe9")]
+    public void ParseWithDestructiveVerbAndDigitEmitsHfc1020(string name) {
+        const string originalName = "DeleteOrderCommand";
+        CommandParseResult result = CompilationHelper.ParseCommand(
+            DeleteNamedWithoutAttribute.Replace(originalName, name, StringComparison.Ordinal),
+            "TestDomain." + name);
+
+        CommandModel model = result.Model.ShouldNotBeNull();
+        model.IsDestructive.ShouldBeFalse();
+        result.Diagnostics.Single(d => d.Id == "HFC1020").Severity.ShouldBe("Info");
+    }
+
+    [Fact]
+    public void ParseWithDestructiveAttributeAndDigitOmitsHfc1020() {
+        const string name = "Delete2Items";
+        CommandParseResult result = CompilationHelper.ParseCommand(
+            DestructiveWithField.Replace("DeleteSomethingCommand", name, StringComparison.Ordinal),
+            "TestDomain." + name);
+
+        CommandModel model = result.Model.ShouldNotBeNull();
+        model.IsDestructive.ShouldBeTrue();
+        result.Diagnostics.ShouldNotContain(d => d.Id == "HFC1020");
+    }
+
+    [Theory]
     [InlineData("Delete")]
     [InlineData("DeleteableCommand")]
     [InlineData("deleteOrderCommand")]

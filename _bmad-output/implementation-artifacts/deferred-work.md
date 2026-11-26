@@ -2828,13 +2828,15 @@ origin: migrated from legacy ledger ("Deferred from: code review of story 2-5 fu
 location: FcShellOptionsThresholdValidator.cs
 reason: **`FormAbandonmentThresholdSeconds` unit inconsistency** — mixed seconds/milliseconds naming across `FcShellOptions`; intentional per design docs; no overflow at current `[Range(5,600)]` bounds. `FcShellOptionsThresholdValidator.cs` Reconciliation: Row: DW-0326; Final classification 2026-05-13: accepted-with-risk; Decision owner: Story 11.6 release owner; AC coverage: AC18, AC21-AC22, AC37; Score: impact=low/medium; risk=low; cost=medium/high; adjacency=accepted; Rationale: Low release-readiness risk or existing lower-level evidence is sufficient for this release pass.; Validation/evidence: focused Story 11.6 Shell/Counter validation plus historical source row; revisit on matching regression or adopter request; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of story 2-5 full adversarial pass (2026-04-17).
 status: open
+decision: 2026-11-26 Skipped. Seconds are the documented configuration unit. The validator converts to milliseconds safely within the supported range.
 
 ### DW-1058: `DestructiveNamePattern` regex digit-prefix gap
 
 origin: migrated from legacy ledger ("Deferred from: code review of story 2-5 full adversarial pass (2026-04-17)"), 2026-08-27
 location: CommandParser.cs
 reason: **`DestructiveNamePattern` regex digit-prefix gap** — class names like `Delete2Items` are not matched; HFC1020 is Info severity so impact is advisory only. `CommandParser.cs` Reconciliation: Row: DW-0327; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.2; AC coverage: AC18, AC21-AC22, AC37; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.2.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Related: Story 11.2; Evidence: section: code review of story 2-5 full adversarial pass (2026-04-17).
-status: open
+status: done 2026-11-26
+resolution: Emits advisory HFC1020 when an ASCII digit immediately follows a destructive verb, unless the command already has DestructiveAttribute.
 
 ### DW-1059: `BuildFcLifecycleRejectionCopy` trailing period from `reason` field
 

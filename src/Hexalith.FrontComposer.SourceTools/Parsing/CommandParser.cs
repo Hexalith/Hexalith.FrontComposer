@@ -374,12 +374,12 @@ public static class CommandParser {
             new EquatableArray<DiagnosticInfo>(diagnostics.ToImmutableArray()));
     }
 
-    /// <summary>Recognizes destructive verbs followed by a PascalCase word boundary for HFC1020.</summary>
+    /// <summary>Recognizes destructive verbs followed by an ASCII uppercase letter or digit for HFC1020.</summary>
     private static bool HasDestructiveName(string name) {
         foreach (string verb in DestructiveVerbs) {
             if (name.Length > verb.Length
                 && name.StartsWith(verb, StringComparison.Ordinal)
-                && name[verb.Length] is >= 'A' and <= 'Z') {
+                && name[verb.Length] is (>= 'A' and <= 'Z') or (>= '0' and <= '9')) {
                 return true;
             }
         }
