@@ -2660,7 +2660,8 @@ decision: 2026-09-06 Reject duplicates — Keep the command-name API, detect cro
 origin: migrated from legacy ledger ("Deferred from: code review of story 3-4-fccommandpalette-and-keyboard-shortcuts — Chunk 3 re-review (2026-04-21 pass 4)"), 2026-08-27
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 reason: **`BoundedContextRouteParser` protocol-relative `//evil/x/y`** — `NavigationManager` does not emit or consume protocol-relative URLs in v1; parser would technically resolve `evil` as BC, but there is no path for such input to arrive. Revisit if an adopter wires a custom navigation source. Reconciliation: Row: DW-0303; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of story 3-4-fccommandpalette-and-keyboard-shortcuts — Chunk 3 re-review (2026-04-21 pass 4).
-status: open
+status: done 2026-11-26
+resolution: Rejects network-path references before extracting shell navigation context.
 
 ### DW-1035: `BoundedContextRouteParser` encoded-slash `%2F` in segment
 

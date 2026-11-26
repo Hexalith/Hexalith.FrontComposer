@@ -14,7 +14,8 @@ public static class BoundedContextRouteParser {
     /// other non-context routes.
     /// </returns>
     public static string? Parse(string? uriOrPath) {
-        if (string.IsNullOrWhiteSpace(uriOrPath)) {
+        if (string.IsNullOrWhiteSpace(uriOrPath)
+            || uriOrPath.AsSpan().TrimStart().StartsWith("//", StringComparison.Ordinal)) {
             return null;
         }
 
