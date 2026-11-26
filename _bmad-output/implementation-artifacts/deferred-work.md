@@ -3226,6 +3226,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of story 2-1 (2
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 reason: **Metadata-sourced command symbols** — `CommandParser.Parse` doesn't guard against `typeSymbol.DeclaringSyntaxReferences.IsDefaultOrEmpty`. A `[Command]` declared in a referenced assembly (not source) could produce surprising hint collisions or emit forms the adopter can't touch. Verify and either support explicitly or reject with a diagnostic. Reconciliation: Row: DW-0383; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.2; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.2.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of story 2-1 (2026-04-16).
 status: open
+decision: 2026-11-26 Skipped. Metadata-only command symbols do not enter source-syntax discovery. Adding a diagnostic for library references would require an explicit discovery contract. The direct parser is also sealed by the finite mutation evidence.
 decision: 2026-09-06 Reject metadata commands — Reject referenced metadata command symbols with a stable diagnostic and documentation.
 decision: 2026-09-06 Reject metadata commands — Reject referenced metadata command symbols with a stable diagnostic and documentation.
 
@@ -3274,6 +3275,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of story 2-2-ac
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 reason: **`IconAttribute` target is `AttributeTargets.Class` (unrestricted)** — a non-`[Command]` class receiving `[Icon(...)]` is a silent no-op; parse-time guard is already scheduled for the **Epic 9 analyzer** per the attribute's own `<remarks>`. Mentioned only so the Epic 9 backlog retains the entry. Reconciliation: Row: DW-0390; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC12, AC23, AC29, AC34; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of story 2-2-action-density-rules-and-rendering-modes (2026-04-16) — Group A (Contracts) second pass.
 status: open
+decision: 2026-11-26 Skipped. C# attribute targets cannot require a companion Command attribute. The recorded analyzer follow-up needs an adopter-facing diagnostic rule and trigger contract.
 
 ### DW-1122: `CommandRenderMode` enum silent-fallthrough risk on consumer `switch` statements without `default`
 
@@ -3281,6 +3283,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of story 2-2-ac
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 reason: **`CommandRenderMode` enum silent-fallthrough risk on consumer `switch` statements without `default`** — the Contracts layer can't enforce exhaustive matching; Roslyn analyzer work belongs in **Epic 9**. Reconciliation: Row: DW-0391; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.4; AC coverage: AC12, AC23, AC29, AC34; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.4.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Related: Story 11.4; Evidence: section: code review of story 2-2-action-density-rules-and-rendering-modes (2026-04-16) — Group A (Contracts) second pass.
 status: open
+decision: 2026-11-26 Skipped. The recorded analyzer follow-up needs a decision on which consumer switches to diagnose, including intentionally partial switches and the required handling of future enum values.
 
 ### DW-1123: `netstandard2.0` compile-path depends on an `IsExternalInit` polyfill for `init` setters
 
@@ -3294,6 +3297,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of story 2-2-ac
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 reason: **`IInlinePopover.ClosePopoverAsync()` takes no `CancellationToken`** — circuit teardown cannot abort a stuck close; fold into Shell-layer wrapper when it gains `ILogger`. Low priority. Reconciliation: Row: DW-0393; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of story 2-2-action-density-rules-and-rendering-modes (2026-04-16) — Group A (Contracts) second pass.
 status: open
+decision: 2026-11-26 Skipped. The ledger explicitly holds this open. Cancelable close requires a compatibility design for the published IInlinePopover interface and its existing implementations.
 decision: 2026-08-27 Keep open
 
 ### DW-1125: `GridViewSnapshot.FiltersEqual` ignores right-dict key-comparer
@@ -3301,7 +3305,8 @@ decision: 2026-08-27 Keep open
 origin: migrated from legacy ledger ("Deferred from: code review of story 2-2-action-density-rules-and-rendering-modes (2026-04-16) — Group A (Contracts) second pass"), 2026-08-27
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 reason: **`GridViewSnapshot.FiltersEqual` ignores right-dict key-comparer** — if left and right filter dicts use different `IEqualityComparer<string>` instances, `left.Keys → right.TryGetValue(k)` can false-positive/negative. Requires a canonicalization decision (normalize at construction vs. at compare); revisit when Epic 4 DataGrid filtering lands and real producers exist. Reconciliation: Row: DW-0394; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of story 2-2-action-density-rules-and-rendering-modes (2026-04-16) — Group A (Contracts) second pass.
-status: open
+status: done 2026-11-26
+resolution: Compares stored filter entries using ordinal key and value semantics, including mixed comparers and repeated ordinal keys. Caller-supplied dictionary behavior is preserved.
 decision: 2026-08-27 Implement change — Implement the behavior requested by DW-1125, update affected contracts and consumers, and add focused regression evidence.
 
 ### DW-1126: `ProjectionContext` lacks a structural-equality override for `Fields`

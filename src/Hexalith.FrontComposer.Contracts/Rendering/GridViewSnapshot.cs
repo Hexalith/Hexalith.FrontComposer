@@ -72,8 +72,8 @@ public sealed record GridViewSnapshot {
     /// <item><see cref="ReservedFilterKeys.StatusKey"/> (<c>__status</c>): CSV of active <c>BadgeSlot</c> names.</item>
     /// <item><see cref="ReservedFilterKeys.SearchKey"/> (<c>__search</c>): the current global search query.</item>
     /// </list>
-    /// Every other key is a declared projection property name. Keys beginning with <c>__</c> are
-    /// reserved for framework use.
+    /// Snapshot equality compares filter keys and values ordinally. Every other key is a declared
+    /// projection property name. Keys beginning with <c>__</c> are reserved for framework use.
     /// </remarks>
     public IImmutableDictionary<string, string> Filters {
         get;
@@ -152,6 +152,12 @@ public sealed record GridViewSnapshot {
             return false;
         }
 
+        if (!HasOrdinalFilterKeys(left) || !HasOrdinalFilterKeys(right)) {
+            // Compare the stored entries, including multiplicity for custom comparers that allow
+            // distinct key objects with the same ordinal text.
+            return OrderFilterEntries(left).SequenceEqual(OrderFilterEntries(right));
+        }
+
         foreach (KeyValuePair<string, string> kvp in left) {
             if (!right.TryGetValue(kvp.Key, out string? rightValue) || !string.Equals(kvp.Value, rightValue, StringComparison.Ordinal)) {
                 return false;
@@ -160,4 +166,13 @@ public sealed record GridViewSnapshot {
 
         return true;
     }
+
+    private static bool HasOrdinalFilterKeys(IImmutableDictionary<string, string> filters)
+        => filters is ImmutableDictionary<string, string> dictionary
+            && (ReferenceEquals(dictionary.KeyComparer, StringComparer.Ordinal)
+                || ReferenceEquals(dictionary.KeyComparer, EqualityComparer<string>.Default));
+
+    private static IOrderedEnumerable<KeyValuePair<string, string>> OrderFilterEntries(IImmutableDictionary<string, string> filters)
+        => filters.OrderBy(static entry => entry.Key, StringComparer.Ordinal)
+            .ThenBy(static entry => entry.Value, StringComparer.Ordinal);
 }
