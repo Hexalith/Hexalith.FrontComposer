@@ -19,6 +19,23 @@ public sealed class LifecycleUiStateTests {
         => new(CorrId, previous, next, "01HXXXXXXXXXXXXXXXXXXXXXXX", Anchor, Anchor, idempotencyResolved);
 
     [Fact]
+    public void IdleSingletonHasNoOutcomeOrTransition() {
+        LifecycleUiState state = LifecycleUiState.Idle;
+
+        state.Current.ShouldBe(CommandLifecycleState.Idle);
+        state.TimerPhase.ShouldBe(LifecycleTimerPhase.NoPulse);
+        state.MessageId.ShouldBeNull();
+        state.IdempotencyResolved.ShouldBeFalse();
+        state.LastTransitionAt.ShouldBe(default(DateTimeOffset));
+        state.RejectionMessage.ShouldBeNull();
+        state.RejectionTitle.ShouldBeNull();
+        state.RejectionDetails.ShouldBeNull();
+        state.ConfirmedDismissAt.ShouldBeNull();
+        state.IsIdempotent.ShouldBeFalse();
+        state.IdempotentDismissAt.ShouldBeNull();
+    }
+
+    [Fact]
     public void Idle_phase_NoPulse_produces_no_announcement_no_pulse_no_message_bar() {
         var state = LifecycleUiState.From(T(CommandLifecycleState.Idle, CommandLifecycleState.Idle), LifecycleTimerPhase.NoPulse);
 

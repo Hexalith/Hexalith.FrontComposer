@@ -65,10 +65,19 @@ public sealed record LifecycleUiState {
     /// </summary>
     public DateTimeOffset? IdempotentDismissAt { get; init; }
 
-    /// <summary>An Idle-state singleton with default values. Used when no transition has been observed yet.</summary>
+    /// <summary>The idle state used before any lifecycle transition has been observed.</summary>
     public static readonly LifecycleUiState Idle = new() {
         Current = CommandLifecycleState.Idle,
         TimerPhase = LifecycleTimerPhase.NoPulse,
+        MessageId = null,
+        IdempotencyResolved = false,
+        LastTransitionAt = default,
+        RejectionMessage = null,
+        RejectionTitle = null,
+        RejectionDetails = null,
+        ConfirmedDismissAt = null,
+        IsIdempotent = false,
+        IdempotentDismissAt = null,
     };
 
     /// <summary>

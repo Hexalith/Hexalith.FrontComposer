@@ -2811,7 +2811,8 @@ resolution: Uses one dismissal scheduler with outcome-specific deadlines and gua
 origin: migrated from legacy ledger ("Deferred from: code review of story 2-5 full adversarial pass (2026-04-17)"), 2026-08-27
 location: LifecycleUiState.cs
 reason: **`LifecycleUiState.Idle` C# default property values** — static singleton relies on language defaults for `bool`/`DateTimeOffset?`/`string?`; future property additions may silently default without an explicit entry. No bug today. `LifecycleUiState.cs` Reconciliation: Row: DW-0324; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC18, AC21-AC22, AC37; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of story 2-5 full adversarial pass (2026-04-17).
-status: open
+status: done 2026-11-26
+resolution: Initializes every field of the idle singleton and tests the absence of transition, rejection, and dismissal state.
 
 ### DW-1056: `DestructiveNamePattern` `RegexOptions.Compiled` in source generator
 
