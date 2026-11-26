@@ -25,7 +25,7 @@ public sealed class FrontComposerGenerator : IIncrementalGenerator {
             .ForAttributeWithMetadataName(
                 "Hexalith.FrontComposer.Contracts.Attributes.ProjectionAttribute",
                 predicate: static (node, _) => node is TypeDeclarationSyntax,
-                transform: static (ctx, ct) => AttributeParser.Parse(ctx, ct))
+                transform: static (ctx, ct) => ParseProjection(ctx, ct))
             .Where(static result => result.Model is not null || result.Diagnostics.Count > 0)
             .WithTrackingName("Parse");
 
@@ -295,6 +295,23 @@ public sealed class FrontComposerGenerator : IIncrementalGenerator {
                 spc.AddSource(hintPrefix + "LifecycleBridge.g.cs", CommandLifecycleBridgeEmitter.Emit(fluxorModel));
             }
         });
+    }
+
+    /// <summary>Retains parser diagnostics while omitting models from syntactically incomplete declarations.</summary>
+    private static ParseResult ParseProjection(GeneratorAttributeSyntaxContext context, CancellationToken ct) {
+        ParseResult result = AttributeParser.Parse(context, ct);
+        if (result.Model is null || context.TargetSymbol is not INamedTypeSymbol projection) {
+            return result;
+        }
+
+        foreach (SyntaxReference declaration in projection.DeclaringSyntaxReferences) {
+            SyntaxNode node = declaration.GetSyntax(ct);
+            if (node.ContainsDiagnostics && node.GetDiagnostics().Any(static d => d.Severity == DiagnosticSeverity.Error)) {
+                return new ParseResult(null, result.Diagnostics);
+            }
+        }
+
+        return result;
     }
 
     private static string GetQualifiedHintPrefix(string @namespace, string typeName)

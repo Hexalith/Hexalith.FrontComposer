@@ -2930,6 +2930,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of 1-7-ci-pipel
 location: Hexalith.FrontComposer.Sh
 reason: **Stable release packing fails while Shell depends on prerelease Fluent UI** — `dotnet pack Hexalith.FrontComposer.sln --no-build --configuration Release --output ./nupkgs -p:Version=1.2.3` currently fails with `NU5104` because `Hexalith.FrontComposer.Shell` depends on `Microsoft.FluentUI.AspNetCore.Components` `5.0.0-rc.2-26098.1`. Pre-existing dependency choice surfaced by Story 1.7 release automation. Reconciliation: Row: DW-0341; Final classification 2026-05-14: split-to-named-story; Target owner: Story 11.6 Shell/sample/accessibility follow-up; Decision owner: Story 12.2 release certification; Rationale: row is adjacent to MCP certification or non-runtime scope and is not required to block MCP v1 release after Story 11.5 evidence; Downstream MCP impact: none or contract-adjacent as recorded in the Story 12.2 release-owner summary; Close trigger: Story 11.6 Shell/sample/accessibility follow-up lands or explicitly accepts the row with its own evidence; Evidence: Story 11.5 row-scoped matrix, Story 12.1 routing update, and Story 12.2 inventory/validation; Previous owner was Story 11.5.
 status: open
+decision: 2026-11-26 Skipped. Shell packing already has a scoped NU5104 exception while the approved Fluent UI dependency is prerelease.
 decision: 2026-08-27 Keep open
 
 ### DW-1073: Shallow clone + 3-level submodule nesting may cause CI failures
@@ -2955,7 +2956,8 @@ archived: 2026-09-18
 origin: migrated from legacy ledger ("Deferred from: Story 1-8 (Hot Reload & Fluent UI Contingency) — 2026-04-14"), 2026-08-27
 location: MalformedProjection_ToleratedWithoutGeneratorException
 reason: **Gate emit stage on clean parse of malformed `[Projection]` types** — Story 1.8 Task 2.3 expected contract (a) says "zero generated files for the malformed type". Actual behavior: the generator emits output for any `[Projection]`-decorated type based on Roslyn's error-recovered semantic model. Tolerance properties actually enforced by `MalformedProjection_ToleratedWithoutGeneratorException`: (b) Roslyn surfaces a CS* diagnostic, (c) generator does not throw, (c') generator emits no error-severity diagnostics, (c'') re-compiling the generator's output with the malformed source introduces no *new* CS* errors beyond the original pre-generation set. Together (b–c'') keep the inner loop usable even without (a). Closing (a) requires the emit stage to gate on "all properties parsed cleanly" and is out of Story 1.8 scope. Reconciliation: Row: DW-0345; Split to Story 11.4 SourceTools malformed projection gating 2026-05-13; Disposition: split-to-named-story; Reason: emit gating changes generated-output semantics; Residual release-gate risk: medium for malformed adopter source.; Related: Story 11.4, Story 11.6; Evidence: section: Story 1-8 (Hot Reload & Fluent UI Contingency) — 2026-04-14.
-status: open
+status: done 2026-11-26
+resolution: Suppresses generated views, registration and shared manifest entries for syntax-invalid projections while keeping compiler diagnostics, healthy siblings and recovery after repair.
 decision: 2026-08-28 Implement requested change — Implement DW-1076 at its recorded touchpoint, update affected contracts and consumers, and add focused regression evidence.
 decision: 2026-08-28 Implement requested change — Implement DW-1076 at its recorded touchpoint, update affected contracts and consumers, and add focused regression evidence.
 

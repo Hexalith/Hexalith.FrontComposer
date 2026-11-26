@@ -156,42 +156,21 @@ public partial class CounterProjection
 
     [Fact]
     public void MalformedProjection_ToleratedWithoutGeneratorException() {
-        // Contract for invalid / partial syntax tolerance (Task 2.3).
-        //
-        // The story spec lists three desired properties:
-        //   (a) Zero generated files for the malformed type.
-        //   (b) A Roslyn-level compile diagnostic (CS*) — not a generator one.
-        //   (c) The generator pipeline must not throw.
-        //
-        // The real, observed tolerance contract of the current generator is a
-        // subset: (b) and (c) hold strictly; (a) does NOT — the generator
-        // emits output for any type decorated with [Projection] based on
-        // whatever Roslyn's error-recovered semantic model produces. For a
-        // class like `Bad { public string X { get }`, Roslyn still synthesizes
-        // a type symbol with one (incomplete) property, and the emit stage
-        // therefore produces its usual fan-out of artifacts.
-        //
-        // This divergence is acceptable for the inner-loop scenario because
-        // (b) + (c) already give the developer the right feedback: the real
-        // compile error is CS*, and `dotnet watch` will not crash while they
-        // are mid-edit. Strictly enforcing (a) would require the emit stage
-        // to gate on "all properties parsed cleanly", which is outside the
-        // Story 1.8 scope.
-        //
-        // Tracked as a deferred hardening task:
-        //   _bmad-output/implementation-artifacts/deferred-work.md —
-        //   "Gate emit stage on clean parse of malformed [Projection] types".
         CancellationToken ct = TestContext.Current.CancellationToken;
 
-        const string malformed = @"
-using Hexalith.FrontComposer.Contracts.Attributes;
+        const string malformed = """
+            using Hexalith.FrontComposer.Contracts.Attributes;
 
-namespace TestDomain;
+            namespace TestDomain;
 
-[BoundedContext(""Bad"")]
-[Projection]
-public partial class Bad { public string X { get }";
+            [Projection]
+            public partial class Healthy { public string Id { get; set; } = ""; }
 
+            [Projection]
+            public partial class Bad { public string Id { get; } }
+
+            public partial class Bad { public string Name { get } }
+            """;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(malformed);
         FrontComposerGenerator generator = new();
 
@@ -202,6 +181,18 @@ public partial class Bad { public string X { get }";
         //     file the developer is mid-way through editing.
         GeneratorDriverRunResult result = Should
             .NotThrow(() => driver.RunGenerators(compilation, ct).GetRunResult());
+
+        GeneratedSourceResult[] generated = result.Results.Single().GeneratedSources.ToArray();
+        generated.ShouldNotContain(source => source.HintName.StartsWith("TestDomain.Bad", StringComparison.Ordinal));
+        generated.ShouldContain(source => source.HintName == "TestDomain.Healthy.g.razor.cs");
+        generated.Single(source => source.HintName == "FrontComposerMcpManifest.g.cs")
+            .SourceText.ToString().ShouldNotContain("TestDomain.Bad");
+
+        CSharpCompilation repaired = CompilationHelper.CreateCompilation(
+            malformed.Replace("{ get }", "{ get; }", StringComparison.Ordinal));
+        GeneratorDriver repairedDriver = driver.RunGenerators(compilation, ct).RunGenerators(repaired, ct);
+        repairedDriver.GetRunResult().Results.Single().GeneratedSources
+            .ShouldContain(source => source.HintName == "TestDomain.Bad.g.razor.cs");
 
         // (b) Compile diagnostics come from Roslyn (CS*), not from the generator —
         //     the developer sees the real problem (missing `;`, missing `}`) from
