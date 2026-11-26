@@ -2843,7 +2843,8 @@ resolution: Emits advisory HFC1020 when an ASCII digit immediately follows a des
 origin: migrated from legacy ledger ("Deferred from: code review of story 2-5 full adversarial pass (2026-04-17)"), 2026-08-27
 location: CommandFormEmitter.cs
 reason: **`BuildFcLifecycleRejectionCopy` trailing period from `reason` field** — `reason + ". " + resolution` may produce "Reason. Resolution." if `reason` already ends with a period. Cosmetic. `CommandFormEmitter.cs` Reconciliation: Row: DW-0328; Final classification 2026-05-13: accepted-with-risk; Decision owner: Story 11.6 release owner; AC coverage: AC18, AC21-AC22, AC37; Score: impact=low/medium; risk=low; cost=medium/high; adjacency=accepted; Rationale: Low release-readiness risk or existing lower-level evidence is sufficient for this release pass.; Validation/evidence: focused Story 11.6 Shell/Counter validation plus historical source row; revisit on matching regression or adopter request; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of story 2-5 full adversarial pass (2026-04-17).
-status: open
+status: done 2026-11-26
+resolution: Generated forms join the rejection reason and resolution without adding a second period and preserve existing sentence punctuation.
 
 ### DW-1060: `OnFirstEdit` re-mount arm gap
 

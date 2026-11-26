@@ -1506,7 +1506,7 @@ public partial class ApproveOrderCommandForm : ComponentBase, IDisposable
     }
 
 
-    /// <summary>Story 2-5 D4 — joins Fluxor-state Reason + Resolution with '. ' separator; null outside Rejected.</summary>
+    /// <summary>Story 2-5 D4 — joins Fluxor-state Reason and Resolution as plain text; null outside Rejected.</summary>
     private string? BuildFcLifecycleRejectionCopy()
     {
         if (LifecycleState.Value.State != CommandLifecycleState.Rejected) return null;
@@ -1515,7 +1515,9 @@ public partial class ApproveOrderCommandForm : ComponentBase, IDisposable
         if (string.IsNullOrWhiteSpace(reason) && string.IsNullOrWhiteSpace(resolution)) return null;
         if (string.IsNullOrWhiteSpace(resolution)) return reason;
         if (string.IsNullOrWhiteSpace(reason)) return resolution;
-        return reason + ". " + resolution;
+        reason = reason.TrimEnd();
+        var separator = reason[reason.Length - 1] is '.' or '!' or '?' ? " " : ". ";
+        return reason + separator + resolution.TrimStart();
     }
 
     /// <summary>Story 2-5 D4 — domain-language rejection title ('{DisplayLabel} failed'); null outside Rejected.</summary>

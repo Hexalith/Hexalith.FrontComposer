@@ -380,9 +380,13 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
         });
     }
 
-    [Fact]
-    public async Task GeneratedForm_SubmitRejected_RendersTypedFieldsAndKeepsFormEditable() {
-        Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => new RejectingCommandService()));
+    [Theory]
+    [InlineData("Order locked", "Order locked. Please retry.")]
+    [InlineData("Order locked.", "Order locked. Please retry.")]
+    [InlineData("Order locked.  ", "Order locked. Please retry.")]
+    [InlineData("Order locked!", "Order locked! Please retry.")]
+    public async Task GeneratedForm_SubmitRejected_RendersTypedFieldsAndKeepsFormEditable(string reason, string expectedCopy) {
+        Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => new RejectingCommandService(reason)));
         await InitializeStoreAsync();
         IRenderedComponent<TwoFieldCompactCommandForm> cut = Render<TwoFieldCompactCommandForm>(parameters => parameters
             .Add(p => p.InitialValue, new TwoFieldCompactCommand {
@@ -395,6 +399,7 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
 
         cut.WaitForAssertion(() => {
             cut.Markup.ShouldContain("Command rejected", Case.Insensitive);
+            cut.Find("[data-testid='fc-rejected']").TextContent.ShouldContain(expectedCopy);
             cut.Markup.ShouldContain("ORDER_LOCKED");
             cut.Markup.ShouldContain("Concurrency");
             cut.Markup.ShouldContain("Reload before retrying");
@@ -1947,7 +1952,7 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
         }
     }
 
-    private sealed class RejectingCommandService : ICommandServiceWithLifecycle {
+    private sealed class RejectingCommandService(string reason = "Order locked") : ICommandServiceWithLifecycle {
         public Task<CommandResult> DispatchAsync<TCommand>(TCommand command, CancellationToken cancellationToken = default)
             where TCommand : class
             => DispatchAsync(command, onLifecycleChange: null, cancellationToken);
@@ -1958,7 +1963,7 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
             CancellationToken cancellationToken = default)
             where TCommand : class
             => throw new CommandRejectedException(
-                "Order locked",
+                reason,
                 "Please retry.",
                 new CommandRejectionDetails("ORDER_LOCKED", "Concurrency", "Reload before retrying", "FC-CMD-409"));
     }

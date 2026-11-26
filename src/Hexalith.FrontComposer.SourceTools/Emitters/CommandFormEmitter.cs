@@ -2640,7 +2640,7 @@ public static class CommandFormEmitter {
     /// </summary>
     private static void EmitRejectionCopyHelpers(StringBuilder sb, string escapedButtonLabel) {
         _ = sb.AppendLine();
-        _ = sb.AppendLine("    /// <summary>Story 2-5 D4 — joins Fluxor-state Reason + Resolution with '. ' separator; null outside Rejected.</summary>");
+        _ = sb.AppendLine("    /// <summary>Story 2-5 D4 — joins Fluxor-state Reason and Resolution as plain text; null outside Rejected.</summary>");
         _ = sb.AppendLine("    private string? BuildFcLifecycleRejectionCopy()");
         _ = sb.AppendLine("    {");
         _ = sb.AppendLine("        if (LifecycleState.Value.State != CommandLifecycleState.Rejected) return null;");
@@ -2649,7 +2649,9 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("        if (string.IsNullOrWhiteSpace(reason) && string.IsNullOrWhiteSpace(resolution)) return null;");
         _ = sb.AppendLine("        if (string.IsNullOrWhiteSpace(resolution)) return reason;");
         _ = sb.AppendLine("        if (string.IsNullOrWhiteSpace(reason)) return resolution;");
-        _ = sb.AppendLine("        return reason + \". \" + resolution;");
+        _ = sb.AppendLine("        reason = reason.TrimEnd();");
+        _ = sb.AppendLine("        var separator = reason[reason.Length - 1] is '.' or '!' or '?' ? \" \" : \". \";");
+        _ = sb.AppendLine("        return reason + separator + resolution.TrimStart();");
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
         _ = sb.AppendLine("    /// <summary>Story 2-5 D4 — domain-language rejection title ('{DisplayLabel} failed'); null outside Rejected.</summary>");
