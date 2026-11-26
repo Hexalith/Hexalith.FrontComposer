@@ -2863,7 +2863,8 @@ archived: 2026-09-18
 origin: migrated from legacy ledger ("Deferred from: code review of tasks-subtasks.md (story 2-5) (2026-04-17)"), 2026-08-27
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 reason: **HFC2103 diagnostic ID naming vs wrapper bypass log branch** — `FcFormAbandonmentGuard` logs `HFC2103` when yielding for `WrapperInitiatedNavigation`; the constant name emphasizes Submitting-only suppression. Low-risk clarity follow-up, not a functional defect. Reconciliation: Row: DW-0331; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.2; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.2.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Related: Story 11.2; Evidence: section: code review of tasks-subtasks.md (story 2-5) (2026-04-17).
-status: open
+status: done 2026-11-26
+resolution: Uses a shared guard-suppression name for both HFC2103 events, preserves the published constant as an alias, and documents how to distinguish them.
 
 ### DW-1063: DisplayLabel unsupported end-to-end
 

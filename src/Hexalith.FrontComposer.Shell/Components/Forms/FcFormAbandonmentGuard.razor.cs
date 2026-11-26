@@ -165,7 +165,7 @@ public partial class FcFormAbandonmentGuard : ComponentBase, IDisposable {
         if (WrapperInitiatedNavigation) {
             FrontComposerDiagnosticLog.AbandonmentGuardWrapperNavigationYielded(
                 Logger,
-                FcDiagnosticIds.HFC2103_AbandonmentDuringSubmitting,
+                FcDiagnosticIds.HFC2103_AbandonmentGuardSuppressed,
                 context.TargetLocation);
             return;
         }
@@ -192,7 +192,7 @@ public partial class FcFormAbandonmentGuard : ComponentBase, IDisposable {
             if (current == CommandLifecycleState.Submitting) {
                 FrontComposerDiagnosticLog.AbandonmentGuardSuppressedWhileSubmitting(
                     Logger,
-                    FcDiagnosticIds.HFC2103_AbandonmentDuringSubmitting,
+                    FcDiagnosticIds.HFC2103_AbandonmentGuardSuppressed,
                     CorrelationId);
                 return;
             }

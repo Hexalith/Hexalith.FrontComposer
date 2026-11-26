@@ -511,6 +511,8 @@ public sealed class FcFormAbandonmentGuardTests : BunitContext {
 
         CapturedLogEntry observed = logger.Entries.ShouldHaveSingleItem();
         observed.EventId.Id.ShouldBe(6004);
+        observed.EventId.Name.ShouldBe("AbandonmentGuardSuppressedWhileSubmitting");
+        observed.State["Diag"].ShouldBe("HFC2103");
         observed.State["Cid"].ShouldBe(FrontComposerHotPathLog.DigestIdentifier(DefaultCorrelationId));
         observed.State["Cid"].ShouldNotBe(DefaultCorrelationId);
         observed.Message.ShouldNotContain(DefaultCorrelationId);
@@ -520,6 +522,9 @@ public sealed class FcFormAbandonmentGuardTests : BunitContext {
     public async Task Wrapper_initiated_navigation_yields_without_prompting() {
         TestModel model = new() { Name = "" };
         EditContext editContext = new(model);
+        CapturingLogger<FcFormAbandonmentGuard> logger = new();
+        Services.RemoveAll<ILogger<FcFormAbandonmentGuard>>();
+        _ = Services.AddSingleton<ILogger<FcFormAbandonmentGuard>>(logger);
         (FcFormAbandonmentGuard guard, IRenderedComponent<FcFormAbandonmentGuard> cut) = RenderGuardWithCut(editContext);
 
         editContext.NotifyFieldChanged(editContext.Field(nameof(TestModel.Name)));
@@ -530,6 +535,10 @@ public sealed class FcFormAbandonmentGuardTests : BunitContext {
         await InvokeNavigationChangingAsync(cut, guard, context);
 
         DidPreventNavigation(context).ShouldBeFalse();
+        CapturedLogEntry observed = logger.Entries.ShouldHaveSingleItem();
+        observed.EventId.Id.ShouldBe(6003);
+        observed.EventId.Name.ShouldBe("AbandonmentGuardWrapperNavigationYielded");
+        observed.State["Diag"].ShouldBe("HFC2103");
         cut.FindAll("[data-testid='fc-form-abandonment-warning']").ShouldBeEmpty();
     }
 

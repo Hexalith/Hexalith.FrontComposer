@@ -11,6 +11,16 @@ namespace Hexalith.FrontComposer.Contracts.Tests.Diagnostics;
 public sealed class FcDiagnosticIdsCompatibilityTests
 {
     [Fact]
+    public void Hfc2103GuardSuppressionRetainsIdentifierAndLegacyAlias()
+    {
+        FcDiagnosticIds.HFC2103_AbandonmentGuardSuppressed.ShouldBe("HFC2103");
+        typeof(FcDiagnosticIds).GetField(
+            nameof(FcDiagnosticIds.HFC2103_AbandonmentDuringSubmitting),
+            BindingFlags.Public | BindingFlags.Static)
+            .ShouldNotBeNull().GetRawConstantValue().ShouldBe(FcDiagnosticIds.HFC2103_AbandonmentGuardSuppressed);
+    }
+
+    [Fact]
     public void Hfc2106_PreferredName_RetainsIdentifier()
     {
         FcDiagnosticIds.HFC2106_PreferenceHydrationFallback.ShouldBe("HFC2106");

@@ -386,7 +386,7 @@ public sealed class FrontComposerDiagnosticLogTests
     {
         FrontComposerDiagnosticLog.AbandonmentGuardSuppressedWhileSubmitting(
             logger,
-            FcDiagnosticIds.HFC2103_AbandonmentDuringSubmitting,
+            FcDiagnosticIds.HFC2103_AbandonmentGuardSuppressed,
             oversized);
         FrontComposerDiagnosticLog.ScopeReadinessStorageReadyDispatched(logger, oversized);
     }

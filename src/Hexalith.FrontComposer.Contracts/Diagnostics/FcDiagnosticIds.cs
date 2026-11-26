@@ -378,7 +378,10 @@ public static class FcDiagnosticIds {
     /// is Submitting (or the wrapper flagged its own Start-over navigation). Story 2-5 D13.
     /// Information severity — this is expected suppression, not anomaly.
     /// </summary>
-    public const string HFC2103_AbandonmentDuringSubmitting = "HFC2103";
+    public const string HFC2103_AbandonmentGuardSuppressed = "HFC2103";
+
+    /// <summary>Compatibility alias for <see cref="HFC2103_AbandonmentGuardSuppressed"/>.</summary>
+    public const string HFC2103_AbandonmentDuringSubmitting = HFC2103_AbandonmentGuardSuppressed;
 
     /// <summary>
     /// Wrapper rendered the idempotent Info bar (Story 2-5 D3 / AC2). Logged so adopters

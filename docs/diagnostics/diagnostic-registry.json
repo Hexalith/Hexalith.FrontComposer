@@ -2065,7 +2065,7 @@
     {
       "id": "HFC2103",
       "ownerPackage": "Shell",
-      "title": "HFC2103 Abandonment During Submitting",
+      "title": "HFC2103 Abandonment Guard Suppressed",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
       "deprecatedIn": null,
@@ -2075,7 +2075,7 @@
       "panelSeverity": "Information",
       "cliExitBehavior": "non-blocking",
       "mcpCategory": null,
-      "messageTemplate": "What: HFC2103 Abandonment During Submitting. Expected: Follow the FrontComposer diagnostic contract for HFC2103. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC2103",
+      "messageTemplate": "What: The form abandonment guard yielded. Expected: Submitting commands and wrapper-initiated Start over navigation bypass the warning. Got: The log event name identifies which path ran. Fix: No action is required for either expected path. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC2103",
       "docsSlug": "diagnostics/HFC2103",
       "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC2103",
       "redactionClass": "runtime-sanitized",
