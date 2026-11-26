@@ -54,11 +54,8 @@ public sealed class IdeParityConformanceUtilityTests {
         fileNames.ShouldContain("IdeParity.Counter.IdeParityCounterProjection.g.razor.cs");
         fileNames.ShouldContain("IdeParity.Counter.IdeParityCounterProjectionFeature.g.cs");
         fileNames.ShouldContain("IdeParity.Counter.IdeParityCounterProjectionRegistration.g.cs");
-        // Command-derived hint names duplicate the namespace prefix; this is the existing
-        // generator behavior (Story 1-x) and must remain stable as part of the IDE parity
-        // contract that adopters/IDEs index against.
-        fileNames.ShouldContain("IdeParity.Counter.IdeParity.Counter.ConfigureCounterCommand.CommandRenderer.g.razor.cs");
-        fileNames.ShouldContain("IdeParity.Counter.IdeParity.Counter.ConfigureCounterCommand.CommandLifecycleBridge.g.cs");
+        fileNames.ShouldContain("IdeParity.Counter.ConfigureCounterCommand.CommandRenderer.g.razor.cs");
+        fileNames.ShouldContain("IdeParity.Counter.ConfigureCounterCommand.CommandLifecycleBridge.g.cs");
 
         GeneratedOutputPathContract
             .BuildProjectRelativePath("Debug", "net10.0", "IdeParity.Counter.IdeParityCounterProjection.g.razor.cs")
