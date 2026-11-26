@@ -35,10 +35,9 @@ public sealed class DiagnosticCatalogTests {
             }
         }
 
-        foreach (FieldInfo alias in TypeIdConstantFields(typeof(FcDiagnosticIds))
-                     .Where(field => field.GetCustomAttribute<ObsoleteAttribute>() is not null)) {
+        foreach (FieldInfo alias in TypeIdConstantFields(typeof(FcDiagnosticIds)).Where(IsCompatibilityAlias)) {
             string value = (string)alias.GetRawConstantValue()!;
-            ids.ShouldContain(value, $"Obsolete diagnostic alias {alias.Name} must reference an active diagnostic ID.");
+            ids.ShouldContain(value, $"Compatibility diagnostic alias {alias.Name} must reference an active diagnostic ID.");
         }
     }
 
@@ -113,12 +112,18 @@ public sealed class DiagnosticCatalogTests {
 
     private static IEnumerable<string> TypeIdConstants(Type type) {
         foreach (FieldInfo field in TypeIdConstantFields(type)) {
-            if (field.GetCustomAttribute<ObsoleteAttribute>() is null
-                && field.GetRawConstantValue() is string value) {
+            if (!IsCompatibilityAlias(field) && field.GetRawConstantValue() is string value) {
                 yield return value;
             }
         }
     }
+
+    // HFC2103 changed its preferred name without deprecating consumer source that uses the old one.
+    private static bool IsCompatibilityAlias(FieldInfo field)
+        => field.GetCustomAttribute<ObsoleteAttribute>() is not null
+            || (field.DeclaringType == typeof(FcDiagnosticIds)
+                && field.Name == nameof(FcDiagnosticIds.HFC2103_AbandonmentDuringSubmitting)
+                && Equals(field.GetRawConstantValue(), FcDiagnosticIds.HFC2103_AbandonmentGuardSuppressed));
 
     private static IEnumerable<FieldInfo> TypeIdConstantFields(Type type) {
         foreach (FieldInfo field in type.GetFields(BindingFlags.Public | BindingFlags.Static)) {
