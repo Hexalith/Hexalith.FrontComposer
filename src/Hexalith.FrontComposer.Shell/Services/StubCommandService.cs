@@ -14,9 +14,9 @@ namespace Hexalith.FrontComposer.Shell.Services;
 /// <remarks>
 /// The initial <see cref="Task.Delay(int, CancellationToken)"/> models the HTTP round-trip and returns a
 /// <see cref="CommandResult"/>; subsequent <see cref="CommandLifecycleState.Syncing"/> and
-/// <see cref="CommandLifecycleState.Confirmed"/> callbacks are raised from a fire-and-forget task. Once dispatch
-/// has been accepted, the continuation is owned by the command lifecycle rather than the form cancellation token
-/// so navigation cannot discard the accepted outcome (Decisions D5, D6, D8, ADR-010).
+/// <see cref="CommandLifecycleState.Confirmed"/> callbacks are raised from a fire-and-forget task.
+/// The caller can cancel before acknowledgment. After acceptance, typed lifecycle observations continue
+/// when the form cancels, while legacy callbacks stop when the caller cancels (ADR-010).
 /// Story 7-3 Pass 4 DN-7-3-4-2: authorization is wired via <c>AuthorizingCommandServiceDecorator</c>
 /// at the DI seam; this concrete impl no longer takes a gate parameter so test factories cannot
 /// silently bypass authorization by constructing the impl without the gate.
@@ -87,6 +87,8 @@ public sealed class StubCommandService : ICommandServiceWithLifecycle, ICommandS
             await Task.Delay(opts.AcknowledgeDelayMs, cancellationToken).ConfigureAwait(false);
         }
 
+        cancellationToken.ThrowIfCancellationRequested();
+
         if (opts.SimulateRejection) {
             string resolution = opts.RejectionResolution ?? "Adjust input and retry";
             throw new CommandRejectedException(
@@ -101,6 +103,8 @@ public sealed class StubCommandService : ICommandServiceWithLifecycle, ICommandS
         }
 
         string messageId = _ulidFactory.NewUlid();
+        // Accept only after the acknowledgment work, including ID allocation, is complete.
+        cancellationToken.ThrowIfCancellationRequested();
         CancellationToken lifecycleToken = survivePostAcceptCancellation
             ? CancellationToken.None
             : cancellationToken;

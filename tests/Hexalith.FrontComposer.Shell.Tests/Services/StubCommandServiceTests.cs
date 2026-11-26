@@ -6,6 +6,8 @@ using Hexalith.FrontComposer.Shell.Services.Lifecycle;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
 
+using NSubstitute;
+
 using Shouldly;
 
 namespace Hexalith.FrontComposer.Shell.Tests.Services;
@@ -32,6 +34,41 @@ public class StubCommandServiceTests {
 
         result.MessageId.ShouldNotBeNullOrEmpty();
         result.Status.ShouldBe("Accepted");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task DispatchAsync_PreCanceledWithoutAcknowledgmentDelay_DoesNotAccept(bool simulateRejection) {
+        StubCommandServiceOptions options = ZeroDelays();
+        options.SimulateRejection = simulateRejection;
+        IUlidFactory ulids = Substitute.For<IUlidFactory>();
+        StubCommandService service = new(new OptionsSnapshotStub(options), ulids);
+        CancellationToken canceled = new(canceled: true);
+        object command = new();
+
+        _ = await Should.ThrowAsync<OperationCanceledException>(
+            () => service.DispatchAsync(command, canceled));
+        _ = await Should.ThrowAsync<OperationCanceledException>(
+            () => service.DispatchAsync(command, (_, _) => { }, canceled));
+        _ = await Should.ThrowAsync<OperationCanceledException>(
+            () => ((ICommandServiceWithLifecycleObservations)service).DispatchAsync(
+                command, _ => { }, canceled));
+        _ = ulids.DidNotReceive().NewUlid();
+    }
+
+    [Fact]
+    public async Task DispatchAsync_CanceledDuringIdAllocation_DoesNotAcknowledge() {
+        using CancellationTokenSource cancellation = new();
+        IUlidFactory ulids = Substitute.For<IUlidFactory>();
+        ulids.NewUlid().Returns(_ => {
+            cancellation.Cancel();
+            return "01ARZ3NDEKTSV4RRFFQ69G5FAV";
+        });
+        StubCommandService service = new(new OptionsSnapshotStub(ZeroDelays()), ulids);
+
+        _ = await Should.ThrowAsync<OperationCanceledException>(
+            () => service.DispatchAsync(new object(), (_, _) => { }, cancellation.Token));
     }
 
     [Fact]

@@ -3211,7 +3211,8 @@ archived: 2026-09-18
 origin: migrated from legacy ledger ("Deferred from: code review of story 2-1 (2026-04-16)"), 2026-08-27
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 reason: **`Task.Run` with pre-canceled token short-circuits lifecycle callbacks silently** — `StubCommandService` caller receives a `CommandResult` but no `Syncing` / `Confirmed` callbacks ever run if the token was already tripped at schedule time. Low-probability (caller must cancel between `DispatchAsync` return and the Task.Run schedule). Document as a known limitation or defend with an early-exit branch. Reconciliation: Row: DW-0381; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of story 2-1 (2026-04-16).
-status: open
+status: done 2026-11-26
+resolution: Checks cancellation before acknowledging a stub command, including zero acknowledgment delay and cancellation during ID allocation. Existing legacy and typed post-acceptance behavior is covered.
 
 ### DW-1113: Nested command types (`Outer.InnerCommand`) emission
 
