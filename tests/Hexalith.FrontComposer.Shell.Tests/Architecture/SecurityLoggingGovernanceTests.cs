@@ -192,6 +192,7 @@ public sealed class SecurityLoggingGovernanceTests
         "src/Hexalith.FrontComposer.Shell/Registration/FrontComposerRegistry.cs:FrontComposerRegistry:25:LogWarning",
         "src/Hexalith.FrontComposer.Shell/Registration/FrontComposerRegistry.cs:TryGetCommandPolicy:144:LogWarning",
         "src/Hexalith.FrontComposer.Shell/Registration/FrontComposerRegistry.cs:MergeCommandPolicies:291:LogWarning",
+        "src/Hexalith.FrontComposer.Shell/Registration/FrontComposerRegistry.cs:ChooseDisplayManifest:407:LogWarning",
         "src/Hexalith.FrontComposer.Shell/Services/Customization/CustomizationContractValidationGate.cs:StartAsync:101:LogError",
         "src/Hexalith.FrontComposer.Shell/Services/InMemoryDiagnosticSink.cs:Publish:52:LogWarning",
         "src/Hexalith.FrontComposer.Shell/Services/ProjectionSlots/ProjectionSlotRegistry.cs:Register:86:LogWarning",
@@ -485,9 +486,9 @@ public sealed class SecurityLoggingGovernanceTests
             .SelectMany(FindLoggerEvents)
             .Where(static entry => entry.Path.EndsWith("/FrontComposerWarningLog.cs", StringComparison.Ordinal))];
 
-        ExpectedResidualWarningAndAboveLocations.Length.ShouldBe(55);
+        ExpectedResidualWarningAndAboveLocations.Length.ShouldBe(56);
         ExpectedResidualWarningAndAboveLocations.Count(static location =>
-            location.EndsWith("LogWarning", StringComparison.Ordinal)).ShouldBe(49);
+            location.EndsWith("LogWarning", StringComparison.Ordinal)).ShouldBe(50);
         ExpectedResidualWarningAndAboveLocations.Count(static location =>
             location.EndsWith("LogError", StringComparison.Ordinal)).ShouldBe(6);
         ExpectedResidualWarningAndAboveLocations.Count(static location =>
@@ -497,10 +498,10 @@ public sealed class SecurityLoggingGovernanceTests
         generatedSites.Select(static site => site.MemberKey).Order(StringComparer.Ordinal).ShouldBe(
             ExpectedResidualWarningAndAboveLocations.Select(GetMemberKey).Order(StringComparer.Ordinal),
             "each frozen production branch must retain exactly one generated warning wrapper call");
-        generatedSites.Select(static site => site.MethodName).Distinct(StringComparer.Ordinal).Count().ShouldBe(55);
+        generatedSites.Select(static site => site.MethodName).Distinct(StringComparer.Ordinal).Count().ShouldBe(56);
         generatedSites.Select(static site => site.MethodName).Order(StringComparer.Ordinal).ShouldBe(
             warningEvents.Select(static entry => entry.EventName).OfType<string>().Order(StringComparer.Ordinal),
-            "all 55 generated warning events must each have one production call site");
+            "all 56 generated warning events must each have one production call site");
     }
 
     private static IEnumerable<DirectLogSite> FindDirectLogSites(SourceFile source)
