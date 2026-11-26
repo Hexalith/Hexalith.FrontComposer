@@ -3149,7 +3149,8 @@ archived: 2026-09-18
 origin: migrated from legacy ledger ("Deferred from: Story 2-2 Session D (2026-04-16) — bUnit-vs-spec gap"), 2026-08-27
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 reason: **Form `Appearance.Primary` emission for Submit button (CompactInline / FullPage)** — Story 2-2 spec Tasks 10.2#2 + 10.3#6 expected the inner form's submit button to declare `Appearance="Appearance.Primary"`. The form emitter currently emits `<FluentButton Type=Submit>` without an explicit appearance attribute. AC8 hierarchy compliance is therefore observable only via custom CSS / Fluent defaults today; bringing it into the emitter requires re-approving 2-1 form regression tests and was deferred. Reconciliation: Row: DW-0373; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC12, AC23, AC29, AC34; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: Story 2-2 Session D (2026-04-16) — bUnit-vs-spec gap.
-status: open
+status: done 2026-11-26
+resolution: Emits explicit Fluent primary appearance on the generated form submit button. Renderer tests exercise CompactInline and FullPage, and generator snapshots pin the output.
 
 ### DW-1105: Renderer Escape handler for CompactInline (`Renderer_CompactInline_EscapeInvokesOnCollapseRequested`)
 

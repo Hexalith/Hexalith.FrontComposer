@@ -6,6 +6,15 @@ namespace Hexalith.FrontComposer.Shell.Tests.Generated;
 
 public sealed class CommandRendererCompactInlineTests : CommandRendererTestBase {
     [Fact]
+    public async Task Renderer_CompactInline_SubmitUsesPrimaryAppearance() {
+        await InitializeStoreAsync();
+        IRenderedComponent<TwoFieldCompactCommandRenderer> cut = Render<TwoFieldCompactCommandRenderer>();
+
+        cut.WaitForAssertion(() => cut.Find("fluent-button[type='submit']")
+            .GetAttribute("appearance").ShouldBe("primary"));
+    }
+
+    [Fact]
     public async Task Renderer_CompactInline_RendersFluentCardWithExpandInRowClass() {
         BunitJSModuleInterop module = JSInterop.SetupModule("./_content/Hexalith.FrontComposer.Shell/js/fc-expandinrow.js");
         module.SetupVoid("initializeExpandInRow", _ => true);

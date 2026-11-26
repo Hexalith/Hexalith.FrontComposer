@@ -2181,6 +2181,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("            __b.OpenComponent<FluentButton>(cseq++);");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Id\", _formDomId + \"-submit\");");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Type\", ButtonType.Submit);");
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Appearance\", global::Microsoft.FluentUI.AspNetCore.Components.ButtonAppearance.Primary);");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"role\", \"button\");");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"aria-label\", \"" + escapedButtonLabel + "\");");
         _ = sb.AppendLine("            // Story 13.3 VR-05 — the button is not lifecycle-disabled: a later press while a command is in");

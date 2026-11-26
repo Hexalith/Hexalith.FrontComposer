@@ -22,6 +22,15 @@ namespace Hexalith.FrontComposer.Shell.Tests.Generated;
 
 public sealed class CommandRendererFullPageTests : CommandRendererTestBase {
     [Fact]
+    public async Task Renderer_FullPage_SubmitUsesPrimaryAppearance() {
+        await InitializeStoreAsync();
+        IRenderedComponent<FiveFieldFullPageCommandRenderer> cut = Render<FiveFieldFullPageCommandRenderer>();
+
+        cut.WaitForAssertion(() => cut.Find("fluent-button[type='submit']")
+            .GetAttribute("appearance").ShouldBe("primary"));
+    }
+
+    [Fact]
     public async Task Renderer_FullPage_RendersWithoutComponentParameterMismatch() {
         PageContext.ReturnPath = "/counter";
         await InitializeStoreAsync();

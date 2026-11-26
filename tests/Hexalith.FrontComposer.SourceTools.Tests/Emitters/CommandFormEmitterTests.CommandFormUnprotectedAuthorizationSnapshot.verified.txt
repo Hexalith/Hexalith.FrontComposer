@@ -1189,13 +1189,14 @@ public partial class ApproveOrderCommandForm : ComponentBase, IDisposable
             __b.OpenComponent<FluentButton>(32);
             __b.AddAttribute(33, "Id", _formDomId + "-submit");
             __b.AddAttribute(34, "Type", ButtonType.Submit);
-            __b.AddAttribute(35, "role", "button");
-            __b.AddAttribute(36, "aria-label", "Send ApproveOrderCommand");
+            __b.AddAttribute(35, "Appearance", global::Microsoft.FluentUI.AspNetCore.Components.ButtonAppearance.Primary);
+            __b.AddAttribute(36, "role", "button");
+            __b.AddAttribute(37, "aria-label", "Send ApproveOrderCommand");
             // Story 13.3 VR-05 — the button is not lifecycle-disabled: a later press while a command is in
             // flight must reach SubmitAsync, which keeps focus here and announces AM-20 without dispatching.
-            __b.AddAttribute(37, "Disabled",
+            __b.AddAttribute(38, "Disabled",
                 !_interactiveReady);
-            __b.AddAttribute(38, "ChildContent", (RenderFragment)(__btn =>
+            __b.AddAttribute(39, "ChildContent", (RenderFragment)(__btn =>
             {
                 if (LifecycleState.Value.State == CommandLifecycleState.Submitting)
                 {
@@ -1213,10 +1214,10 @@ public partial class ApproveOrderCommandForm : ComponentBase, IDisposable
             // zero-field form lets its renderer own the node beside the visible trigger instead.
             if (!ExternalStatusOwner && !OnBlockedSubmission.HasDelegate)
             {
-                __b.OpenComponent<FcCommandBlockedOutcome>(39);
-                __b.AddAttribute(40, "AttemptedControlId", _formDomId + "-submit");
-                __b.AddAttribute(41, "AnnouncementSurface", FormAnnouncementSurface);
-                __b.AddComponentReferenceCapture(42, instance => _blockedOutcome = (FcCommandBlockedOutcome)instance);
+                __b.OpenComponent<FcCommandBlockedOutcome>(40);
+                __b.AddAttribute(41, "AttemptedControlId", _formDomId + "-submit");
+                __b.AddAttribute(42, "AnnouncementSurface", FormAnnouncementSurface);
+                __b.AddComponentReferenceCapture(43, instance => _blockedOutcome = (FcCommandBlockedOutcome)instance);
                 __b.CloseComponent();
             }
         });
