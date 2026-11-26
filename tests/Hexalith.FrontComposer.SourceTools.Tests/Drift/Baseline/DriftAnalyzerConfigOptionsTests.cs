@@ -218,6 +218,30 @@ public sealed class DriftAnalyzerConfigOptionsTests {
         }
     }
 
+    [Fact]
+    public void IncompleteProjectionIsNotReportedAsRemoved() {
+        const string baseline = """
+            { "schemaVersion": "frontcomposer.generated-ui-baseline.v1",
+              "algorithm": "frontcomposer-structural-v1",
+              "contracts": [{ "family": "projection", "type": "TestDomain.OrderProjection", "boundedContext": "Orders",
+                "properties": [{ "name": "Id", "category": "String", "nullable": false }] }] }
+            """;
+        const string source = """
+            using Hexalith.FrontComposer.Contracts.Attributes;
+            namespace TestDomain;
+            [BoundedContext("Orders")]
+            [Projection]
+            public partial class OrderProjection {
+                public string Id { get }
+            }
+            """;
+
+        RunWithEnabledOverrideAndBaseline(source, baseline, "true")
+            .ShouldNotContain(diagnostic => diagnostic.Id == "HFC1065");
+        RunWithEnabledOverrideAndBaseline(source.Replace("[Projection]", string.Empty, StringComparison.Ordinal), baseline, "true")
+            .ShouldContain(diagnostic => diagnostic.Id == "HFC1065");
+    }
+
     private static System.Collections.Immutable.ImmutableArray<Diagnostic> RunWithOption(string source, string optionKey, string optionValue) {
         // Story 9-1 review CB-35: keep modeling the production opt-in path explicitly. The
         // configuration-diagnostic check fires before the Enabled gate today, but routing

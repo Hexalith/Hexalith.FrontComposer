@@ -21,12 +21,14 @@ namespace Hexalith.FrontComposer.SourceTools;
 public sealed class FrontComposerGenerator : IIncrementalGenerator {
     /// <inheritdoc />
     public void Initialize(IncrementalGeneratorInitializationContext context) {
-        IncrementalValuesProvider<ParseResult> projectionResults = context.SyntaxProvider
+        IncrementalValuesProvider<(ParseResult Parsed, bool HasSyntaxErrors)> projectionInputs = context.SyntaxProvider
             .ForAttributeWithMetadataName(
                 "Hexalith.FrontComposer.Contracts.Attributes.ProjectionAttribute",
                 predicate: static (node, _) => node is TypeDeclarationSyntax,
                 transform: static (ctx, ct) => ParseProjection(ctx, ct))
             .WithTrackingName("Parse");
+        IncrementalValuesProvider<ParseResult> projectionResults = projectionInputs.Select(static (input, _) =>
+            input.HasSyntaxErrors ? new ParseResult(null, input.Parsed.Diagnostics) : input.Parsed);
 
         IncrementalValuesProvider<CommandParseResult> commandResults = context.SyntaxProvider
             .ForAttributeWithMetadataName(
@@ -60,8 +62,12 @@ public sealed class FrontComposerGenerator : IIncrementalGenerator {
         // Story 9-1 review P12 (AC10): drift comparison no longer depends on the compilation.
         // Source locations come from parsed declaration models, so combining CompilationProvider
         // here was invalidating drift output on every unrelated compilation change.
+        // A syntax error suppresses emitted artifacts. Drift comparison still observes
+        // the parsed declaration so an incomplete edit is not reported as removal.
+        IncrementalValueProvider<ImmutableArray<ParseResult>> driftProjections =
+            projectionInputs.Select(static (input, _) => input.Parsed).Collect();
         context.RegisterSourceOutput(
-            collectedProjections.Combine(collectedCommands).Combine(collectedDriftBaselines.Combine(driftOptions)),
+            driftProjections.Combine(collectedCommands).Combine(collectedDriftBaselines.Combine(driftOptions)),
             static (spc, source) => {
                 ImmutableArray<ParseResult> projections = source.Left.Left;
                 ImmutableArray<CommandParseResult> commands = source.Left.Right;
@@ -296,21 +302,21 @@ public sealed class FrontComposerGenerator : IIncrementalGenerator {
         });
     }
 
-    /// <summary>Retains parser diagnostics while omitting models from syntactically incomplete declarations.</summary>
-    private static ParseResult ParseProjection(GeneratorAttributeSyntaxContext context, CancellationToken ct) {
+    /// <summary>Records whether a parsed projection has a syntactically incomplete declaration.</summary>
+    private static (ParseResult Parsed, bool HasSyntaxErrors) ParseProjection(GeneratorAttributeSyntaxContext context, CancellationToken ct) {
         ParseResult result = AttributeParser.Parse(context, ct);
         if (result.Model is null || context.TargetSymbol is not INamedTypeSymbol projection) {
-            return result;
+            return (result, false);
         }
 
         foreach (SyntaxReference declaration in projection.DeclaringSyntaxReferences) {
             SyntaxNode node = declaration.GetSyntax(ct);
             if (node.ContainsDiagnostics && node.GetDiagnostics().Any(static d => d.Severity == DiagnosticSeverity.Error)) {
-                return new ParseResult(null, result.Diagnostics);
+                return (result, true);
             }
         }
 
-        return result;
+        return (result, false);
     }
 
     private static string GetQualifiedHintPrefix(string @namespace, string typeName)
