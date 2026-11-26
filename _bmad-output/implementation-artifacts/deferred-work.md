@@ -3135,7 +3135,8 @@ archived: 2026-09-18
 origin: migrated from legacy ledger ("Deferred from: Story 2-2 Session D (2026-04-16) — bUnit-vs-spec gap"), 2026-08-27
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 reason: **CircuitHandler infrastructure for Inline popover state on reconnect (`Renderer_CircuitReconnect_WithOpenPopover_ClosesSilentlyAndLogs`)** — Story 2-2 spec Task 10.1 #10. Renderer does not subscribe to Blazor's `CircuitHandler.OnConnectionUpAsync`; on a real circuit reconnect, popover state quietly survives but no warning is emitted. Decision-record contract was preserved (the popover _can_ be closed externally via `IInlinePopover.ClosePopoverAsync`), so Story 2-5's destructive-confirmation work can layer the reconnect-aware close on top. Reconciliation: Row: DW-0371; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.7; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.7.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Related: Story 11.7; Evidence: section: Story 2-2 Session D (2026-04-16) — bUnit-vs-spec gap.
-status: open
+status: done 2026-11-26
+resolution: Scoped circuit handling dismisses generated inline popovers after reconnect without focus interop, logs the result, and preserves pending-open ordering.
 
 ### DW-1103: FluentUI v5 RC2 satellite icons not shipped — every renderer falls back to a null `Icon` at runtime
 

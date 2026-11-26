@@ -45,6 +45,7 @@ using Hexalith.FrontComposer.Shell.State.Theme;
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Components.Server.Circuits;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -326,6 +327,7 @@ public static class ServiceCollectionExtensions {
         }
 
         services.TryAddScoped<InlinePopoverRegistry>();
+        services.TryAddEnumerable(ServiceDescriptor.Scoped<CircuitHandler, InlinePopoverCircuitHandler>());
 
         // Default no-op ICommandPageContext — adopter-hosted pages override via scoped registration.
         services.TryAddScoped<ICommandPageContext, NullCommandPageContext>();

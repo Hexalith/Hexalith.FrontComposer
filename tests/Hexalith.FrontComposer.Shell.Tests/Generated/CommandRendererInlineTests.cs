@@ -6,7 +6,10 @@ using Fluxor;
 
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Rendering;
+using Hexalith.FrontComposer.Shell.Services;
+using Hexalith.FrontComposer.Shell.Tests.Services.Auth;
 
+using Microsoft.AspNetCore.Components.Server.Circuits;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -104,6 +107,33 @@ public sealed class CommandRendererInlineTests : CommandRendererTestBase {
 
         cut.WaitForAssertion(() =>             // FluentPopover stays in markup; the Opened attribute flips to false after ClosePopoverAsync.
             cut.Markup.ShouldNotContain("opened=\"true\"", Case.Insensitive));
+    }
+
+    [Fact]
+    public async Task Renderer_CircuitReconnect_WithOpenPopover_ClosesSilentlyAndLogs() {
+        CapturingLogger<InlinePopoverCircuitHandler> logger = new();
+        _ = Services.AddSingleton<ILogger<InlinePopoverCircuitHandler>>(logger);
+        _ = Services.AddScoped<CircuitHandler, InlinePopoverCircuitHandler>();
+        await InitializeStoreAsync();
+        IRenderedComponent<OneFieldInlineCommandRenderer> cut = Render<OneFieldInlineCommandRenderer>();
+        CircuitHandler handler = Services.GetServices<CircuitHandler>().OfType<InlinePopoverCircuitHandler>().Single();
+        CancellationToken cancellationToken = Xunit.TestContext.Current.CancellationToken;
+
+        cut.Find("fluent-button").Click();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("opened=\"true\"", Case.Insensitive));
+        await handler.OnConnectionUpAsync(null!, cancellationToken);
+        cut.Markup.ShouldContain("opened=\"true\"", Case.Insensitive);
+        logger.Entries.ShouldBeEmpty();
+
+        await handler.OnConnectionDownAsync(null!, cancellationToken);
+        await handler.OnConnectionUpAsync(null!, cancellationToken);
+        cut.WaitForAssertion(() => cut.Markup.ShouldNotContain("opened=\"true\"", Case.Insensitive));
+        FcExpandInRowModule.Invocations.ShouldNotContain(invocation => invocation.Identifier == "focusTriggerElementById");
+
+        await handler.OnConnectionUpAsync(null!, cancellationToken);
+        CapturedLogEntry entry = logger.Entries.ShouldHaveSingleItem();
+        entry.Level.ShouldBe(LogLevel.Warning);
+        entry.EventId.Name.ShouldBe("InlinePopoverDismissedOnReconnect");
     }
 
     [Fact]

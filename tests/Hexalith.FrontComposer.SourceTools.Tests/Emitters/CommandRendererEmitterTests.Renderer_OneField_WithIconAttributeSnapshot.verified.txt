@@ -25,7 +25,7 @@ using Hexalith.FrontComposer.Shell.Components.Forms;
 namespace Demo.Domain;
 
 /// <summary>Auto-generated density-driven renderer for <see cref="DemoCommand"/> (Story 2-2).</summary>
-public partial class DemoCommandRenderer : ComponentBase, IInlinePopover
+public partial class DemoCommandRenderer : ComponentBase, global::Hexalith.FrontComposer.Shell.Services.IReconnectableInlinePopover
 {
     [Parameter] public CommandRenderMode? RenderMode { get; set; }
     [Parameter] public Demo.Domain.DemoCommand? InitialValue { get; set; }
@@ -45,6 +45,7 @@ public partial class DemoCommandRenderer : ComponentBase, IInlinePopover
 
     private CommandRenderMode _effectiveMode;
     private bool _popoverOpen;
+    private object? _popoverOpenAttempt;
     private ElementReference _compactCardRef;
     private EditContext? _formEditContext;
     private readonly string _triggerButtonId = "fc-trigger-Demo-Domain-DemoCommand";
@@ -233,7 +234,25 @@ public partial class DemoCommandRenderer : ComponentBase, IInlinePopover
 
     private async Task OpenPopoverAsync()
     {
-        await InlinePopoverRegistry.OpenAsync(this).ConfigureAwait(false);
+        if (_popoverOpen || _popoverOpenAttempt is not null) return;
+        object attempt = new();
+        _popoverOpenAttempt = attempt;
+        try
+        {
+            await InlinePopoverRegistry.OpenAsync(this).ConfigureAwait(true);
+        }
+        catch (OperationCanceledException)
+        {
+            if (ReferenceEquals(_popoverOpenAttempt, attempt))
+            {
+                _popoverOpenAttempt = null;
+                InlinePopoverRegistry.Released(this);
+            }
+            throw;
+        }
+
+        if (!ReferenceEquals(_popoverOpenAttempt, attempt)) return;
+        _popoverOpenAttempt = null;
         _popoverOpen = true;
         await InvokeAsync(StateHasChanged).ConfigureAwait(false);
     }
@@ -241,6 +260,7 @@ public partial class DemoCommandRenderer : ComponentBase, IInlinePopover
     /// <inheritdoc/>
     public async Task ClosePopoverAsync()
     {
+        _popoverOpenAttempt = null;
         if (!_popoverOpen) return;
         _popoverOpen = false;
         InlinePopoverRegistry.Released(this);
@@ -252,6 +272,20 @@ public partial class DemoCommandRenderer : ComponentBase, IInlinePopover
         catch (InvalidOperationException) { /* prerender or unavailable JS runtime. */ }
         catch (JSDisconnectedException) { /* circuit teardown; benign. */ }
         await InvokeAsync(StateHasChanged).ConfigureAwait(false);
+    }
+
+    async Task<bool> global::Hexalith.FrontComposer.Shell.Services.IReconnectableInlinePopover.DismissOnReconnectAsync()
+    {
+        bool dismissed = false;
+        await InvokeAsync(() =>
+        {
+            _popoverOpenAttempt = null;
+            if (!_popoverOpen) return;
+            _popoverOpen = false;
+            dismissed = true;
+            StateHasChanged();
+        }).ConfigureAwait(false);
+        return dismissed;
     }
 
     private Task HandleEscape(KeyboardEventArgs e)

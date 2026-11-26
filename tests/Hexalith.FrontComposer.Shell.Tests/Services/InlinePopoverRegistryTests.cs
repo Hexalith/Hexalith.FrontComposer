@@ -4,6 +4,7 @@ using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Extensions;
 using Hexalith.FrontComposer.Shell.Services;
 
+using Microsoft.AspNetCore.Components.Server.Circuits;
 using Microsoft.Extensions.DependencyInjection;
 
 using NSubstitute;
@@ -18,6 +19,11 @@ public sealed class InlinePopoverRegistryTests {
         ServiceCollection services = [];
         _ = services.AddLogging();
         _ = services.AddHexalithFrontComposerQuickstart();
+        _ = services.AddHexalithFrontComposerQuickstart();
+
+        ServiceDescriptor handler = services.Where(item =>
+            item.ServiceType == typeof(CircuitHandler) && item.ImplementationType == typeof(InlinePopoverCircuitHandler)).ShouldHaveSingleItem();
+        handler.Lifetime.ShouldBe(ServiceLifetime.Scoped);
 
         ServiceDescriptor descriptor = services.Single(item => item.ServiceType == typeof(InlinePopoverRegistry));
         descriptor.Lifetime.ShouldBe(ServiceLifetime.Scoped);
@@ -90,6 +96,21 @@ public sealed class InlinePopoverRegistryTests {
         await registry.OpenAsync(third).ConfigureAwait(true);
 
         await second.Received(1).ClosePopoverAsync().ConfigureAwait(true);
+    }
+
+    [Fact]
+    public async Task DismissOnReconnectAsync_FailedDismissalCanBeRetried() {
+        InlinePopoverRegistry registry = new();
+        IReconnectableInlinePopover popover = Substitute.For<IReconnectableInlinePopover>();
+        popover.DismissOnReconnectAsync().Returns(
+            Task.FromException<bool>(new InvalidOperationException("dismissal failed")),
+            Task.FromResult(true));
+        await registry.OpenAsync(popover).ConfigureAwait(true);
+
+        _ = await Should.ThrowAsync<InvalidOperationException>(registry.DismissOnReconnectAsync).ConfigureAwait(true);
+        (await registry.DismissOnReconnectAsync().ConfigureAwait(true)).ShouldBeTrue();
+        (await registry.DismissOnReconnectAsync().ConfigureAwait(true)).ShouldBeFalse();
+        await popover.Received(2).DismissOnReconnectAsync().ConfigureAwait(true);
     }
 
     [Fact]

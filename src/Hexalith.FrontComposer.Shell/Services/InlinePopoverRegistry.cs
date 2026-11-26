@@ -39,6 +39,31 @@ public sealed class InlinePopoverRegistry {
         }
     }
 
+    /// <summary>Dismisses the current reconnectable popover, if any, for circuit recovery.</summary>
+    /// <returns>Whether an open popover was dismissed.</returns>
+    internal async Task<bool> DismissOnReconnectAsync() {
+        WeakReference<IInlinePopover>? registration;
+        IReconnectableInlinePopover popover;
+        lock (_gate) {
+            registration = _currentlyOpen;
+            if (registration?.TryGetTarget(out IInlinePopover? current) != true
+                || current is not IReconnectableInlinePopover reconnectable) {
+                return false;
+            }
+
+            popover = reconnectable;
+        }
+
+        bool dismissed = await popover.DismissOnReconnectAsync().ConfigureAwait(false);
+        lock (_gate) {
+            if (ReferenceEquals(_currentlyOpen, registration)) {
+                _currentlyOpen = null;
+            }
+        }
+
+        return dismissed;
+    }
+
     /// <summary>Marks <paramref name="popover"/> as no longer the currently-open popover.</summary>
     public void Released(IInlinePopover popover) {
         lock (_gate) {

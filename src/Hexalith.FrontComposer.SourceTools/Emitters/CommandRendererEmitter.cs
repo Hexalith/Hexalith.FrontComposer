@@ -92,10 +92,10 @@ public static class CommandRendererEmitter {
         // CTS / AuthState subscription can be cleaned up on circuit teardown. Unprotected renderers
         // keep the prior signature.
         if (hasAuthorizationPolicy) {
-            _ = sb.AppendLine("public partial class " + rendererName + " : ComponentBase, IInlinePopover, global::System.IDisposable");
+            _ = sb.AppendLine("public partial class " + rendererName + " : ComponentBase, global::Hexalith.FrontComposer.Shell.Services.IReconnectableInlinePopover, global::System.IDisposable");
         }
         else {
-            _ = sb.AppendLine("public partial class " + rendererName + " : ComponentBase, IInlinePopover");
+            _ = sb.AppendLine("public partial class " + rendererName + " : ComponentBase, global::Hexalith.FrontComposer.Shell.Services.IReconnectableInlinePopover");
         }
 
         _ = sb.AppendLine("{");
@@ -126,6 +126,7 @@ public static class CommandRendererEmitter {
         _ = sb.AppendLine();
         _ = sb.AppendLine("    private CommandRenderMode _effectiveMode;");
         _ = sb.AppendLine("    private bool _popoverOpen;");
+        _ = sb.AppendLine("    private object? _popoverOpenAttempt;");
         _ = sb.AppendLine("    private ElementReference _compactCardRef;");
         if (model.IsDestructive) {
             // Story 2-5 D24 + Winston #2 — dialog-lifetime flag prevents double-click dispatch.
@@ -695,7 +696,25 @@ public static class CommandRendererEmitter {
 
         _ = sb.AppendLine("    private async Task OpenPopoverAsync()");
         _ = sb.AppendLine("    {");
-        _ = sb.AppendLine("        await InlinePopoverRegistry.OpenAsync(this).ConfigureAwait(false);");
+        _ = sb.AppendLine("        if (_popoverOpen || _popoverOpenAttempt is not null) return;");
+        _ = sb.AppendLine("        object attempt = new();");
+        _ = sb.AppendLine("        _popoverOpenAttempt = attempt;");
+        _ = sb.AppendLine("        try");
+        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            await InlinePopoverRegistry.OpenAsync(this).ConfigureAwait(true);");
+        _ = sb.AppendLine("        }");
+        _ = sb.AppendLine("        catch (OperationCanceledException)");
+        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            if (ReferenceEquals(_popoverOpenAttempt, attempt))");
+        _ = sb.AppendLine("            {");
+        _ = sb.AppendLine("                _popoverOpenAttempt = null;");
+        _ = sb.AppendLine("                InlinePopoverRegistry.Released(this);");
+        _ = sb.AppendLine("            }");
+        _ = sb.AppendLine("            throw;");
+        _ = sb.AppendLine("        }");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("        if (!ReferenceEquals(_popoverOpenAttempt, attempt)) return;");
+        _ = sb.AppendLine("        _popoverOpenAttempt = null;");
         _ = sb.AppendLine("        _popoverOpen = true;");
         _ = sb.AppendLine("        await InvokeAsync(StateHasChanged).ConfigureAwait(false);");
         _ = sb.AppendLine("    }");
@@ -704,6 +723,7 @@ public static class CommandRendererEmitter {
         _ = sb.AppendLine("    /// <inheritdoc/>");
         _ = sb.AppendLine("    public async Task ClosePopoverAsync()");
         _ = sb.AppendLine("    {");
+        _ = sb.AppendLine("        _popoverOpenAttempt = null;");
         _ = sb.AppendLine("        if (!_popoverOpen) return;");
         _ = sb.AppendLine("        _popoverOpen = false;");
         _ = sb.AppendLine("        InlinePopoverRegistry.Released(this);");
@@ -718,6 +738,20 @@ public static class CommandRendererEmitter {
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
 
+        _ = sb.AppendLine("    async Task<bool> global::Hexalith.FrontComposer.Shell.Services.IReconnectableInlinePopover.DismissOnReconnectAsync()");
+        _ = sb.AppendLine("    {");
+        _ = sb.AppendLine("        bool dismissed = false;");
+        _ = sb.AppendLine("        await InvokeAsync(() =>");
+        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            _popoverOpenAttempt = null;");
+        _ = sb.AppendLine("            if (!_popoverOpen) return;");
+        _ = sb.AppendLine("            _popoverOpen = false;");
+        _ = sb.AppendLine("            dismissed = true;");
+        _ = sb.AppendLine("            StateHasChanged();");
+        _ = sb.AppendLine("        }).ConfigureAwait(false);");
+        _ = sb.AppendLine("        return dismissed;");
+        _ = sb.AppendLine("    }");
+        _ = sb.AppendLine();
         _ = sb.AppendLine("    private Task HandleEscape(KeyboardEventArgs e)");
         _ = sb.AppendLine("    {");
         _ = sb.AppendLine("        return e.Key == \"Escape\" && _popoverOpen ? ClosePopoverAsync() : Task.CompletedTask;");
