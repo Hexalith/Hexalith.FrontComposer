@@ -2692,7 +2692,8 @@ resolution: Rejects whitespace and empty qualified-name segments, and applies in
 origin: migrated from legacy ledger ("Deferred from: code review of story 3-4-fccommandpalette-and-keyboard-shortcuts — Chunk 3 re-review (2026-04-21 pass 4)"), 2026-08-27
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 reason: **`CommandRouteBuilder.IsInternalRoute` unicode path separators (U+2044 fullwidth slash, etc.)** — v1 out of scope; Story 9-4 or a dedicated route-safety analyzer. Reconciliation: Row: DW-0307; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC12, AC23, AC29, AC34; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of story 3-4-fccommandpalette-and-keyboard-shortcuts — Chunk 3 re-review (2026-04-21 pass 4).
-status: open
+status: done 2026-11-26
+resolution: Rejects Unicode slash and backslash lookalikes in raw and percent-encoded URL paths while preserving query and fragment text.
 
 ### DW-1039: `CommandRouteBuilder.BuildRoute` URL-reserved characters in segment input
 

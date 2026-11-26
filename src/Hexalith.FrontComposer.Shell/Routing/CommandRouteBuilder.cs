@@ -91,8 +91,11 @@ public static class CommandRouteBuilder {
         // "/redirect?next=%68ttps://evil.com" (where %68 == 'h') does not slip through the literal
         // substring check below.
         string decoded;
+        string decodedPath;
         try {
             decoded = Uri.UnescapeDataString(url);
+            int pathEnd = url.AsSpan().IndexOfAny('?', '#');
+            decodedPath = pathEnd < 0 ? decoded : Uri.UnescapeDataString(url[..pathEnd]);
         }
         catch (UriFormatException) {
             // Malformed percent encoding — treat as untrusted.
@@ -113,13 +116,11 @@ public static class CommandRouteBuilder {
             return false;
         }
 
-        // Must start with a single slash.
-        if (!url.StartsWith('/')) {
-            return false;
-        }
-
-        // Reject protocol-relative // prefix.
-        return !url.StartsWith("//", StringComparison.Ordinal);
+        // Reject Unicode lookalikes for slash and backslash in the path.
+        // Query and fragment values can legitimately contain these characters as text.
+        return url.StartsWith('/')
+            && !decodedPath.StartsWith("//", StringComparison.Ordinal)
+            && decodedPath.AsSpan().IndexOfAny("\u2044\u2215\uFF0F\uFF3C\uFE68") < 0;
     }
 
     // Open-redirect defence (D10 tampered-URL filter): reject URLs containing any of the known
