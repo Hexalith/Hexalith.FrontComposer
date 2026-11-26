@@ -225,6 +225,33 @@ public sealed class NavigationEffectsLastActiveRouteTests {
         dispatcher.Received(1).Dispatch(ArgEx.Is<LastActiveRouteHydratedAction>(a => a.Route == null));
     }
 
+    [Theory]
+    [InlineData("/commands/Counter%2FAdmin/IncrementCommand")]
+    [InlineData("domain/Counter%5CAdmin/counter-list")]
+    public async Task HydrationRemovesRoutesWithEncodedContextSeparators(string route)
+    {
+        CancellationToken ct = TestContext.Current.CancellationToken;
+        var storage = new InMemoryStorageService();
+        string key = StorageKeys.BuildKey(Tenant, User, "nav");
+        await storage.SetAsync(key, new NavigationPersistenceBlob(
+            SidebarCollapsed: true,
+            CollapsedGroups: new Dictionary<string, bool>(StringComparer.Ordinal),
+            LastActiveRoute: route), ct);
+
+        var sut = new NavigationEffects(
+            storage, MakeAccessor(), EnabledLoggerSubstitute.Create<NavigationEffects>(),
+            FakeState(BaseState()), serviceProvider: null);
+        IDispatcher dispatcher = Substitute.For<IDispatcher>();
+
+        await sut.HandleAppInitialized(new AppInitializedAction("c1"), dispatcher);
+
+        dispatcher.Received(1).Dispatch(ArgEx.Is<LastActiveRouteHydratedAction>(action => action.Route == null));
+        NavigationPersistenceBlob? persisted = await storage.GetAsync<NavigationPersistenceBlob>(key, ct);
+        persisted.ShouldNotBeNull();
+        persisted.LastActiveRoute.ShouldBeNull();
+        persisted.SidebarCollapsed.ShouldBeTrue();
+    }
+
     [Fact]
     public async Task HandleAppInitialized_UnregisteredBc_DispatchesNullHydratedAction() {
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;

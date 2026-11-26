@@ -13,57 +13,63 @@ public static class BoundedContextRouteParser {
     /// The bounded-context segment when present; otherwise <see langword="null"/> for home and
     /// other non-context routes.
     /// </returns>
-    public static string? Parse(string? uriOrPath) {
-        if (string.IsNullOrWhiteSpace(uriOrPath)
-            || uriOrPath.AsSpan().TrimStart().StartsWith("//", StringComparison.Ordinal)) {
-            return null;
+    public static string? Parse(string? uriOrPath)
+        => TryParse(uriOrPath, out string? boundedContext) ? boundedContext : null;
+
+    /// <summary>Distinguishes an invalid path from a valid route with no bounded context.</summary>
+    internal static bool TryParse(string? uriOrPath, out string? boundedContext) {
+        boundedContext = null;
+        if (string.IsNullOrWhiteSpace(uriOrPath)) {
+            return true;
         }
 
-        string path = ExtractPath(uriOrPath);
-        if (string.IsNullOrWhiteSpace(path)) {
-            return null;
+        string input = uriOrPath.TrimStart();
+        if (input.Length >= 2 && input[0] is ('/' or '\\') && input[1] is ('/' or '\\')) {
+            return false;
         }
+
+        // A rooted app path is already a path. On Unix, parsing it as an absolute URI
+        // can produce a file URI and escape the percent signs a second time.
+        string path = !input.StartsWith('/') && Uri.TryCreate(input, UriKind.Absolute, out Uri? uri)
+            ? uri.AbsolutePath
+            : input;
 
         int suffixIndex = path.IndexOfAny(['?', '#']);
         if (suffixIndex >= 0) {
             path = path[..suffixIndex];
         }
 
-        string[] segments = [.. path.Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)];
-        if (segments.Length == 0) {
-            return null;
+        string[] segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (segments.Length < 2) {
+            return true;
         }
 
-        // Normalise to lowercase so PascalCase vs kebab-case URLs for the same BC don't churn the
-        // navigation-state reducer via Ordinal comparison (edge-hunter DN8 finding).
-        // Accept 2-segment /domain/{bc} landing routes so persist/restore stays symmetric — previous
-        // ≥3 check silently dropped restorations of BC landing pages.
-        if (string.Equals(segments[0], "domain", StringComparison.OrdinalIgnoreCase)) {
-            return segments.Length >= 2 ? DecodeAndNormalize(segments[1]) : null;
+        // A domain landing already belongs to its context. A generated command URL must
+        // include both its context and command before it can influence palette scoring.
+        string segment = segments[0];
+        if (segment.Equals("domain", StringComparison.OrdinalIgnoreCase)) {
+            segment = segments[1];
+        }
+        else if (segment.Equals("commands", StringComparison.OrdinalIgnoreCase)) {
+            if (segments.Length < 3) {
+                return true;
+            }
+
+            segment = segments[1];
         }
 
-        // A generated command route is only contextual when both the bounded-context and command
-        // segments are present. Treating /commands/{bc} as valid made incomplete URLs influence
-        // palette scoring even though no generated page could match them.
-        if (string.Equals(segments[0], "commands", StringComparison.OrdinalIgnoreCase)) {
-            return segments.Length >= 3 ? DecodeAndNormalize(segments[1]) : null;
-        }
-
-        return segments.Length >= 2 ? DecodeAndNormalize(segments[0]) : null;
-    }
-
-    private static string? DecodeAndNormalize(string segment) {
         try {
             string decoded = Uri.UnescapeDataString(segment);
-            return decoded.AsSpan().IndexOfAny('/', '\\') < 0 ? decoded.ToLowerInvariant() : null;
+            if (decoded.AsSpan().IndexOfAny('/', '\\') >= 0) {
+                return false;
+            }
+
+            // Stable casing avoids state churn between equivalent route spellings.
+            boundedContext = decoded.ToLowerInvariant();
+            return true;
         }
         catch (UriFormatException) {
-            return null;
+            return false;
         }
     }
-
-    private static string ExtractPath(string uriOrPath)
-        => Uri.TryCreate(uriOrPath, UriKind.Absolute, out Uri? uri)
-            ? uri.AbsolutePath
-            : uriOrPath;
 }

@@ -276,28 +276,26 @@ public sealed class NavigationEffects(
         string? hydratedRoute = null;
         bool prunePersistRequired = false;
         if (!string.IsNullOrWhiteSpace(blob.LastActiveRoute)) {
-            if (SessionRouteHelper.TryNormalizePersistedRoute(blob.LastActiveRoute, navigation, out string normalizedRoute)) {
-                hydratedRoute = normalizedRoute;
-                prunePersistRequired = !string.Equals(blob.LastActiveRoute, normalizedRoute, StringComparison.Ordinal);
+            if (SessionRouteHelper.TryNormalizePersistedRoute(blob.LastActiveRoute, navigation, out string normalizedRoute)
+                && BoundedContextRouteParser.TryParse(normalizedRoute, out string? boundedContext)) {
+                if (boundedContext is not null && IsUnregisteredBoundedContext(boundedContext)) {
+                    FrontComposerDiagnosticLog.NavigationRoutePrunedOutOfScope(
+                        logger,
+                        FcDiagnosticIds.HFC2107_NavigationHydrationEmpty,
+                        boundedContext,
+                        "OutOfScope");
+                    prunePersistRequired = true;
+                }
+                else {
+                    hydratedRoute = normalizedRoute;
+                    prunePersistRequired = !string.Equals(blob.LastActiveRoute, normalizedRoute, StringComparison.Ordinal);
+                }
             }
             else {
                 FrontComposerDiagnosticLog.NavigationRoutePrunedInvalid(
                     logger,
                     FcDiagnosticIds.HFC2107_NavigationHydrationEmpty,
                     "Invalid");
-                prunePersistRequired = true;
-            }
-        }
-
-        if (hydratedRoute is not null) {
-            string? bc = BoundedContextRouteParser.Parse(hydratedRoute);
-            if (bc is not null && IsUnregisteredBoundedContext(bc)) {
-                FrontComposerDiagnosticLog.NavigationRoutePrunedOutOfScope(
-                    logger,
-                    FcDiagnosticIds.HFC2107_NavigationHydrationEmpty,
-                    bc,
-                    "OutOfScope");
-                hydratedRoute = null;
                 prunePersistRequired = true;
             }
         }

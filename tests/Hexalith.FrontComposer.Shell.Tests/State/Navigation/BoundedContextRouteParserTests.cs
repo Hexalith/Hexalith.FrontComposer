@@ -13,6 +13,8 @@ public sealed class BoundedContextRouteParserTests {
     [InlineData("//external.example/counter/view", null)]
     [InlineData("//commands/commerce/SubmitOrder", null)]
     [InlineData("  //external.example/counter/view", null)]
+    [InlineData(@"/\external.example/counter/view", null)]
+    [InlineData(@"\\external.example\counter\view", null)]
     [InlineData("counter/counter-view", "counter")]
     [InlineData("/counter/counter-view", "counter")]
     [InlineData("https://localhost/counter/counter-view?tab=1#recent", "counter")]
