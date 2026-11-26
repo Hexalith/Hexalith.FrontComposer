@@ -22,14 +22,34 @@ public static class McpManifestEmitter {
             string boundedContext = string.IsNullOrWhiteSpace(command.BoundedContext) ? "Default" : command.BoundedContext!;
             string baseName = McpManifestTransform.BuildCommandProtocolName(boundedContext, command.Namespace, command.TypeName, false);
             bool disambiguate = commandBaseCounts.TryGetValue(baseName, out int commandCount) && commandCount > 1;
-            commandDescriptors.Add(McpManifestTransform.TransformCommand(command, disambiguate));
+            McpCommandDescriptorModel descriptor = McpManifestTransform.TransformCommand(command, disambiguate);
+            if (command.Namespace.IndexOf('@') >= 0) {
+                string metadataNamespace = command.Namespace.Replace("@", string.Empty);
+                descriptor = new McpCommandDescriptorModel(
+                    McpManifestTransform.BuildCommandProtocolName(descriptor.BoundedContext, metadataNamespace, command.TypeName, disambiguate),
+                    metadataNamespace + "." + command.TypeName,
+                    descriptor.BoundedContext, descriptor.Title, descriptor.Description, descriptor.AuthorizationPolicyName,
+                    descriptor.Parameters, descriptor.DerivablePropertyNames);
+            }
+
+            commandDescriptors.Add(descriptor);
         }
 
         foreach (DomainModel projection in projections) {
             string boundedContext = string.IsNullOrWhiteSpace(projection.BoundedContext) ? "Default" : projection.BoundedContext!;
             string baseUri = McpManifestTransform.BuildProjectionUri(boundedContext, projection.Namespace, projection.TypeName, false);
             bool disambiguate = resourceBaseCounts.TryGetValue(baseUri, out int resourceCount) && resourceCount > 1;
-            resourceDescriptors.Add(McpManifestTransform.TransformProjection(projection, disambiguate));
+            McpResourceDescriptorModel descriptor = McpManifestTransform.TransformProjection(projection, disambiguate);
+            if (projection.Namespace.IndexOf('@') >= 0) {
+                string metadataNamespace = projection.Namespace.Replace("@", string.Empty);
+                descriptor = new McpResourceDescriptorModel(
+                    McpManifestTransform.BuildProjectionUri(descriptor.BoundedContext, metadataNamespace, projection.TypeName, disambiguate),
+                    descriptor.Name, metadataNamespace + "." + projection.TypeName,
+                    descriptor.BoundedContext, descriptor.Title, descriptor.Description, descriptor.Fields,
+                    descriptor.RenderStrategy, descriptor.EntityPluralLabel, descriptor.EmptyStateCtaCommandName);
+            }
+
+            resourceDescriptors.Add(descriptor);
         }
 
         commandDescriptors.Sort((left, right) => string.CompareOrdinal(left.ProtocolName, right.ProtocolName));

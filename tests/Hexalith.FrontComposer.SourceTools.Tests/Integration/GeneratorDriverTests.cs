@@ -28,15 +28,23 @@ public partial class GeneratorDriverTests {
                 public string Name { get; set; } = string.Empty;
             }
             """;
+        string caseVariant = source.Replace("@class.Sample", "Class.Sample", StringComparison.Ordinal)
+            .Replace("KeywordExample", "CaseVariant", StringComparison.Ordinal);
         CancellationToken ct = TestContext.Current.CancellationToken;
-        CSharpCompilation compilation = CompilationHelper.CreateCompilation(source);
+        CSharpCompilation compilation = CompilationHelper.CreateCompilation([source, caseVariant]);
         GeneratorDriver driver = CSharpGeneratorDriver.Create(new FrontComposerGenerator())
             .RunGeneratorsAndUpdateCompilation(compilation, out Compilation output, out var diagnostics, ct);
 
         diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ShouldBeEmpty();
         string[] hints = driver.GetRunResult().Results.Single().GeneratedSources.Select(s => s.HintName).ToArray();
-        hints.ShouldContain("class.Sample.SampleProjection.g.razor.cs");
-        hints.ShouldContain("class.Sample.SampleCommand.CommandForm.g.razor.cs");
+        hints.ShouldContain("-class.Sample.SampleProjection.g.razor.cs");
+        hints.ShouldContain("-class.Sample.SampleCommand.CommandForm.g.razor.cs");
+        hints.ShouldContain("Class.Sample.SampleProjection.g.razor.cs");
+        string manifest = driver.GetRunResult().Results.Single().GeneratedSources
+            .Single(generated => generated.HintName == "FrontComposerMcpManifest.g.cs").SourceText.ToString();
+        manifest.ShouldContain("\"class.Sample.SampleCommand\"");
+        manifest.ShouldContain("\"class.Sample.SampleProjection\"");
+        manifest.ShouldNotContain("@class.Sample");
         output.GetDiagnostics(ct).Where(d => d.Severity == DiagnosticSeverity.Error).ShouldBeEmpty();
     }
 
