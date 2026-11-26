@@ -10,7 +10,7 @@ using Microsoft.Extensions.Options;
 namespace Hexalith.FrontComposer.Shell.Services.Authorization;
 
 /// <summary>
-/// Validates at host startup that every generated command policy is present in the
+/// Validates runtime manifests at host startup and ensures every generated command policy is present in the
 /// <see cref="FrontComposerAuthorizationOptions.KnownPolicies"/> catalog. Distinguishes
 /// "no catalog configured" (Information when manifests still declare policies) from
 /// "missing catalog entry" (Warning, or fatal under <c>StrictPolicyCatalogValidation</c>).
@@ -37,6 +37,7 @@ public sealed class FrontComposerAuthorizationPolicyCatalogValidator(
 
         // Snapshot manifests once: a custom IFrontComposerRegistry implementation that refreshes
         // manifests between calls would otherwise produce a declared-vs-missing race.
+        (registry as FrontComposerRegistry)?.ThrowStartupRegistrationError();
         DomainManifest[] manifests = [.. registry.GetManifests()];
         if (registry is not FrontComposerRegistry) {
             FrontComposerRegistry.ValidateCommandOwnership(manifests);

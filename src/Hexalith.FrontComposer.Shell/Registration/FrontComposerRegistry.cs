@@ -21,6 +21,8 @@ internal sealed class FrontComposerRegistry : IFrontComposerRegistry, IFrontComp
     private readonly List<FrontComposerNavEntry> _navEntries = [];
     private readonly ILogger<FrontComposerRegistry> _logger;
     private bool _collectingStartupManifests = true;
+    private string? _startupRegistrationError;
+    private readonly string? _startupCommandOwnershipError;
 
     public FrontComposerRegistry(
         IEnumerable<DomainRegistrationAction> registrationActions,
@@ -42,13 +44,26 @@ internal sealed class FrontComposerRegistry : IFrontComposerRegistry, IFrontComp
         }
 
         lock (_sync) {
-            ValidateCommandOwnership(_manifests);
+            _startupCommandOwnershipError = GetCommandOwnershipError(_manifests);
             _collectingStartupManifests = false;
+        }
+    }
+
+    /// <summary>Surfaces manifest or navigation errors recorded during startup registration.</summary>
+    internal void ThrowStartupRegistrationError() {
+        if ((_startupRegistrationError ?? _startupCommandOwnershipError) is { } message) {
+            throw new InvalidOperationException(message);
         }
     }
 
     /// <summary>Validates that each command has one owning bounded context.</summary>
     internal static void ValidateCommandOwnership(IEnumerable<DomainManifest> manifests) {
+        if (GetCommandOwnershipError(manifests) is { } message) {
+            throw new InvalidOperationException(message);
+        }
+    }
+
+    private static string? GetCommandOwnershipError(IEnumerable<DomainManifest> manifests) {
         string[] conflicts = [.. manifests
             .SelectMany(static manifest => manifest.Commands
                 .Where(static command => !string.IsNullOrWhiteSpace(command))
@@ -63,9 +78,14 @@ internal sealed class FrontComposerRegistry : IFrontComposerRegistry, IFrontComp
             .OrderBy(static entry => entry.Command, StringComparer.Ordinal)
             .Select(static entry => $"{entry.Command} [{string.Join(", ", entry.Contexts)}]")];
 
-        if (conflicts.Length > 0) {
-            throw new InvalidOperationException(
-                $"{FcDiagnosticIds.HFC1601_ManifestInvalid}: Command type names must belong to a single bounded context. Conflicting entries are {string.Join(", ", conflicts)}.");
+        return conflicts.Length == 0
+            ? null
+            : $"{FcDiagnosticIds.HFC1601_ManifestInvalid}: Command type names must belong to a single bounded context. Conflicting entries are {string.Join(", ", conflicts)}.";
+    }
+
+    private void EnsureCommandOwnership() {
+        if (_startupCommandOwnershipError is { } message) {
+            throw new InvalidOperationException(message);
         }
     }
 
@@ -79,10 +99,12 @@ internal sealed class FrontComposerRegistry : IFrontComposerRegistry, IFrontComp
     /// <inheritdoc />
     public void AddNavEntry(FrontComposerNavEntry entry) {
         ArgumentNullException.ThrowIfNull(entry);
-        if (!ModuleRouteCatalog.IsValidSegment(entry.BoundedContext)) {
-            throw new InvalidOperationException($"{FcDiagnosticIds.HFC1601_ManifestInvalid}: a navigation entry requires a route-safe bounded context.");
-        }
         lock (_sync) {
+            if (!ModuleRouteCatalog.IsValidSegment(entry.BoundedContext)) {
+                RejectRegistration("a navigation entry requires a route-safe bounded context.");
+                return;
+            }
+
             _navEntries.Add(entry);
         }
     }
@@ -122,6 +144,7 @@ internal sealed class FrontComposerRegistry : IFrontComposerRegistry, IFrontComp
             return false;
         }
 
+        EnsureCommandOwnership();
         foreach (DomainManifest manifest in SnapshotManifestReferences()) {
             if (!manifest.Commands.Contains(commandTypeName, StringComparer.Ordinal)) {
                 continue;
@@ -144,6 +167,7 @@ internal sealed class FrontComposerRegistry : IFrontComposerRegistry, IFrontComp
             return false;
         }
 
+        EnsureCommandOwnership();
         string trimmedKey = commandTypeName.Trim();
 
         // Snapshot the manifest list to a local array so a concurrent RegisterDomain call cannot
@@ -179,9 +203,12 @@ internal sealed class FrontComposerRegistry : IFrontComposerRegistry, IFrontComp
     public void RegisterDomain(DomainManifest manifest) {
         ArgumentNullException.ThrowIfNull(manifest);
         DomainManifest incoming = Clone(manifest);
-        ValidateManifest(incoming);
-
         lock (_sync) {
+            if (GetManifestValidationError(incoming) is { } incomingError) {
+                RejectRegistration(incomingError);
+                return;
+            }
+
             // Startup collects all contexts so diagnostics can report every owner in one pass.
             if (!_collectingStartupManifests) {
                 ValidateCommandOwnership(_manifests.Append(incoming));
@@ -190,8 +217,8 @@ internal sealed class FrontComposerRegistry : IFrontComposerRegistry, IFrontComp
             int existingIndex = _manifests.FindIndex(m => string.Equals(m.BoundedContext, incoming.BoundedContext, StringComparison.Ordinal));
             if (existingIndex < 0) {
                 if (_manifests.Any(m => string.Equals(m.BoundedContext, incoming.BoundedContext, StringComparison.OrdinalIgnoreCase))) {
-                    throw new InvalidOperationException(
-                        $"{FcDiagnosticIds.HFC1601_ManifestInvalid}: Module aliases must be unique regardless of case.");
+                    RejectRegistration("Module aliases must be unique regardless of case.");
+                    return;
                 }
 
                 _manifests.Add(incoming);
@@ -219,9 +246,23 @@ internal sealed class FrontComposerRegistry : IFrontComposerRegistry, IFrontComp
                 NameKey = existing.NameKey ?? incoming.NameKey,
                 Resource = existing.Resource ?? incoming.Resource,
             };
-            ValidateManifest(merged);
+            if (GetManifestValidationError(merged) is { } mergedError) {
+                RejectRegistration(mergedError);
+                return;
+            }
+
             _manifests[existingIndex] = merged;
         }
+    }
+
+    private void RejectRegistration(string reason) {
+        string message = $"{FcDiagnosticIds.HFC1601_ManifestInvalid}: {reason}";
+        if (_collectingStartupManifests) {
+            _startupRegistrationError ??= message;
+            return;
+        }
+
+        throw new InvalidOperationException(message);
     }
 
     private DomainManifest[] SnapshotManifests() {
@@ -288,10 +329,9 @@ internal sealed class FrontComposerRegistry : IFrontComposerRegistry, IFrontComp
         legacyCommands.UnionWith(manifest.Commands);
     }
 
-    private void ValidateManifest(DomainManifest manifest) {
+    private string? GetManifestValidationError(DomainManifest manifest) {
         if (!ModuleRouteCatalog.IsValidSegment(manifest.BoundedContext)) {
-            throw new InvalidOperationException(
-                $"{FcDiagnosticIds.HFC1601_ManifestInvalid}: a route-safe bounded context is required for a Module route.");
+            return "a route-safe bounded context is required for a Module route.";
         }
 
         // Generic Module landings use /{module}. These paths already belong to host
@@ -300,8 +340,7 @@ internal sealed class FrontComposerRegistry : IFrontComposerRegistry, IFrontComp
         string alias = manifest.BoundedContext.ToLowerInvariant();
         if (alias is "home" or "commands" or "__frontcomposer"
             || _routeOptions.ReservedSegments.Contains(alias)) {
-            throw new InvalidOperationException(
-                $"{FcDiagnosticIds.HFC1601_ManifestInvalid}: bounded context '{manifest.BoundedContext}' collides with a host route.");
+            return $"bounded context '{manifest.BoundedContext}' collides with a host route.";
         }
 
         foreach (KeyValuePair<string, string> routeAlias in manifest.CanonicalRouteAliases) {
@@ -310,20 +349,19 @@ internal sealed class FrontComposerRegistry : IFrontComposerRegistry, IFrontComp
             if ((source.Length != 0 && !source.Equals("/" + alias, StringComparison.OrdinalIgnoreCase))
                 || !target.StartsWith("/" + alias + "/", StringComparison.OrdinalIgnoreCase)
                 || !ModuleRouteCatalog.IsValidSegment(target[(alias.Length + 2)..])) {
-                throw new InvalidOperationException($"{FcDiagnosticIds.HFC1601_ManifestInvalid}: canonical aliases must resolve to a child of their Module.");
+                return "canonical aliases must resolve to a child of their Module.";
             }
         }
 
-        if (manifest.FullPageCommands is null) {
-            return;
-        }
-
-        foreach (string command in manifest.FullPageCommands) {
-            if (!manifest.Commands.Contains(command, StringComparer.Ordinal)) {
-                throw new InvalidOperationException(
-                    $"{FcDiagnosticIds.HFC1601_ManifestInvalid}: full-page command '{command}' in bounded context '{manifest.BoundedContext}' is not present in the manifest command membership.");
+        if (manifest.FullPageCommands is not null) {
+            foreach (string command in manifest.FullPageCommands) {
+                if (!manifest.Commands.Contains(command, StringComparer.Ordinal)) {
+                    return $"full-page command '{command}' in bounded context '{manifest.BoundedContext}' is not present in the manifest command membership.";
+                }
             }
         }
+
+        return null;
     }
 
     private Dictionary<string, string> MergeCommandPolicies(

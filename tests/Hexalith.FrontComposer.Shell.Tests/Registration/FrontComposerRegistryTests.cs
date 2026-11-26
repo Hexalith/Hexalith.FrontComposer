@@ -3,6 +3,7 @@ using Counter.Domain;
 using Hexalith.FrontComposer.Contracts.Registration;
 using Hexalith.FrontComposer.Shell.Extensions;
 using Hexalith.FrontComposer.Shell.Registration;
+using Hexalith.FrontComposer.Shell.Services.Authorization;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -296,16 +297,52 @@ public class FrontComposerRegistryTests {
     }
 
     [Fact]
-    public void Constructor_InvalidFullPageMembership_ThrowsHfc1601() {
-        DomainManifest invalid = new("Counter", "Counter", [], ["Counter.KnownCommand"]) {
-            FullPageCommands = ["Counter.UnknownCommand"],
-        };
-        DomainRegistrationAction action = new(registry => registry.RegisterDomain(invalid));
+    public async Task InvalidStartupMembershipFailsHostStartWithoutBreakingRegistryResolution()
+    {
+        HostApplicationBuilder builder = Host.CreateApplicationBuilder();
+        _ = builder.Services.AddHexalithFrontComposer();
+        _ = builder.Services.AddHexalithFrontComposer();
+        _ = builder.Services.AddSingleton(new DomainRegistrationAction(registry =>
+        {
+            registry.RegisterDomain(new DomainManifest("Counter", "Counter", [], ["Counter.KnownCommand"]));
+            registry.RegisterDomain(new DomainManifest("Counter", "Counter", [], [])
+            {
+                FullPageCommands = ["Counter.UnknownCommand"],
+            });
+        }));
 
-        InvalidOperationException exception = Should.Throw<InvalidOperationException>(() =>
-            _ = new FrontComposerRegistry([action], [], NullLogger<FrontComposerRegistry>.Instance));
+        using IHost host = builder.Build();
+        IFrontComposerRegistry registry = host.Services.GetRequiredService<IFrontComposerRegistry>();
+        registry.GetManifests().ShouldHaveSingleItem().Commands.ShouldBe(["Counter.KnownCommand"]);
+        registry.HasFullPageRoute("Counter.UnknownCommand").ShouldBeFalse();
+        host.Services.GetServices<IHostedService>()
+            .OfType<FrontComposerAuthorizationPolicyCatalogValidator>()
+            .ShouldHaveSingleItem();
+
+        InvalidOperationException exception = await Should.ThrowAsync<InvalidOperationException>(() =>
+            host.StartAsync(TestContext.Current.CancellationToken));
 
         exception.Message.ShouldContain("HFC1601");
+        exception.Message.ShouldContain("Counter.UnknownCommand");
+    }
+
+    [Fact]
+    public async Task InvalidStartupNavigationIsExcludedAndReportedWhenHostStarts()
+    {
+        HostApplicationBuilder builder = Host.CreateApplicationBuilder();
+        _ = builder.Services.AddHexalithFrontComposer();
+        _ = builder.Services.AddSingleton(new DomainRegistrationAction(registry =>
+            registry.AddNavEntry(new FrontComposerNavEntry("Tenant Admin", "Tenants", "/admin"))));
+
+        using IHost host = builder.Build();
+        IFrontComposerRegistry registry = host.Services.GetRequiredService<IFrontComposerRegistry>();
+        registry.GetNavEntries().ShouldBeEmpty();
+
+        InvalidOperationException exception = await Should.ThrowAsync<InvalidOperationException>(() =>
+            host.StartAsync(TestContext.Current.CancellationToken));
+
+        exception.Message.ShouldContain("HFC1601");
+        exception.Message.ShouldContain("route-safe bounded context");
     }
 
     [Fact]
@@ -319,6 +356,13 @@ public class FrontComposerRegistryTests {
         }
 
         using IHost host = builder.Build();
+        IFrontComposerRegistry registry = host.Services.GetRequiredService<IFrontComposerRegistry>();
+        registry.GetManifests().Count.ShouldBe(3);
+        Should.Throw<InvalidOperationException>(() => registry.HasFullPageRoute(command))
+            .Message.ShouldContain("HFC1601");
+        IFrontComposerCommandPolicyRegistry policyRegistry = registry.ShouldBeAssignableTo<IFrontComposerCommandPolicyRegistry>();
+        Should.Throw<InvalidOperationException>(() => policyRegistry.TryGetCommandPolicy(command, out _, out _))
+            .Message.ShouldContain("HFC1601");
 
         InvalidOperationException exception = await Should.ThrowAsync<InvalidOperationException>(() =>
             host.StartAsync(TestContext.Current.CancellationToken));
