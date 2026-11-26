@@ -2978,7 +2978,8 @@ archived: 2026-09-18
 origin: migrated from legacy ledger ("Deferred from: code review of story 1-8 round 2 — NFR10 deviation (2026-04-14)"), 2026-08-27
 location: docs/hot-reload-guide.md
 reason: **NFR10 end-to-end latency deviation (harness-dominated) — non-harness re-measurement required** — Story 1.8 AC1 measurement via Aspire MCP + Claude browser recorded harness-level wall-clock latencies of **~38s** (scenario 1.2, add property) and **~23s** (scenario 1.3, add `[Display(Name=…)]`) on Windows 11 / AMD Ryzen 9 9950X3D / .NET SDK 10.0.104 / commit `6769092` (see `docs/hot-reload-guide.md` §3.1 environment block and §3.2). Both values exceed the NFR10 budget (<2s) by >10×, which per AC1 requires a deferred-work entry. **Caveat:** the `dotnet watch` log (`b4pvifrgb.output` lines 48–67) shows `Hot reload succeeded` within ~1s of every `File updated` event, so the rebuild itself is inside budget — the excess is MCP round-trip + Playwright settle overhead, not the thing under test. **Proposed revised threshold (action):** create a non-harness re-measurement task (stopwatch-in-code or minimal console harness timing file-save → assembly-reload) before the next major release. If the non-harness number is still >2s, escalate to an NFR revision or a generator-performance story; if <2s, retire this deferral and update AC1 to explicitly exclude harness-dominated measurements. Reconciliation: Row: DW-0348; Accepted constraint 2026-05-13; Disposition: accepted-with-risk; Risk: likelihood medium, impact low; Release risk: harness latency remains non-release-performance evidence; Downstream impact: hot-reload NFR reporting only; Owner: release owner plus Story 11.6 UX/sample owner; Review by: 2026-06-30; Reopen trigger: non-harness measurement exceeds NFR10; Validation: docs/hot-reload-guide.md evidence caveat.; Related: Story 11.5, Story 11.6; Evidence: section: code review of story 1-8 round 2 — NFR10 deviation (2026-04-14).
-status: open
+status: done 2026-11-26
+resolution: Measured save-to-reload latency directly in Counter.Web and documented the SDK watcher crash and 3.457-3.924 s rebuild results. DW-1990 tracks the escalated performance gap.
 
 ### DW-1080: AC3 density and ARIA live regions
 
@@ -11771,3 +11772,11 @@ November 22 disposition for Story 17.2. F1 (the earlier BH-7), F2 and F3 were ap
 - source_spec: `spec-deferred-telemetry-and-generator-governance.md`
   summary: Report schema mismatch consistently on fresh and cached EventStore query responses.
   evidence: The fresh HTTP 200 path tags the parse cause but leaves the earlier ok outcome. The HTTP 304 cache validation path logs the wrapper type and retries without recording the original failure category.
+
+### DW-1990: Investigate the .NET 11 projection reload crash and NFR10 latency
+
+origin: DW-1079 direct Counter.Web measurement, 2026-11-26
+location: docs/hot-reload-guide.md
+severity: medium
+reason: Default dotnet watch exited in Roslyn when a projection property was added. Rebuild and restart took 3.457-3.924 s before browser rendering. Qualify the watcher fix, profile save-to-reload time, and remeasure against the existing 2 s target.
+status: open

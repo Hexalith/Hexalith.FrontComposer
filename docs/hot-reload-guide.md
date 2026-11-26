@@ -128,6 +128,41 @@ replacement's heading and save while the tab stays open.
 changes, duplicates, generic context, contract versions, and generated marker,
 descriptor, and manifest changes. The live run exercised the Razor body edit.
 
+### 3.5 Direct watch and reload measurements on .NET 11
+
+DW-1079 measured Counter.Web in Debug and Development on Ubuntu 26.04 with an
+AMD Ryzen 9 9950X3D and .NET SDK 11.0.100. The source revision was
+`426a486f122e2d6bd20a733790023e3ef5108608`.
+
+Default `dotnet watch` exited on the property addition with a duplicate-key
+`ArgumentException` in Roslyn's `DeltaMetadataWriter.GetDelta`. Restarting the
+watcher with `--no-hot-reload` let it rebuild and restart Counter.Web on each
+save. A temporary local HTTP probe inspected the running projection type for
+the new property and display label. A monotonic timer started when the file
+save returned and stopped when the probe observed the change. The probe
+polled every 50 ms and used no browser or agent round trips. To reproduce, add a
+development-only endpoint in a disposable copy of Counter.Web that returns
+the running `CounterProjection` type's `LastUpdatedUtc` presence and
+`LastUpdated` display label. Start the watcher from the repository root.
+
+```bash
+dotnet watch --no-hot-reload --non-interactive --project samples/Counter/Counter.Web/Counter.Web.csproj run --no-launch-profile
+```
+
+Use `ASPNETCORE_ENVIRONMENT=Development` and an unused local loopback port.
+Omit `--no-hot-reload` to exercise the default watcher. Query the endpoint
+before each edit to verify its baseline and after the save until the expected
+values appear.
+
+| Edit | Save to observed reload |
+|---|---:|
+| Add `DateTimeOffset LastUpdatedUtc` | 3.924 s |
+| Change the display label on `LastUpdated` | 3.492 s |
+| Restore the display label | 3.457 s |
+
+The observed reloads exceeded the 2 s target before browser rendering.
+DW-1990 tracks the .NET 11 watcher crash and the remaining performance gap.
+
 ## 4. How the Incremental Generator Is Validated Automatically
 
 Human validation (§3) measures the **full** cycle. Automated validation lives in the test project:
