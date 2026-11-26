@@ -2,6 +2,11 @@ using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Shell.Components.Lifecycle;
 
+using Hexalith.FrontComposer.Shell.Tests.Governance;
+
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+
 using Shouldly;
 
 namespace Hexalith.FrontComposer.Shell.Tests.Components.Lifecycle;
@@ -17,6 +22,20 @@ public sealed class LifecycleUiStateTests {
 
     private static CommandLifecycleTransition T(CommandLifecycleState previous, CommandLifecycleState next, bool idempotencyResolved = false)
         => new(CorrId, previous, next, "01HXXXXXXXXXXXXXXXXXXXXXXX", Anchor, Anchor, idempotencyResolved);
+
+    [Fact]
+    public void IdleSingletonExplicitlySetsEveryStateProperty() {
+        string path = Path.Combine(InfrastructureGovernanceTests.RepositoryRoot(),
+            "src", "Hexalith.FrontComposer.Shell", "Components", "Lifecycle", "LifecycleUiState.cs");
+        var root = CSharpSyntaxTree.ParseText(File.ReadAllText(path)).GetRoot(TestContext.Current.CancellationToken);
+        InitializerExpressionSyntax initializer = root.DescendantNodes().OfType<VariableDeclaratorSyntax>()
+            .Single(node => node.Identifier.ValueText == nameof(LifecycleUiState.Idle))
+            .Initializer!.Value.ShouldBeOfType<ImplicitObjectCreationExpressionSyntax>()
+            .Initializer.ShouldNotBeNull();
+
+        initializer.Expressions.Cast<AssignmentExpressionSyntax>().Select(expression => expression.Left.ToString()).Order()
+            .ShouldBe(typeof(LifecycleUiState).GetProperties().Select(property => property.Name).Order());
+    }
 
     [Fact]
     public void IdleSingletonHasNoOutcomeOrTransition() {
