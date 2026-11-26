@@ -3013,6 +3013,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of story 2-1 (2
 location: CommandRegistration.g.cs
 reason: **Dual command registration path (ADR-012 intent)** — Reflection-based `AddHexalithDomain` command aggregation runs alongside the new generator-emitted `{Command}CommandRegistration.g.cs`; registry dedupes. ADR-012 intended the generator to be the single source. Remove the reflection path once all adopters have regenerated. Reconciliation: Row: DW-0353; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC14-AC16, AC30; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of story 2-1 (2026-04-15).
 status: open
+decision: 2026-11-26 Skipped. Removing reflection discovery still requires evidence that adopters have regenerated their command registrations.
 decision: 2026-08-27 Implement change — Implement the behavior requested by DW-1084, update affected contracts and consumers, and add focused regression evidence.
 
 ### DW-1085: Task 7.2 `_Imports.razor`
@@ -3021,6 +3022,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of story 2-1 (2
 location: _Imports.razor
 reason: **Task 7.2 `_Imports.razor`** — Counter.Web should have `@using Counter.Domain` added so `<IncrementCommandForm />` can be used without a FQN. Cosmetic; current FQN usage works. Reconciliation: Row: DW-0354; Final classification 2026-05-13: accepted-with-risk; Decision owner: Story 11.6 release owner; AC coverage: AC17-AC20, AC35; Score: impact=low/medium; risk=low; cost=medium/high; adjacency=accepted; Rationale: Low release-readiness risk or existing lower-level evidence is sufficient for this release pass.; Validation/evidence: focused Story 11.6 Shell/Counter validation plus historical source row; revisit on matching regression or adopter request; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of story 2-1 (2026-04-15).
 status: open
+decision: 2026-11-26 Skipped. Counter.Web uses density-aware renderer components with local imports. The directly mounted fully qualified form was removed.
 
 ### DW-1086: Parent-driven `OnParametersSet` on generated form
 
@@ -3033,7 +3035,8 @@ archived: 2026-09-18
 origin: migrated from legacy ledger ("Deferred from: code review of story 2-1 (2026-04-15)"), 2026-08-27
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 reason: **`AddHexalithFrontComposer` duplicate `Configure` no-op** — Repeated calls accumulate no-op `services.Configure<StubCommandServiceOptions>(_ => { })` registrations. Low-impact; consider a `TryAdd*`-style guard later. Reconciliation: Row: DW-0356; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of story 2-1 (2026-04-15).
-status: open
+status: done 2026-11-26
+resolution: Registers stub options idempotently and preserves adopter configuration on repeated shell registration.
 
 ### DW-1088: Dead `NumberStyles_Any` helper property
 

@@ -254,7 +254,7 @@ public static class ServiceCollectionExtensions {
         });
         services.TryAddScoped<ICommandService>(sp =>
             sp.GetRequiredService<ICommandServiceWithLifecycle>());
-        _ = services.Configure<StubCommandServiceOptions>(_ => { });
+        _ = services.AddOptions<StubCommandServiceOptions>();
 
         // Story 2-2 Decision D33 — DataGridNav LRU cap is seeded from FcShellOptions.DataGridNavCap
         // into DataGridNavigationState.Cap by DataGridNavigationFeature at first state construction

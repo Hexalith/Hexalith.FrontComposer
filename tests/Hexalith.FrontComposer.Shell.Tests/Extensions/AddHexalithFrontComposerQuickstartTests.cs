@@ -2,6 +2,7 @@ using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Storage;
 using Hexalith.FrontComposer.Shell.Extensions;
 using Hexalith.FrontComposer.Shell.Resources;
+using Hexalith.FrontComposer.Shell.Services;
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
@@ -61,6 +62,19 @@ public sealed class AddHexalithFrontComposerQuickstartTests {
         // Both services resolve cleanly — no duplicate-registration exception.
         _ = scope.ServiceProvider.GetRequiredService<IStringLocalizer<FcShellResources>>().ShouldNotBeNull();
         _ = scope.ServiceProvider.GetRequiredService<IStorageService>().ShouldNotBeNull();
+    }
+
+    [Fact]
+    public void RepeatedRegistrationPreservesStubOptionsWithoutAddingConfigurations()
+    {
+        ServiceCollection services = [];
+        _ = services.Configure<StubCommandServiceOptions>(options => options.AcknowledgeDelayMs = 31);
+        _ = services.AddHexalithFrontComposer();
+        _ = services.AddHexalithFrontComposer();
+
+        using ServiceProvider provider = services.BuildServiceProvider();
+        provider.GetServices<IConfigureOptions<StubCommandServiceOptions>>().ShouldHaveSingleItem();
+        provider.GetRequiredService<IOptions<StubCommandServiceOptions>>().Value.AcknowledgeDelayMs.ShouldBe(31);
     }
 
     [Fact]
