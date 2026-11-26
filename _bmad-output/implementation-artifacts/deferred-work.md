@@ -2746,6 +2746,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of story 3-4-fc
 location: src/Hexalith.FrontComposer.Shell/Shortcuts/ShortcutService.cs:IsChordPrefix
 reason: **`IsChordPrefix` linear `O(N)` per keystroke** — `ShortcutService.IsChordPrefix` scans `_entries.Keys` for any `StartsWith(prefix + " ")` on every bare-letter keystroke that reaches the service. Deferred because realistic adopter shortcut counts stay under 50, well below any perceptible keystroke budget. Revisit if an adopter registers hundreds of chord bindings or if profiler traces surface this as a hotspot. `src/Hexalith.FrontComposer.Shell/Shortcuts/ShortcutService.cs:IsChordPrefix` Reconciliation: Row: DW-0315; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of story 3-4-fccommandpalette-and-keyboard-shortcuts (2026-04-20).
 status: open
+decision: 2026-11-26 Skipped. Duplicates DW-1029. No profile or large binding catalog meets the reopening condition.
 
 ### DW-1047: Invalid-tier log-spam circuit breaker (DN3 promoted to defer)
 
@@ -2753,6 +2754,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of story 3-2-si
 location: fc-layout-breakpoints.js
 reason: **Invalid-tier log-spam circuit breaker (DN3 promoted to defer)** — `FcLayoutBreakpointWatcher.OnViewportTierChangedAsync` logs `LogWarning` for every out-of-range tier dispatched from `fc-layout-breakpoints.js`. A misbehaving JS module could flood logs. Deferred because: pre-existing defensive pattern, no observed incident, and the unbounded warning stream preserves operator visibility for legitimate regressions. Revisit if telemetry dashboards show excessive warning rate. `src/Hexalith.FrontComposer.Shell/Components/Layout/FcLayoutBreakpointWatcher.razor.cs:28` Reconciliation: Row: DW-0316; Final classification 2026-05-13: accepted-with-risk; Decision owner: Story 11.6 release owner; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=low/medium; risk=low; cost=medium/high; adjacency=accepted; Rationale: Low release-readiness risk or existing lower-level evidence is sufficient for this release pass.; Validation/evidence: focused Story 11.6 Shell/Counter validation plus historical source row; revisit on matching regression or adopter request; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Related: Story 11.7; Evidence: section: code review of story 3-2-sidebar-navigation-and-responsive-behavior (2026-04-19).
 status: open
+decision: 2026-11-26 Skipped. The accepted warning behavior remains appropriate until telemetry shows an excessive warning rate.
 
 ### DW-1048: Drawer-open state not reconciled on Tablet→Desktop viewport transitions
 
@@ -2772,6 +2774,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of story 2-5 fu
 location: CommandRendererEmitter.cs
 reason: **Null `EditContext` on first render (guard arm window)** — theoretical exposure is a single render cycle (microseconds) during which user cannot realistically type; `FcFormAbandonmentGuard.OnParametersSet` re-subscribes when `EditContext` becomes non-null on the next render. No observed bug. Revisit if users report missed abandonment warnings on fast keyboards. `CommandRendererEmitter.cs` / `FcFormAbandonmentGuard.razor.cs` Reconciliation: Row: DW-0319; Final classification 2026-05-13: accepted-with-risk; Decision owner: Story 11.6 release owner; AC coverage: AC18, AC21-AC22, AC37; Score: impact=low/medium; risk=low; cost=medium/high; adjacency=accepted; Rationale: Low release-readiness risk or existing lower-level evidence is sufficient for this release pass.; Validation/evidence: focused Story 11.6 Shell/Counter validation plus historical source row; revisit on matching regression or adopter request; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of story 2-5 full adversarial pass (2026-04-17).
 status: open
+decision: 2026-11-26 Skipped. The guard arms when the edit context arrives. No missed warning matching the recorded scenario has been reported.
 
 ### DW-1051: `OnEditContextReady` fire-and-forget task
 
@@ -2779,6 +2782,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of story 2-5 fu
 location: CommandFormEmitter.cs
 reason: **`OnEditContextReady` fire-and-forget task** — `_ = eventCallback.InvokeAsync(...)` is the idiomatic Blazor pattern; exceptions surface via Blazor's error boundary. Changing this deviates from convention for theoretical benefit only. `CommandFormEmitter.cs` Reconciliation: Row: DW-0320; Final classification 2026-05-13: accepted-with-risk; Decision owner: Story 11.6 release owner; AC coverage: AC18, AC21-AC22, AC37; Score: impact=low/medium; risk=low; cost=medium/high; adjacency=accepted; Rationale: Low release-readiness risk or existing lower-level evidence is sufficient for this release pass.; Validation/evidence: focused Story 11.6 Shell/Counter validation plus historical source row; revisit on matching regression or adopter request; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of story 2-5 full adversarial pass (2026-04-17).
 status: open
+decision: 2026-11-26 Skipped. The callback pattern remains covered by the accepted Blazor behavior. No matching failure has been reported.
 
 ### DW-1052: Destructive renderer emitter snapshot coverage
 
@@ -2792,13 +2796,15 @@ origin: migrated from legacy ledger ("Deferred from: code review of story 2-5 fu
 location: CommandRendererEmitter.cs
 reason: **`OnFormEditContextReady` double render cycle** — `EventCallback` re-renders on completion; the additional `InvokeAsync(StateHasChanged)` is redundant. Cosmetic, no correctness impact. `CommandRendererEmitter.cs` emitted `OnFormEditContextReady` Reconciliation: Row: DW-0322; Final classification 2026-05-13: accepted-with-risk; Decision owner: Story 11.6 release owner; AC coverage: AC18, AC21-AC22, AC37; Score: impact=low/medium; risk=low; cost=medium/high; adjacency=accepted; Rationale: Low release-readiness risk or existing lower-level evidence is sufficient for this release pass.; Validation/evidence: focused Story 11.6 Shell/Counter validation plus historical source row; revisit on matching regression or adopter request; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of story 2-5 full adversarial pass (2026-04-17).
 status: open
+decision: 2026-11-26 Skipped. The extra render was accepted as cosmetic. There is no matching regression or performance evidence.
 
 ### DW-1054: `ScheduleIdempotentDismiss`/`ScheduleConfirmedDismiss` structural duplication
 
 origin: migrated from legacy ledger ("Deferred from: code review of story 2-5 full adversarial pass (2026-04-17)"), 2026-08-27
 location: FcLifecycleWrapper.razor.cs
 reason: **`ScheduleIdempotentDismiss`/`ScheduleConfirmedDismiss` structural duplication** — two methods share the same timer/dispose pattern; divergence risk on future changes. Maintenance-only, not a bug. `FcLifecycleWrapper.razor.cs` Reconciliation: Row: DW-0323; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC18, AC21-AC22, AC37; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of story 2-5 full adversarial pass (2026-04-17).
-status: open
+status: done 2026-11-26
+resolution: Uses one dismissal scheduler with outcome-specific deadlines and guards against callbacks from a previous outcome or binding.
 
 ### DW-1055: `LifecycleUiState.Idle` C# default property values
 

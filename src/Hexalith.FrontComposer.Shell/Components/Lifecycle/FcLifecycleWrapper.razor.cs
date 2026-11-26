@@ -42,6 +42,7 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
     private ITimer? _degradedTimer;
     private DateTimeOffset? _acceptanceAt;
     private long _bindingGeneration;
+    private long _dismissGeneration;
     private long _deadlineGeneration;
     private long _degradedGeneration;
     private long? _boundLifecycleScopeGeneration;
@@ -374,12 +375,12 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
                 _timer?.EnterTerminal();
                 CancelDeadline();
                 CancelDegraded();
+                int durationMs = next.IsIdempotent
+                    ? ShellOptions.CurrentValue.IdempotentInfoToastDurationMs
+                    : ShellOptions.CurrentValue.ConfirmedToastDurationMs;
+                DateTimeOffset dismissAt = transition.LastTransitionAt.AddMilliseconds(durationMs);
+                ScheduleDismiss(transition.LastTransitionAt, durationMs, next.IsIdempotent);
                 if (next.IsIdempotent) {
-                    // Story 2-5 D3 / AC2 — idempotent outcome schedules Info-bar dismiss at the
-                    // IdempotentInfoToastDurationMs threshold, not ConfirmedToastDurationMs.
-                    int durationMs = ShellOptions.CurrentValue.IdempotentInfoToastDurationMs;
-                    DateTimeOffset dismissAt = transition.LastTransitionAt.AddMilliseconds(durationMs);
-                    ScheduleIdempotentDismiss(transition.LastTransitionAt, durationMs);
                     next = next with {
                         TimerPhase = LifecycleTimerPhase.Terminal,
                         IdempotentDismissAt = dismissAt,
@@ -391,12 +392,9 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
                         transition.CorrelationId);
                 }
                 else {
-                    int confirmedMs = ShellOptions.CurrentValue.ConfirmedToastDurationMs;
-                    DateTimeOffset confirmedDismissAt = transition.LastTransitionAt.AddMilliseconds(confirmedMs);
-                    ScheduleConfirmedDismiss(transition.LastTransitionAt, confirmedMs);
                     next = next with {
                         TimerPhase = LifecycleTimerPhase.Terminal,
-                        ConfirmedDismissAt = confirmedDismissAt,
+                        ConfirmedDismissAt = dismissAt,
                     };
                 }
 
@@ -651,44 +649,12 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
         });
     }
 
-    private void ScheduleConfirmedDismiss(DateTimeOffset transitionLastAtUtc, int durationMs) {
+    private void ScheduleDismiss(DateTimeOffset transitionLastAtUtc, int durationMs, bool isIdempotent) {
         CancelDismissTimer();
         TimeSpan due = ComputeDueTimeFromTransitionAnchor(transitionLastAtUtc, durationMs);
         string correlationId = _boundCorrelationId;
         long bindingGeneration = _bindingGeneration;
-        _dismissTimer = Time.CreateTimer(
-            _ =>
-            {
-                if (_disposed != 0)
-                {
-                    return;
-                }
-                _ = InvokeAsync(() =>
-                {
-                    // Review 2026-04-17 P10 — guard mirrors ScheduleIdempotentDismiss: only dismiss
-                    // when we are STILL in the non-idempotent Confirmed branch. Rapid transitions
-                    // that flip between idempotent/non-idempotent otherwise risk the wrong timer
-                    // dismissing the wrong bar.
-                    if (_disposed == 0 && bindingGeneration == _bindingGeneration
-                        && string.Equals(correlationId, _boundCorrelationId, StringComparison.Ordinal)
-                        && _state.Current == CommandLifecycleState.Confirmed && !_state.IsIdempotent)
-                    {
-                        ReleaseAnnouncementClaim();
-                        _state = LifecycleUiState.Idle with { LastTransitionAt = _state.LastTransitionAt };
-                        StateHasChanged();
-                    }
-                });
-            },
-            state: null,
-            dueTime: due,
-            period: Timeout.InfiniteTimeSpan);
-    }
-
-    private void ScheduleIdempotentDismiss(DateTimeOffset transitionLastAtUtc, int durationMs) {
-        CancelDismissTimer();
-        TimeSpan due = ComputeDueTimeFromTransitionAnchor(transitionLastAtUtc, durationMs);
-        string correlationId = _boundCorrelationId;
-        long bindingGeneration = _bindingGeneration;
+        long dismissGeneration = Volatile.Read(ref _dismissGeneration);
         _dismissTimer = Time.CreateTimer(
             _ =>
             {
@@ -699,9 +665,11 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
                 _ = InvokeAsync(() =>
                 {
                     if (_disposed == 0 && bindingGeneration == _bindingGeneration
+                        && dismissGeneration == Volatile.Read(ref _dismissGeneration)
+                        && IsBoundScopeCurrent()
                         && string.Equals(correlationId, _boundCorrelationId, StringComparison.Ordinal)
-                        && (_state.Current is CommandLifecycleState.IdempotentConfirmed
-                            || (_state.Current == CommandLifecycleState.Confirmed && _state.IsIdempotent)))
+                        && _state.Current is (CommandLifecycleState.Confirmed or CommandLifecycleState.IdempotentConfirmed)
+                        && _state.IsIdempotent == isIdempotent)
                     {
                         ReleaseAnnouncementClaim();
                         _state = LifecycleUiState.Idle with { LastTransitionAt = _state.LastTransitionAt };
@@ -725,6 +693,7 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
     }
 
     private void CancelDismissTimer() {
+        _ = Interlocked.Increment(ref _dismissGeneration);
         ITimer? toDispose = Interlocked.Exchange(ref _dismissTimer, null);
         toDispose?.Dispose();
     }

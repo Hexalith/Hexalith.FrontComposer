@@ -455,6 +455,33 @@ public sealed class FcLifecycleWrapperThresholdTests : LifecycleWrapperTestBase 
         cut.Find("[data-testid='fc-surface-status']").TextContent.ShouldBe("Command confirmed.");
     }
 
+    [Theory]
+    [InlineData(CommandLifecycleState.Confirmed, CommandLifecycleState.IdempotentConfirmed, false)]
+    [InlineData(CommandLifecycleState.IdempotentConfirmed, CommandLifecycleState.Confirmed, false)]
+    [InlineData(CommandLifecycleState.Confirmed, CommandLifecycleState.Confirmed, true)]
+    [InlineData(CommandLifecycleState.Confirmed, CommandLifecycleState.Confirmed, false)]
+    [InlineData(CommandLifecycleState.IdempotentConfirmed, CommandLifecycleState.IdempotentConfirmed, false)]
+    public async Task QueuedDismissCannotDismissAReplacementOutcome(
+        CommandLifecycleState first, CommandLifecycleState replacement, bool replacementIdempotent)
+    {
+        var time = new Hexalith.FrontComposer.Shell.Tests.Infrastructure.QueuedTimerTimeProvider();
+        Services.AddSingleton<TimeProvider>(time);
+        var (cut, push) = RenderWrapperWithLiveService();
+        await cut.InvokeAsync(() => push(TransitionAt(CommandLifecycleState.Syncing, first, time.GetUtcNow())));
+        Action oldDismiss = time.Callbacks.Single();
+
+        await cut.InvokeAsync(() => push(TransitionAt(first, replacement, time.GetUtcNow(), idempotencyResolved: replacementIdempotent)));
+        time.Callbacks.Count.ShouldBe(2);
+        string confirmation = replacement == CommandLifecycleState.IdempotentConfirmed || replacementIdempotent
+            ? "Already confirmed"
+            : "Submission confirmed";
+
+        await cut.InvokeAsync(oldDismiss);
+        cut.Markup.ShouldContain(confirmation, Case.Insensitive);
+        await cut.InvokeAsync(time.Callbacks[1]);
+        cut.Find(".fc-lifecycle-wrapper").GetAttribute("data-lifecycle-state").ShouldBe("idle");
+    }
+
     [Fact]
     public void CapturedDeadlineAndDegradedTicksAfterDisposalCannotTransition()
     {
