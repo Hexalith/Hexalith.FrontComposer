@@ -48,8 +48,10 @@
         outline-color: Highlight;
     }
 
-    /* Keep the destructive label readable with the user's system button palette. */
-    .fc-destructive-confirm {
+    /* Use the system button palette for action labels. Fluent's resting primary
+       Highlight/HighlightText pair has insufficient contrast in Firefox. */
+    .fc-destructive-confirm,
+    .fc-command-form fluent-button[type="submit"][appearance="primary"]:not(:disabled, [disabled], [disabled-focusable], :hover, :focus-visible) {
         forced-color-adjust: auto;
         background: ButtonFace;
         border-color: ButtonText;
