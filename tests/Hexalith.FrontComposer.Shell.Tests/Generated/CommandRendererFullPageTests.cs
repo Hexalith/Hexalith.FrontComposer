@@ -22,7 +22,7 @@ namespace Hexalith.FrontComposer.Shell.Tests.Generated;
 
 public sealed class CommandRendererFullPageTests : CommandRendererTestBase {
     [Fact]
-    public async Task Renderer_FullPage_SubmitUsesPrimaryAppearance() {
+    public async Task FullPageSubmitUsesPrimaryAppearance() {
         await InitializeStoreAsync();
         IRenderedComponent<FiveFieldFullPageCommandRenderer> cut = Render<FiveFieldFullPageCommandRenderer>();
 

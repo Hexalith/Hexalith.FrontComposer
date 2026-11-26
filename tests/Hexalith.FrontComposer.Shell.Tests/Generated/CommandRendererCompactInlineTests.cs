@@ -6,7 +6,7 @@ namespace Hexalith.FrontComposer.Shell.Tests.Generated;
 
 public sealed class CommandRendererCompactInlineTests : CommandRendererTestBase {
     [Fact]
-    public async Task Renderer_CompactInline_SubmitUsesPrimaryAppearance() {
+    public async Task CompactInlineSubmitUsesPrimaryAppearance() {
         await InitializeStoreAsync();
         IRenderedComponent<TwoFieldCompactCommandRenderer> cut = Render<TwoFieldCompactCommandRenderer>();
 

@@ -39,7 +39,7 @@ public class StubCommandServiceTests {
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task DispatchAsync_PreCanceledWithoutAcknowledgmentDelay_DoesNotAccept(bool simulateRejection) {
+    public async Task PreCanceledDispatchWithoutAcknowledgmentDelayDoesNotAccept(bool simulateRejection) {
         StubCommandServiceOptions options = ZeroDelays();
         options.SimulateRejection = simulateRejection;
         IUlidFactory ulids = Substitute.For<IUlidFactory>();
@@ -58,7 +58,7 @@ public class StubCommandServiceTests {
     }
 
     [Fact]
-    public async Task DispatchAsync_CanceledDuringIdAllocation_DoesNotAcknowledge() {
+    public async Task DispatchCanceledDuringIdAllocationDoesNotAcknowledge() {
         using CancellationTokenSource cancellation = new();
         IUlidFactory ulids = Substitute.For<IUlidFactory>();
         ulids.NewUlid().Returns(_ => {

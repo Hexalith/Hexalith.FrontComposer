@@ -20,7 +20,7 @@ namespace Hexalith.FrontComposer.Shell.Tests.Generated;
 
 public sealed class CommandRendererInlineTests : CommandRendererTestBase {
     [Fact]
-    public async Task Renderer_Inline_LogsInitializationAtDebug() {
+    public async Task InlineRendererLogsInitializationAtDebug() {
         CapturingLogger<OneFieldInlineCommandRenderer> logger = new();
         _ = Services.AddSingleton<ILogger<OneFieldInlineCommandRenderer>>(logger);
         await InitializeStoreAsync();
@@ -123,7 +123,7 @@ public sealed class CommandRendererInlineTests : CommandRendererTestBase {
     }
 
     [Fact]
-    public async Task Renderer_CircuitReconnect_WithOpenPopover_ClosesSilentlyAndLogs() {
+    public async Task CircuitReconnectClosesOpenPopoverSilentlyAndLogs() {
         CapturingLogger<InlinePopoverCircuitHandler> logger = new();
         _ = Services.AddSingleton<ILogger<InlinePopoverCircuitHandler>>(logger);
         _ = Services.AddScoped<CircuitHandler, InlinePopoverCircuitHandler>();

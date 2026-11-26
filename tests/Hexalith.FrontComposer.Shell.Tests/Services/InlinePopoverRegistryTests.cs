@@ -99,7 +99,7 @@ public sealed class InlinePopoverRegistryTests {
     }
 
     [Fact]
-    public async Task DismissOnReconnectAsync_FailedDismissalCanBeRetried() {
+    public async Task FailedReconnectDismissalCanBeRetried() {
         InlinePopoverRegistry registry = new();
         IReconnectableInlinePopover popover = Substitute.For<IReconnectableInlinePopover>();
         popover.DismissOnReconnectAsync().Returns(

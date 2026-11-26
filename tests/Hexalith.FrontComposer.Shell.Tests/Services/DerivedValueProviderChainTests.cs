@@ -249,7 +249,7 @@ public class DerivedValueProviderChainTests {
     }
 
     [Fact]
-    public async Task LastUsed_ConcurrentScopeRefusals_PublishOneDiagnostic() {
+    public async Task ConcurrentLastUsedScopeRefusalsPublishOneDiagnostic() {
         IStorageService storage = Substitute.For<IStorageService>();
         var sink = new InMemoryDiagnosticSink(EnabledLoggerSubstitute.Create<InMemoryDiagnosticSink>());
         ILogger<LastUsedValueProvider> logger = EnabledLoggerSubstitute.Create<LastUsedValueProvider>();
