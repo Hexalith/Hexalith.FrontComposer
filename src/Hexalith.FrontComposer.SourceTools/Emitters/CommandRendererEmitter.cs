@@ -17,7 +17,10 @@ namespace Hexalith.FrontComposer.SourceTools.Emitters;
 /// and lifecycle dispatch; this emitter focuses on density-driven shape and wiring (D5, D6, D21).
 /// </remarks>
 public static class CommandRendererEmitter {
-    public static string Emit(CommandRendererModel model) {
+    public static string Emit(CommandRendererModel model) => Emit(model, initializeEnumDefaults: false);
+
+    /// <summary>Emits the renderer and selects the form's factory when enum defaults are needed.</summary>
+    internal static string Emit(CommandRendererModel model, bool initializeEnumDefaults) {
         if (model is null) {
             throw new ArgumentNullException(nameof(model));
         }
@@ -179,7 +182,9 @@ public static class CommandRendererEmitter {
         _ = sb.AppendLine("            if (Logger is not null) { LogRenderModeIncompatible(Logger, _effectiveMode); }");
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine("        if (Logger is not null) { LogRendering(Logger, \"" + commandFqn + "\", _effectiveMode); }");
-        _ = sb.AppendLine("        _prefilledModel = InitialValue ?? new();");
+        _ = sb.AppendLine(initializeEnumDefaults
+            ? "        _prefilledModel = InitialValue ?? " + model.TypeName + "Form.CreateDefaultModel();"
+            : "        _prefilledModel = InitialValue ?? new();");
         _ = sb.AppendLine("        await PrefillDerivableFieldsAsync().ConfigureAwait(false);");
         if (hasAuthorizationPolicy) {
             // Initialize CTS synchronously so disposal during the first await actually cancels.

@@ -279,6 +279,7 @@ public sealed class FrontComposerGenerator : IIncrementalGenerator {
             if (result.Model is not null) {
                 CommandFluxorModel fluxorModel = CommandFluxorTransform.Transform(result.Model);
                 CommandFormModel formModel = CommandFormTransform.Transform(result.Model);
+                PropertyModel[] enumDefaults = CommandFormEmitter.GetEnumDefaults(result.Model);
                 RegistrationModel registrationModel = RegistrationModelTransform.TransformCommand(result.Model);
                 CommandRendererModel rendererModel = CommandRendererTransform.Transform(result.Model, fluxorModel);
 
@@ -286,14 +287,14 @@ public sealed class FrontComposerGenerator : IIncrementalGenerator {
                 // projection-pipeline hints when a type carries both attributes.
                 // (See code-review 2026-04-15, patch P6.)
                 string hintPrefix = GetQualifiedHintPrefix(result.Model.Namespace, result.Model.TypeName) + ".Command";
-                spc.AddSource(hintPrefix + "Form.g.razor.cs", CommandFormEmitter.Emit(formModel, fluxorModel, useAsyncValidation));
+                spc.AddSource(hintPrefix + "Form.g.razor.cs", CommandFormEmitter.Emit(formModel, fluxorModel, useAsyncValidation, enumDefaults));
                 spc.AddSource(hintPrefix + "Actions.g.cs", CommandFluxorActionsEmitter.Emit(fluxorModel));
                 spc.AddSource(hintPrefix + "LifecycleFeature.g.cs", CommandFluxorFeatureEmitter.Emit(fluxorModel));
                 spc.AddSource(hintPrefix + "Registration.g.cs", RegistrationEmitter.Emit(registrationModel));
 
                 // Story 2-2 Task 8: density-driven renderer + per-command LastUsed subscriber +
                 // (conditional) routable FullPage page.
-                spc.AddSource(hintPrefix + "Renderer.g.razor.cs", CommandRendererEmitter.Emit(rendererModel));
+                spc.AddSource(hintPrefix + "Renderer.g.razor.cs", CommandRendererEmitter.Emit(rendererModel, enumDefaults.Length > 0));
                 spc.AddSource(hintPrefix + "LastUsedSubscriber.g.cs", LastUsedSubscriberEmitter.Emit(fluxorModel));
                 if (result.Model.Density == Hexalith.FrontComposer.SourceTools.Parsing.CommandDensity.FullPage) {
                     spc.AddSource(hintPrefix + "Page.g.razor.cs", CommandPageEmitter.Emit(rendererModel));

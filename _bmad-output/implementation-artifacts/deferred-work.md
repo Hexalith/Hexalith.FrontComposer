@@ -3067,7 +3067,8 @@ decision: 2026-09-06 Support DateOnly — Emit a text or date conversion bridge 
 origin: migrated from legacy ledger ("Added during patch pass (2026-04-15)"), 2026-08-27
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 reason: **Enum without a zero-defined member** — `FluentSelect` binds `_model.{Prop} = 0` by default and renders the literal `"0"`. Emit an initializer that picks the first declared value, or surface via `[Required]` selection. Revisit when the first command with a non-zero-default enum lands. Reconciliation: Row: DW-0360; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of story 2-1 (2026-04-15).
-status: open
+status: done 2026-11-26
+resolution: Forms and renderers initialize new nonnullable enum fields with the first declared member when zero is undefined. Constructor values, valid zero, nullable selections, and caller-provided models are preserved.
 
 ### DW-1092: HFC1015 analyzer emission
 
