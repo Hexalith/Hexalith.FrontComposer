@@ -40,7 +40,8 @@ public sealed class IdeParityConformanceUtilityTests {
     [Trait("MatrixRowId", "IDE-MUST-003")]
     public void IdeParityCounterFixture_GeneratesDeterministicSymbolsForMatrixRows() {
         CancellationToken ct = TestContext.Current.CancellationToken;
-        CSharpCompilation compilation = CompilationHelper.CreateCompilation(LoadIdeParityCounterFixtureSource());
+        CSharpCompilation compilation = CompilationHelper.CreateCompilation(LoadIdeParityCounterFixtureSources());
+        compilation.GetDiagnostics(ct).ShouldNotContain(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error);
         FrontComposerGenerator generator = new();
         GeneratorDriver driver = CSharpGeneratorDriver.Create(generator);
 
@@ -237,15 +238,8 @@ public sealed class IdeParityConformanceUtilityTests {
         public bool LabelsAccessible(IReadOnlyList<string> labels) => _hasLabels;
     }
 
-    internal static string LoadIdeParityCounterFixtureSource() {
-        StringBuilder builder = new();
-        foreach (string file in IdeParityCounterFixtureSourceFiles()) {
-            _ = builder.Append(File.ReadAllText(file));
-            _ = builder.AppendLine();
-        }
-
-        return builder.ToString();
-    }
+    internal static string[] LoadIdeParityCounterFixtureSources()
+        => IdeParityCounterFixtureSourceFiles().Select(File.ReadAllText).ToArray();
 
     internal static string ComputeIdeParityCounterFixtureHash() {
         // Strip CR bytes before hashing so the digest is stable across CRLF/LF checkouts.

@@ -20,7 +20,7 @@ public sealed class IdeParitySampleDiagnosticsTests {
     [Trait("MatrixRowId", "IDE-MUST-004")]
     public void IdeParityCounterFixture_AllEmittedHfcDiagnosticsHaveHelpLinkUri() {
         CancellationToken ct = TestContext.Current.CancellationToken;
-        CSharpCompilation compilation = CompilationHelper.CreateCompilation(IdeParityConformanceUtilityTests.LoadIdeParityCounterFixtureSource());
+        CSharpCompilation compilation = CompilationHelper.CreateCompilation(IdeParityConformanceUtilityTests.LoadIdeParityCounterFixtureSources());
         FrontComposerGenerator generator = new();
         GeneratorDriver driver = CSharpGeneratorDriver.Create(generator);
 
@@ -67,7 +67,7 @@ public sealed class IdeParitySampleDiagnosticsTests {
     [Trait("MatrixRowId", "IDE-MUST-004")]
     public void GeneratedFixtureCompilation_ProducesNoErrorSeverityDiagnosticsAndExposesHfcCatalog() {
         CancellationToken ct = TestContext.Current.CancellationToken;
-        CSharpCompilation compilation = CompilationHelper.CreateCompilation(IdeParityConformanceUtilityTests.LoadIdeParityCounterFixtureSource());
+        CSharpCompilation compilation = CompilationHelper.CreateCompilation(IdeParityConformanceUtilityTests.LoadIdeParityCounterFixtureSources());
         FrontComposerGenerator generator = new();
         GeneratorDriver driver = CSharpGeneratorDriver.Create(generator);
 

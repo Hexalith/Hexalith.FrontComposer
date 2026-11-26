@@ -281,9 +281,9 @@ public partial class CounterProjection
 
         CancellationToken ct = TestContext.Current.CancellationToken;
 
-        string fixtureSource = Hexalith.FrontComposer.SourceTools.Tests.IdeParity
-            .IdeParityConformanceUtilityTests.LoadIdeParityCounterFixtureSource();
-        CSharpCompilation initialCompilation = CompilationHelper.CreateCompilation(fixtureSource);
+        string[] fixtureSources = Hexalith.FrontComposer.SourceTools.Tests.IdeParity
+            .IdeParityConformanceUtilityTests.LoadIdeParityCounterFixtureSources();
+        CSharpCompilation initialCompilation = CompilationHelper.CreateCompilation(fixtureSources);
         FrontComposerGenerator generator = new();
         GeneratorDriver driver = CSharpGeneratorDriver.Create(
             [generator.AsSourceGenerator()],
@@ -305,13 +305,16 @@ public partial class CounterProjection
 
         // Warm update: mutate the projection by adding one property and re-run. This is the
         // NFR8 budget that IDE-MUST-006 gates.
-        string mutatedSource = fixtureSource.Replace(
+        SyntaxTree projectionTree = initialCompilation.SyntaxTrees
+            .Single(tree => tree.GetText(ct).ToString().Contains("class IdeParityCounterProjection", StringComparison.Ordinal));
+        string mutatedSource = projectionTree.GetText(ct).ToString().Replace(
             "public string Status { get; set; } = string.Empty;",
             "public string Status { get; set; } = string.Empty;\n    public int Version { get; set; }",
             StringComparison.Ordinal);
         CSharpCompilation mutatedCompilation = initialCompilation.ReplaceSyntaxTree(
-            initialCompilation.SyntaxTrees.First(t => t.GetText().ToString().Contains("IdeParityCounterProjection")),
-            CSharpSyntaxTree.ParseText(mutatedSource, cancellationToken: ct));
+            projectionTree,
+            CSharpSyntaxTree.ParseText(mutatedSource, (CSharpParseOptions)projectionTree.Options,
+                projectionTree.FilePath, cancellationToken: ct));
 
         // Warmup pass to absorb the JIT cost of the delta path itself; not measured.
         driver = driver.RunGenerators(mutatedCompilation, ct);
