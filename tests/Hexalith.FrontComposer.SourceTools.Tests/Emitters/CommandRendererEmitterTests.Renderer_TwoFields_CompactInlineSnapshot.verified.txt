@@ -516,7 +516,7 @@ public partial class DemoCommandRenderer : ComponentBase, global::Hexalith.Front
 
     private static readonly global::System.Action<global::Microsoft.Extensions.Logging.ILogger, string, global::Hexalith.FrontComposer.Contracts.Rendering.CommandRenderMode, global::System.Exception?> _logRendering =
         global::Microsoft.Extensions.Logging.LoggerMessage.Define<string, global::Hexalith.FrontComposer.Contracts.Rendering.CommandRenderMode>(
-            global::Microsoft.Extensions.Logging.LogLevel.Information,
+            global::Microsoft.Extensions.Logging.LogLevel.Debug,
             new global::Microsoft.Extensions.Logging.EventId(5921, "CommandRendererRendering"),
             "Rendering {CommandType} in {Mode} (density=CompactInline)");
 

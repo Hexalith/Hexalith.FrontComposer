@@ -20,6 +20,19 @@ namespace Hexalith.FrontComposer.Shell.Tests.Generated;
 
 public sealed class CommandRendererInlineTests : CommandRendererTestBase {
     [Fact]
+    public async Task Renderer_Inline_LogsInitializationAtDebug() {
+        CapturingLogger<OneFieldInlineCommandRenderer> logger = new();
+        _ = Services.AddSingleton<ILogger<OneFieldInlineCommandRenderer>>(logger);
+        await InitializeStoreAsync();
+
+        _ = Render<OneFieldInlineCommandRenderer>();
+
+        CapturedLogEntry entry = logger.Entries.Where(record => record.EventId.Id == 5921).ShouldHaveSingleItem();
+        entry.Level.ShouldBe(LogLevel.Debug);
+        entry.EventId.Name.ShouldBe("CommandRendererRendering");
+    }
+
+    [Fact]
     public async Task Renderer_ZeroFields_RendersSingleButton() {
         await InitializeStoreAsync();
 

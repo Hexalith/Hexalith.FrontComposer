@@ -3164,6 +3164,7 @@ origin: migrated from legacy ledger ("Deferred from: Story 2-2 Session D (2026-0
 location: fc-expandinrow.js
 reason: **PrefersReducedMotion bUnit assertion (`Renderer_CompactInline_PrefersReducedMotionHonored`)** — the renderer hands an `ElementReference` to `initializeExpandInRow`; the reduced-motion check happens inside the JS module and is not visible to bUnit. The contract is verified via the JS module file (`fc-expandinrow.js`); end-to-end behavior is exercised by the deferred Task 13.3 E2E pass. Reconciliation: Row: DW-0375; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: Story 2-2 Session D (2026-04-16) — bUnit-vs-spec gap.
 status: open
+decision: 2026-11-26 Skipped. The bUnit renderer test already verifies the interop boundary. The Quality JavaScript test exercises the actual reduced-motion behavior, which bUnit cannot run.
 
 ### DW-1107: Manual keyboard walk-through (Task 12.2)
 
@@ -3196,7 +3197,8 @@ resolution: Restore the confirmed Amount when reopening the Counter sample.
 origin: migrated from legacy ledger ("Deferred from: code review of story 2-2-action-density-rules-and-rendering-modes/index.md (2026-04-16)"), 2026-08-27
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 reason: **Renderer init `LogInformation` volume** — Generated renderers log `Rendering {CommandType} in {Mode} (density=…)` at Information level on every `OnInitializedAsync`. Low-risk noise in production; consider `LogDebug` or a shell option gate (tracked as low priority in Story 2-2 review findings). Reconciliation: Row: DW-0379; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC12, AC23, AC29, AC34; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of story 2-2-action-density-rules-and-rendering-modes/index.md (2026-04-16).
-status: open
+status: done 2026-11-26
+resolution: Generated renderer initialization logs at Debug under the existing event ID, name, and template. Emitter snapshots and a rendered component verify the level.
 
 ### DW-1111: Derived record shadows base `[DerivedFrom]`
 

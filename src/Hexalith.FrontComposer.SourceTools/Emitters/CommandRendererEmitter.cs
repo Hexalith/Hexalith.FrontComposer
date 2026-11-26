@@ -932,7 +932,7 @@ public static class CommandRendererEmitter {
             "LogRendering",
             5921,
             "CommandRendererRendering",
-            "Information",
+            "Debug",
             "Rendering {CommandType} in {Mode} (density=" + densityName + ")",
             hasException: false,
             ("string", "commandType"),
