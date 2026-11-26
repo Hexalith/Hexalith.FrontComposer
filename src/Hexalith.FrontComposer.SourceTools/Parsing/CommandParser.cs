@@ -36,16 +36,7 @@ public static class CommandParser {
     private const string CommandTargetAttributeName = "Hexalith.FrontComposer.Contracts.Attributes.CommandTargetAttribute";
     private const string ProjectionAttributeName = "Hexalith.FrontComposer.Contracts.Attributes.ProjectionAttribute";
 
-    /// <summary>
-    /// Story 2-5 D20 / ADR-026 — commands whose TypeName matches this pattern AND lack
-    /// <c>[Destructive]</c> surface <c>HFC1020</c>. Prefixes cover the common destructive
-    /// verbs plus the expanded set added after Red Team Attack-2 (<c>Erase</c>/<c>Drop</c>/
-    /// <c>Truncate</c>/<c>Wipe</c>) to close name-heuristic false negatives.
-    /// </summary>
-    private static readonly System.Text.RegularExpressions.Regex DestructiveNamePattern =
-        new(
-            @"^(Delete|Remove|Purge|Erase|Drop|Truncate|Wipe)(?:[A-Z]|Command$)",
-            System.Text.RegularExpressions.RegexOptions.CultureInvariant | System.Text.RegularExpressions.RegexOptions.Compiled);
+    private static readonly string[] DestructiveVerbs = ["Delete", "Remove", "Purge", "Erase", "Drop", "Truncate", "Wipe"];
 
     /// <summary>Warning threshold for non-derivable property count.</summary>
     public const int NonDerivableWarningThreshold = 30;
@@ -168,7 +159,7 @@ public static class CommandParser {
         // Story 2-5 D20 / HFC1020 (Info) — name-heuristic guardrail: command matches destructive verb pattern
         // but lacks [Destructive]. Info severity in v0.1 to prevent Day-1 adoption blockers (promotion to
         // Warning + [SuppressHFC1020] ship in Story 9-4).
-        if (!isDestructive && DestructiveNamePattern.IsMatch(typeSymbol.Name)) {
+        if (!isDestructive && HasDestructiveName(typeSymbol.Name)) {
             diagnostics.Add(new DiagnosticInfo(
                 "HFC1020",
                 string.Format(
@@ -381,6 +372,19 @@ public static class CommandParser {
         return new CommandParseResult(
             model,
             new EquatableArray<DiagnosticInfo>(diagnostics.ToImmutableArray()));
+    }
+
+    /// <summary>Recognizes destructive verbs followed by a PascalCase word boundary for HFC1020.</summary>
+    private static bool HasDestructiveName(string name) {
+        foreach (string verb in DestructiveVerbs) {
+            if (name.Length > verb.Length
+                && name.StartsWith(verb, StringComparison.Ordinal)
+                && name[verb.Length] is >= 'A' and <= 'Z') {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static CommandTargetModel? ParseCommandTarget(

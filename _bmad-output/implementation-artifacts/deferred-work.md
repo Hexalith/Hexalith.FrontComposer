@@ -2819,7 +2819,8 @@ resolution: Initializes every field of the idle singleton and tests the absence 
 origin: migrated from legacy ledger ("Deferred from: code review of story 2-5 full adversarial pass (2026-04-17)"), 2026-08-27
 location: CommandParser.cs
 reason: **`DestructiveNamePattern` `RegexOptions.Compiled` in source generator** — anti-pattern in Roslyn generators; prefer `[GeneratedRegex]`. Low priority, no correctness impact. `CommandParser.cs` Reconciliation: Row: DW-0325; Accepted constraint 2026-05-14; Decision owner: FrontComposer SourceTools maintainers; Evidence: `_bmad-output/implementation-artifacts/11-4-drift-detection-and-source-generator-coverage-hardening.md`, SourceTools focused tests, and performance lane evidence; Likelihood: low; Impact: low; Release risk: low because this is generator allocation hygiene, not drift correctness; Downstream impact: source-generator host performance only; Review trigger: generator host profiling flags this regex or `CommandParser` receives a broader policy/destructive parsing refactor; Previous owner was Story 11.4.
-status: open
+status: done 2026-11-26
+resolution: Replaced the dynamically compiled regular expression with ordinal prefix and ASCII boundary checks compatible with the netstandard2.0 generator.
 
 ### DW-1057: `FormAbandonmentThresholdSeconds` unit inconsistency
 
