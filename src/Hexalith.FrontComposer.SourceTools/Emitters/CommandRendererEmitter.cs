@@ -862,7 +862,7 @@ public static class CommandRendererEmitter {
     /// <remarks>
     /// Event ids use the generated-code <c>5920</c>-<c>5939</c> band, which is disjoint from the form
     /// emitter's <c>5900</c>-<c>5919</c> band and from the Shell's Security <c>5660</c>-<c>5692</c>,
-    /// HotPath <c>5700</c>-<c>5780</c>, and Warning <c>5800</c>-<c>5853</c> families. A helper is emitted
+    /// HotPath <c>5700</c>-<c>5780</c>, and Warning <c>5800</c>-<c>5855</c> families. A helper is emitted
     /// only when its call site is emitted, so no unused private member is generated.
     /// </remarks>
     /// <param name="sb">Target buffer, positioned inside the generated class body.</param>

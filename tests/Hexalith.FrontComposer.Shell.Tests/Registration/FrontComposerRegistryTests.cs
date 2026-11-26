@@ -144,6 +144,29 @@ public class FrontComposerRegistryTests {
         }
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void ExplicitLabelEqualToContextParticipatesInConflictDetection(bool contextLabelFirst) {
+        CapturingLogger<FrontComposerRegistry> logger = new();
+        FrontComposerRegistry registry = new([], [], logger);
+        DomainManifest contextLabel = new("Counter", "Counter", ["Sample.FirstProjection"], []) { HasExplicitDisplayLabel = true };
+        DomainManifest differentLabel = new("Counter management", "Counter", ["Sample.SecondProjection"], []);
+        DomainManifest first = contextLabelFirst ? contextLabel : differentLabel;
+        DomainManifest second = contextLabelFirst ? differentLabel : contextLabel;
+
+        // Begin with a fallback to exercise propagation when an explicit label is selected.
+        registry.RegisterDomain(new DomainManifest("Counter", "Counter", [], []));
+        registry.RegisterDomain(first);
+        registry.RegisterDomain(second);
+
+        registry.GetManifests().ShouldHaveSingleItem().Name.ShouldBe(first.Name);
+        CapturedLogEntry warning = logger.Entries.ShouldHaveSingleItem();
+        warning.EventId.Name.ShouldBe("RegistryDisplayLabelConflict");
+        warning.State["CurrentLabelDigest"].ShouldBeOfType<string>().ShouldStartWith("sha256:");
+        warning.State["IncomingLabelDigest"].ShouldNotBe(warning.State["CurrentLabelDigest"]);
+    }
+
     [Fact]
     public void AddHexalithFrontComposer_RegistersRegistry() {
         ServiceCollection services = new();

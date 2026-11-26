@@ -67,6 +67,10 @@ public static class RegistrationEmitter {
         _ = sb.AppendLine("        Commands: " + commandsList + ",");
         _ = sb.AppendLine("        CommandPolicies: " + (hasPolicyMap ? policyMap : "null") + ")");
         _ = sb.AppendLine("    {");
+        if (model.DisplayLabel is not null) {
+            _ = sb.AppendLine("        HasExplicitDisplayLabel = true,");
+        }
+
         _ = sb.AppendLine("        FullPageCommands = " + fullPageCommandsList + ",");
         _ = sb.AppendLine("    };");
         _ = sb.AppendLine();

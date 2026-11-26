@@ -226,7 +226,7 @@ internal sealed class FrontComposerRegistry : IFrontComposerRegistry, IFrontComp
             }
 
             DomainManifest existing = _manifests[existingIndex];
-            string name = ChooseName(existing.Name, incoming.Name, existing.BoundedContext);
+            DomainManifest displayManifest = ChooseDisplayManifest(existing, incoming);
 
             // Preserve the existing manifest's display metadata (Icon / NameKey / Resource) and fall back
             // to the incoming manifest's when the existing one left them unset, so a later registration can
@@ -236,7 +236,8 @@ internal sealed class FrontComposerRegistry : IFrontComposerRegistry, IFrontComp
             // a custom registry consumer or hand-rolled manifest can leave Projections / Commands null,
             // and Concat would otherwise throw under _sync during host startup on the second registration.
             DomainManifest merged = existing with {
-                Name = name,
+                Name = displayManifest.Name,
+                HasExplicitDisplayLabel = displayManifest.HasExplicitDisplayLabel,
                 Projections = [.. existing.Projections.Concat(incoming.Projections).Distinct(StringComparer.Ordinal)],
                 Commands = [.. existing.Commands.Concat(incoming.Commands).Distinct(StringComparer.Ordinal)],
                 CommandPolicies = MergeCommandPolicies(existing.CommandPolicies, incoming.CommandPolicies),
@@ -395,24 +396,21 @@ internal sealed class FrontComposerRegistry : IFrontComposerRegistry, IFrontComp
         return merged;
     }
 
-    private string ChooseName(string currentName, string candidateName, string boundedContext) {
-        if (string.IsNullOrWhiteSpace(currentName)) {
-            return candidateName;
+    private DomainManifest ChooseDisplayManifest(DomainManifest existing, DomainManifest incoming) {
+        bool existingExplicit = HasDisplayLabel(existing);
+        bool incomingExplicit = HasDisplayLabel(incoming);
+        if (!existingExplicit && (incomingExplicit || string.IsNullOrWhiteSpace(existing.Name))) {
+            return incoming;
         }
 
-        if (string.IsNullOrWhiteSpace(candidateName)
-            || string.Equals(candidateName, boundedContext, StringComparison.Ordinal)) {
-            return currentName;
+        if (existingExplicit && incomingExplicit && !string.Equals(existing.Name, incoming.Name, StringComparison.Ordinal)) {
+            FrontComposerWarningLog.RegistryDisplayLabelConflict(_logger, existing.BoundedContext, existing.Name, incoming.Name);
         }
 
-        if (string.Equals(currentName, boundedContext, StringComparison.Ordinal)) {
-            return candidateName;
-        }
-
-        if (!string.Equals(currentName, candidateName, StringComparison.Ordinal)) {
-            FrontComposerWarningLog.RegistryDisplayLabelConflict(_logger, boundedContext);
-        }
-
-        return currentName;
+        return existing;
     }
+
+    private static bool HasDisplayLabel(DomainManifest manifest)
+        => !string.IsNullOrWhiteSpace(manifest.Name)
+            && (manifest.HasExplicitDisplayLabel || !string.Equals(manifest.Name, manifest.BoundedContext, StringComparison.Ordinal));
 }

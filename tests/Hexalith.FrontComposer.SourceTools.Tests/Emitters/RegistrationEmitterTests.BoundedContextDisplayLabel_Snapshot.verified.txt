@@ -23,6 +23,7 @@ public static class OrderProjectionRegistration
         Commands: new List<string>(),
         CommandPolicies: null)
     {
+        HasExplicitDisplayLabel = true,
         FullPageCommands = new List<string>(),
     };
 

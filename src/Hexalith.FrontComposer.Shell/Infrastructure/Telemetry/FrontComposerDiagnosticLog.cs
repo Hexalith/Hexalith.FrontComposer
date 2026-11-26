@@ -41,7 +41,7 @@ namespace Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 /// <para>
 /// EventIds occupy <c>6000-6072</c>. The occupied Shell bands below it are
 /// <see cref="FrontComposerLog"/> at <c>5601-5650</c> (pre-11.18), and the Story 11.18 families
-/// Security <c>5660-5692</c>, HotPath <c>5700-5780</c>, and Warning <c>5800-5853</c>;
+/// Security <c>5660-5692</c>, HotPath <c>5700-5780</c>, and Warning <c>5800-5855</c>;
 /// SourceTools-generated output owns <c>5900+</c>.
 /// </para>
 /// </remarks>

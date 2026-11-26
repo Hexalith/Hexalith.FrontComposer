@@ -235,7 +235,7 @@ public sealed class FrontComposerWarningLogTests
         FrontComposerWarningLog.ThemeHydrationFailed(logger, exception);
         FrontComposerWarningLog.ThemePersistenceFailed(logger, exception);
         FrontComposerWarningLog.EventStoreLifecycleCallbackFailed(logger, Sensitive, exception);
-        FrontComposerWarningLog.RegistryDisplayLabelConflict(logger, Sensitive);
+        FrontComposerWarningLog.RegistryDisplayLabelConflict(logger, Sensitive, Sensitive, Sensitive);
 
         logger.Entries.Select(static entry => entry.EventId.Id).ShouldBe(Enumerable.Range(5800, 56));
         logger.Entries.Select(static entry => entry.EventId.Name).ShouldBe(ExpectedEventNames);

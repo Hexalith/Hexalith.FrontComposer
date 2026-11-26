@@ -399,14 +399,14 @@ internal static partial class FrontComposerWarningLog
     }
 
     /// <summary>Reports distinct display labels supplied for one bounded context.</summary>
-    public static void RegistryDisplayLabelConflict(ILogger? logger, string boundedContext)
+    public static void RegistryDisplayLabelConflict(ILogger? logger, string boundedContext, string currentLabel, string incomingLabel)
     {
         if (logger is null || !logger.IsEnabled(LogLevel.Warning))
         {
             return;
         }
 
-        LogRegistryDisplayLabelConflict(logger, Digest(boundedContext));
+        LogRegistryDisplayLabelConflict(logger, Digest(boundedContext), Digest(currentLabel), Digest(incomingLabel));
     }
 
     /// <summary>Emits the <c>RegistryPolicyConflict</c> residual warning-and-above event.</summary>
@@ -1481,8 +1481,8 @@ internal static partial class FrontComposerWarningLog
     private static partial void LogThemeHydrationFailed(ILogger logger, string exceptionType);
 
     [LoggerMessage(EventId = 5855, EventName = "RegistryDisplayLabelConflict", Level = LogLevel.Warning,
-        Message = "Registrations supplied different display labels for one bounded context. BoundedContextDigest={BoundedContextDigest}. The first explicit label was kept. Use the same display label in all registrations for the context.")]
-    private static partial void LogRegistryDisplayLabelConflict(ILogger logger, string boundedContextDigest);
+        Message = "Registrations supplied different display labels for one bounded context. BoundedContextDigest={BoundedContextDigest} CurrentLabelDigest={CurrentLabelDigest} IncomingLabelDigest={IncomingLabelDigest}. The first explicit label was kept. Use the same display label in all registrations for the context.")]
+    private static partial void LogRegistryDisplayLabelConflict(ILogger logger, string boundedContextDigest, string currentLabelDigest, string incomingLabelDigest);
 
     [LoggerMessage(EventId = 5853, EventName = "ThemePersistenceFailed", Level = LogLevel.Warning,
         Message = "Failed to persist theme state. ExceptionType={ExceptionType}.")]

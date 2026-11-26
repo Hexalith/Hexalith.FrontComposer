@@ -36,6 +36,10 @@ public record DomainManifest(
     private static readonly IReadOnlyDictionary<string, string> EmptyCommandPolicies =
         new Dictionary<string, string>(StringComparer.Ordinal);
 
+    /// <summary>Indicates that <see cref="Name"/> was supplied as an explicit display label.</summary>
+    /// <remarks>Set when the explicit display label is identical to the bounded context name.</remarks>
+    public bool HasExplicitDisplayLabel { get; init; }
+
     /// <summary>
     /// Gets command authorization policies keyed by command fully qualified type name.
     /// </summary>
