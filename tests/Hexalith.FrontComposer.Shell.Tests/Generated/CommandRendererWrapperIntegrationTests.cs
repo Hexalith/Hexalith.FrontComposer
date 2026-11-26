@@ -1660,6 +1660,31 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
     }
 
     [Fact]
+    public async Task GeneratedTextNumericAndUnsupportedFieldsRenderWithInlineRangeValidation()
+    {
+        await InitializeStoreAsync();
+        IRenderedComponent<CoverageFieldsCommandForm> cut = Render<CoverageFieldsCommandForm>(p => p
+            .Add(form => form.InitialValue, new CoverageFieldsCommand { Name = "Example", Quantity = 31 }));
+
+        IRenderedComponent<FluentTextInput>[] textEditors = [.. cut.FindComponents<FluentTextInput>()];
+        textEditors.Single(editor => editor.Instance.Name == nameof(CoverageFieldsCommand.Name)).Instance.Value.ShouldBe("Example");
+        textEditors.Single(editor => editor.Instance.Name == nameof(CoverageFieldsCommand.Quantity)).Instance.InputMode.ShouldBe(TextInputMode.Numeric);
+        var placeholder = cut.FindComponent<Hexalith.FrontComposer.Shell.Components.Rendering.FcFieldPlaceholder>();
+        placeholder.Find("strong").TextContent.ShouldBe(nameof(CoverageFieldsCommand.Metadata));
+        placeholder.Find("[aria-label]").GetAttribute("aria-label").ShouldNotBeNull().ShouldContain(nameof(CoverageFieldsCommand.Metadata));
+        placeholder.Find("a").GetAttribute("href").ShouldEndWith("/HFC1002");
+
+        cut.Find("form").Submit();
+
+        cut.WaitForAssertion(() => {
+            AngleSharp.Dom.IElement editor = cut.Find("[name='Quantity']");
+            editor.GetAttribute("data-fc-invalid").ShouldBe("true");
+            editor.Closest("fluent-field").ShouldNotBeNull().QuerySelectorAll(".fluent-validation-message")
+                .ShouldHaveSingleItem().TextContent.Trim().ShouldBe("Choose a quantity from 1 through 20.");
+        });
+    }
+
+    [Fact]
     public async Task GeneratedSwitchDatePickerAndEnumSelectHonorTheFieldContract() {
         // The Fluent date picker's calendar and the Fluent select initialize through their own interop.
         JSInterop.SetupModule("./_content/Microsoft.FluentUI.AspNetCore.Components/Components/DateTime/FluentCalendar.razor.js").Mode = JSRuntimeMode.Loose;

@@ -3004,7 +3004,8 @@ archived: 2026-09-18
 origin: migrated from legacy ledger ("Deferred from: code review of story 2-1 (2026-04-15)"), 2026-08-27
 location: Directory.Packages.props
 reason: **Task 8.3–8.7 test coverage gap** — 10 bUnit rendering tests, 9 numeric-converter edge-case tests, 5 FcFieldPlaceholder a11y tests, 3 FsCheck property tests all deferred. `FsCheck.Xunit.v3` was added to `Directory.Packages.props` but is unused. Pick up during story 2-2 or a dedicated test-hardening pass; parseability + Counter compile is not a substitute for per-field render/a11y correctness. Reconciliation: Row: DW-0352; Final classification 2026-05-13: accepted-with-risk; Decision owner: Story 11.6 release owner; AC coverage: AC17-AC20, AC35; Score: impact=low/medium; risk=low; cost=medium/high; adjacency=accepted; Rationale: Low release-readiness risk or existing lower-level evidence is sufficient for this release pass.; Validation/evidence: focused Story 11.6 Shell/Counter validation plus historical source row; revisit on matching regression or adopter request; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of story 2-1 (2026-04-15).
-status: open
+status: done 2026-11-26
+resolution: Added rendered form and real Range validation coverage, generated numeric converter edge cases, and the three FsCheck properties. The existing placeholder and abandonment tests cover the current contracts.
 
 ### DW-1084: Dual command registration path (ADR-012 intent)
 

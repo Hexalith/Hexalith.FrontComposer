@@ -1,4 +1,6 @@
 
+using FsCheck.Xunit;
+
 using Hexalith.FrontComposer.SourceTools.Transforms;
 
 using Shouldly;
@@ -23,6 +25,15 @@ public class CamelCaseHumanizerTests {
     [InlineData("VeryLongEnumMemberNameThatExceedsThirtyCharacterLimit", "Very Long Enum Member Name That Exceeds Thirty Character Limit")]
     [InlineData("Name", "Name")]
     public void Humanize_KnownInputs_ReturnsExpected(string input, string expected) => CamelCaseHumanizer.Humanize(input).ShouldBe(expected);
+
+    [Property]
+    public bool HumanizedIdentifiersAreNonblankAndTrimmed(byte[] codePoints)
+    {
+        const string identifierCharacters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_";
+        string identifier = "a" + string.Concat(codePoints.Select(value => identifierCharacters[value % identifierCharacters.Length]));
+        string? label = CamelCaseHumanizer.Humanize(identifier);
+        return !string.IsNullOrWhiteSpace(label) && label == label.Trim();
+    }
 
     [Fact]
     [Trait("Category", "MutationErrorRegression")]

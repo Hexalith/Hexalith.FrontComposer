@@ -82,6 +82,26 @@ public class CommandDensityTests {
         withIcon.Equals(withoutIcon).ShouldBeFalse();
     }
 
+    [Property]
+    public bool CommandModelEqualityIsSymmetricAndAgreesWithHashing(int leftShape, int rightShape, bool sameShape)
+    {
+        CommandModel BuildModel(int shape)
+        {
+            var field = new PropertyModel(
+                "Field" + unchecked((uint)shape).ToString(System.Globalization.CultureInfo.InvariantCulture), "Int32",
+                false, false, null, default);
+            var fields = new EquatableArray<PropertyModel>(ImmutableArray.Create(field));
+            return new CommandModel("Example", "TestDomain", "Test", null, null, fields, default, fields);
+        }
+
+        CommandModel left = BuildModel(leftShape);
+        CommandModel right = BuildModel(sameShape ? leftShape : rightShape);
+        bool equivalent = sameShape || leftShape == rightShape;
+        return left.Equals(right) == equivalent
+            && right.Equals(left) == equivalent
+            && (!equivalent || left.GetHashCode() == right.GetHashCode());
+    }
+
     // 4. Hash-code participation.
     [Fact]
     public void CommandModel_HashCode_IncludesDensityAndIconName() {

@@ -17,6 +17,17 @@ namespace Hexalith.FrontComposer.SourceTools.Tests.Emitters;
 /// <summary>Compiles and hosts a generated form to exercise its typed field callbacks.</summary>
 internal sealed class TypedFieldFormFixture : IDisposable
 {
+    private static readonly Lazy<Type> NumericFormType = new(() => Compile("""
+        using Hexalith.FrontComposer.Contracts.Attributes;
+        namespace TypedInputs;
+        [Command] public sealed class EditCommand
+        {
+            public string MessageId { get; set; } = string.Empty;
+            public int Quantity { get; set; }
+            public int? OptionalQuantity { get; set; }
+            public decimal Price { get; set; }
+        }
+        """));
     private readonly ComponentBase _component;
     private readonly Type _type;
     private readonly ServiceProvider _services;
@@ -61,6 +72,15 @@ internal sealed class TypedFieldFormFixture : IDisposable
     {
         string suffix = nullable ? "?" : string.Empty;
         string source = "using System; using Hexalith.FrontComposer.Contracts.Attributes; namespace TypedInputs; [Command] public sealed class EditCommand { public Guid" + suffix + " Identifier { get; set; } public TimeOnly" + suffix + " At { get; set; } }";
+        return new TypedFieldFormFixture((ComponentBase)Activator.CreateInstance(Compile(source)).ShouldNotBeNull());
+    }
+
+    /// <summary>Hosts a fresh model for the generated integer and decimal editors.</summary>
+    internal static TypedFieldFormFixture CreateNumeric()
+        => new((ComponentBase)Activator.CreateInstance(NumericFormType.Value).ShouldNotBeNull());
+
+    private static Type Compile(string source)
+    {
         CSharpCompilation input = CompilationHelper.CreateCompilation(source, assemblyName: "TypedInput_" + Guid.NewGuid().ToString("N"));
         GeneratorDriver driver = CSharpGeneratorDriver.Create(new FrontComposerGenerator()).WithUpdatedParseOptions(CSharpParseOptions.Default.WithPreprocessorSymbols("NET11_0_OR_GREATER"));
         GeneratorDriverRunResult result = driver.RunGenerators(input, TestContext.Current.CancellationToken).GetRunResult();
@@ -70,8 +90,7 @@ internal sealed class TypedFieldFormFixture : IDisposable
         Microsoft.CodeAnalysis.Emit.EmitResult emitted = output.Emit(stream, cancellationToken: TestContext.Current.CancellationToken);
         emitted.Success.ShouldBeTrue(string.Join(Environment.NewLine, emitted.Diagnostics));
         stream.Position = 0;
-        Type type = AssemblyLoadContext.Default.LoadFromStream(stream).GetType("TypedInputs.EditCommandForm").ShouldNotBeNull();
-        return new TypedFieldFormFixture((ComponentBase)Activator.CreateInstance(type).ShouldNotBeNull());
+        return AssemblyLoadContext.Default.LoadFromStream(stream).GetType("TypedInputs.EditCommandForm").ShouldNotBeNull();
     }
 
     /// <summary>Reads the actual generated submission parse-error gate.</summary>
