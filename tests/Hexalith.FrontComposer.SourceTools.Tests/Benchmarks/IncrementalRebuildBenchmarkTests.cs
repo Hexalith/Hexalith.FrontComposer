@@ -158,7 +158,7 @@ public partial class CounterProjection
     public void MalformedProjection_ToleratedWithoutGeneratorException() {
         CancellationToken ct = TestContext.Current.CancellationToken;
 
-        const string malformed = """
+        const string source = """
             using Hexalith.FrontComposer.Contracts.Attributes;
 
             namespace TestDomain;
@@ -167,11 +167,18 @@ public partial class CounterProjection
             public partial class Healthy { public string Id { get; set; } = ""; }
 
             [Projection]
-            public partial class Bad { public string Id { get; } }
-
-            public partial class Bad { public string Name { get } }
+            [Command]
+            public partial class Bad {
+                public string Id { get; set; } = "";
+            }
             """;
-        CSharpCompilation compilation = CompilationHelper.CreateCompilation(malformed);
+        const string incompletePartial = """
+            namespace TestDomain;
+            public partial class Bad {
+                private void Scratch() { return }
+            }
+            """;
+        CSharpCompilation compilation = CompilationHelper.CreateCompilation([source, incompletePartial]);
         FrontComposerGenerator generator = new();
 
         GeneratorDriver driver = CSharpGeneratorDriver.Create(generator);
@@ -183,16 +190,20 @@ public partial class CounterProjection
         GeneratorDriverRunResult result = driver.GetRunResult();
 
         GeneratedSourceResult[] generated = result.Results.Single().GeneratedSources.ToArray();
-        generated.ShouldNotContain(source => source.HintName.StartsWith("TestDomain.Bad", StringComparison.Ordinal));
-        generated.ShouldContain(source => source.HintName == "TestDomain.Healthy.g.razor.cs");
-        generated.Single(source => source.HintName == "FrontComposerMcpManifest.g.cs")
+        generated.ShouldNotContain(item => item.HintName.StartsWith("TestDomain.Bad", StringComparison.Ordinal));
+        generated.ShouldContain(item => item.HintName == "TestDomain.Healthy.g.razor.cs");
+        generated.Single(item => item.HintName == "FrontComposerMcpManifest.g.cs")
             .SourceText.ToString().ShouldNotContain("TestDomain.Bad");
 
-        CSharpCompilation repaired = CompilationHelper.CreateCompilation(
-            malformed.Replace("{ get }", "{ get; }", StringComparison.Ordinal));
+        SyntaxTree incompleteTree = compilation.SyntaxTrees.Last();
+        SyntaxTree repairedTree = CSharpSyntaxTree.ParseText(
+            incompletePartial.Replace("return }", "return; }", StringComparison.Ordinal),
+            (CSharpParseOptions)incompleteTree.Options, incompleteTree.FilePath, cancellationToken: ct);
+        CSharpCompilation repaired = compilation.ReplaceSyntaxTree(incompleteTree, repairedTree);
         GeneratorDriver repairedDriver = driver.RunGenerators(repaired, ct);
-        repairedDriver.GetRunResult().Results.Single().GeneratedSources
-            .ShouldContain(source => source.HintName == "TestDomain.Bad.g.razor.cs");
+        var repairedSources = repairedDriver.GetRunResult().Results.Single().GeneratedSources;
+        repairedSources.ShouldContain(generatedSource => generatedSource.HintName == "TestDomain.Bad.g.razor.cs");
+        repairedSources.ShouldContain(generatedSource => generatedSource.HintName == "TestDomain.Bad.CommandForm.g.razor.cs");
 
         // (b) Compile diagnostics come from Roslyn (CS*), not from the generator —
         //     the developer sees the real problem (missing `;`, missing `}`) from

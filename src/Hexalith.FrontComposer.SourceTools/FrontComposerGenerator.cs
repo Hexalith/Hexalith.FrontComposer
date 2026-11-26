@@ -19,24 +19,28 @@ namespace Hexalith.FrontComposer.SourceTools;
 /// </summary>
 [Generator]
 public sealed class FrontComposerGenerator : IIncrementalGenerator {
+    private const string ProjectionAttributeName = "Hexalith.FrontComposer.Contracts.Attributes.ProjectionAttribute";
+
     /// <inheritdoc />
     public void Initialize(IncrementalGeneratorInitializationContext context) {
         IncrementalValuesProvider<(ParseResult Parsed, bool HasSyntaxErrors)> projectionInputs = context.SyntaxProvider
             .ForAttributeWithMetadataName(
-                "Hexalith.FrontComposer.Contracts.Attributes.ProjectionAttribute",
+                ProjectionAttributeName,
                 predicate: static (node, _) => node is TypeDeclarationSyntax,
                 transform: static (ctx, ct) => ParseProjection(ctx, ct))
             .WithTrackingName("Parse");
         IncrementalValuesProvider<ParseResult> projectionResults = projectionInputs.Select(static (input, _) =>
             input.HasSyntaxErrors ? new ParseResult(null, input.Parsed.Diagnostics) : input.Parsed);
 
-        IncrementalValuesProvider<CommandParseResult> commandResults = context.SyntaxProvider
+        IncrementalValuesProvider<(CommandParseResult Parsed, bool HasProjectionSyntaxErrors)> commandInputs = context.SyntaxProvider
             .ForAttributeWithMetadataName(
                 "Hexalith.FrontComposer.Contracts.Attributes.CommandAttribute",
                 predicate: static (node, _) => node is TypeDeclarationSyntax,
-                transform: static (ctx, ct) => ParseCommand(ctx, ct))
-            .Where(static result => result.Model is not null || result.Diagnostics.Count > 0)
+                transform: static (ctx, ct) => ParseCommandForGeneration(ctx, ct))
+            .Where(static input => input.Parsed.Model is not null || input.Parsed.Diagnostics.Count > 0)
             .WithTrackingName("ParseCommand");
+        IncrementalValuesProvider<CommandParseResult> commandResults = commandInputs.Select(static (input, _) =>
+            input.HasProjectionSyntaxErrors ? new CommandParseResult(null, input.Parsed.Diagnostics) : input.Parsed);
 
         // Story 6-2 T3 — incremental discovery of [ProjectionTemplate] markers.
         IncrementalValuesProvider<ProjectionTemplateMarkerResult> templateResults = context.SyntaxProvider
@@ -66,8 +70,10 @@ public sealed class FrontComposerGenerator : IIncrementalGenerator {
         // the parsed declaration so an incomplete edit is not reported as removal.
         IncrementalValueProvider<ImmutableArray<ParseResult>> driftProjections =
             projectionInputs.Select(static (input, _) => input.Parsed).Collect();
+        IncrementalValueProvider<ImmutableArray<CommandParseResult>> driftCommands =
+            commandInputs.Select(static (input, _) => input.Parsed).Collect();
         context.RegisterSourceOutput(
-            driftProjections.Combine(collectedCommands).Combine(collectedDriftBaselines.Combine(driftOptions)),
+            driftProjections.Combine(driftCommands).Combine(collectedDriftBaselines.Combine(driftOptions)),
             static (spc, source) => {
                 ImmutableArray<ParseResult> projections = source.Left.Left;
                 ImmutableArray<CommandParseResult> commands = source.Left.Right;
@@ -305,18 +311,28 @@ public sealed class FrontComposerGenerator : IIncrementalGenerator {
     /// <summary>Records whether a parsed projection has a syntactically incomplete declaration.</summary>
     private static (ParseResult Parsed, bool HasSyntaxErrors) ParseProjection(GeneratorAttributeSyntaxContext context, CancellationToken ct) {
         ParseResult result = AttributeParser.Parse(context, ct);
-        if (result.Model is null || context.TargetSymbol is not INamedTypeSymbol projection) {
-            return (result, false);
-        }
+        return (result, result.Model is not null && context.TargetSymbol is INamedTypeSymbol projection
+            && HasSyntaxErrors(projection, ct));
+    }
 
-        foreach (SyntaxReference declaration in projection.DeclaringSyntaxReferences) {
+    /// <summary>Suppresses command output for an incomplete type that also declares a projection.</summary>
+    private static (CommandParseResult Parsed, bool HasProjectionSyntaxErrors) ParseCommandForGeneration(
+        GeneratorAttributeSyntaxContext context, CancellationToken ct) {
+        CommandParseResult result = ParseCommand(context, ct);
+        return (result, result.Model is not null && context.TargetSymbol is INamedTypeSymbol command
+            && command.GetAttributes().Any(static attribute => attribute.AttributeClass?.ToDisplayString() == ProjectionAttributeName)
+            && HasSyntaxErrors(command, ct));
+    }
+
+    private static bool HasSyntaxErrors(INamedTypeSymbol type, CancellationToken ct) {
+        foreach (SyntaxReference declaration in type.DeclaringSyntaxReferences) {
             SyntaxNode node = declaration.GetSyntax(ct);
             if (node.ContainsDiagnostics && node.GetDiagnostics().Any(static d => d.Severity == DiagnosticSeverity.Error)) {
-                return (result, true);
+                return true;
             }
         }
 
-        return (result, false);
+        return false;
     }
 
     private static string GetQualifiedHintPrefix(string @namespace, string typeName)
