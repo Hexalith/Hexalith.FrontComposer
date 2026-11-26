@@ -26,7 +26,6 @@ public sealed class FrontComposerGenerator : IIncrementalGenerator {
                 "Hexalith.FrontComposer.Contracts.Attributes.ProjectionAttribute",
                 predicate: static (node, _) => node is TypeDeclarationSyntax,
                 transform: static (ctx, ct) => ParseProjection(ctx, ct))
-            .Where(static result => result.Model is not null || result.Diagnostics.Count > 0)
             .WithTrackingName("Parse");
 
         IncrementalValuesProvider<CommandParseResult> commandResults = context.SyntaxProvider

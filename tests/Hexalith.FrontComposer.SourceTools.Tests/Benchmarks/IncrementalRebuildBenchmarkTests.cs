@@ -179,8 +179,8 @@ public partial class CounterProjection
         // (c) The generator must not throw — this is what the developer inner
         //     loop actually exercises whenever `dotnet watch` runs against a
         //     file the developer is mid-way through editing.
-        GeneratorDriverRunResult result = Should
-            .NotThrow(() => driver.RunGenerators(compilation, ct).GetRunResult());
+        driver = Should.NotThrow(() => driver.RunGenerators(compilation, ct));
+        GeneratorDriverRunResult result = driver.GetRunResult();
 
         GeneratedSourceResult[] generated = result.Results.Single().GeneratedSources.ToArray();
         generated.ShouldNotContain(source => source.HintName.StartsWith("TestDomain.Bad", StringComparison.Ordinal));
@@ -190,7 +190,7 @@ public partial class CounterProjection
 
         CSharpCompilation repaired = CompilationHelper.CreateCompilation(
             malformed.Replace("{ get }", "{ get; }", StringComparison.Ordinal));
-        GeneratorDriver repairedDriver = driver.RunGenerators(compilation, ct).RunGenerators(repaired, ct);
+        GeneratorDriver repairedDriver = driver.RunGenerators(repaired, ct);
         repairedDriver.GetRunResult().Results.Single().GeneratedSources
             .ShouldContain(source => source.HintName == "TestDomain.Bad.g.razor.cs");
 
@@ -236,6 +236,23 @@ public partial class CounterProjection
             "beyond the malformed source's original diagnostics. This regresses the inner-loop experience: " +
             "the developer sees generator-amplified noise on top of the real edit-in-progress error. " +
             $"New errors: [{string.Join("; ", newGeneratorErrors.Select(d => d.Id + " " + d.GetMessage(System.Globalization.CultureInfo.InvariantCulture)))}].");
+    }
+
+    [Fact]
+    public void SoleIncompleteProjectionDoesNotTriggerNoAnnotatedTypesWarning() {
+        const string source = """
+            using Hexalith.FrontComposer.Contracts.Attributes;
+
+            [Projection]
+            public partial class Incomplete { public string Id { get } }
+            """;
+        CancellationToken ct = TestContext.Current.CancellationToken;
+        GeneratorDriverRunResult result = CSharpGeneratorDriver.Create(new FrontComposerGenerator())
+            .RunGenerators(CompilationHelper.CreateCompilation(source), ct).GetRunResult();
+
+        result.Diagnostics.ShouldNotContain(diagnostic => diagnostic.Id == "HFC1001");
+        result.Results.Single().GeneratedSources.ShouldNotContain(
+            generated => generated.HintName.StartsWith("Incomplete", StringComparison.Ordinal));
     }
 
     // Story 9-3 — IDE-MUST-006: NFR8 evidence row claims CI-blocking 500 ms warm-update
