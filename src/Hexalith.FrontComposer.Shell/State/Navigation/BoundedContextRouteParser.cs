@@ -54,7 +54,8 @@ public static class BoundedContextRouteParser {
 
     private static string? DecodeAndNormalize(string segment) {
         try {
-            return Uri.UnescapeDataString(segment).ToLowerInvariant();
+            string decoded = Uri.UnescapeDataString(segment);
+            return decoded.AsSpan().IndexOfAny('/', '\\') < 0 ? decoded.ToLowerInvariant() : null;
         }
         catch (UriFormatException) {
             return null;

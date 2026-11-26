@@ -23,6 +23,12 @@ public sealed class BoundedContextRouteParserTests {
     [InlineData("/commands/Commerce/SubmitOrderCommand", "commerce")]
     [InlineData("https://localhost/commands/Commerce/SubmitOrderCommand?from=palette", "commerce")]
     [InlineData("/commands/Caf%C3%A9/SubmitOrderCommand", "café")]
+    [InlineData("/commands/%43ommerce/SubmitOrderCommand", "commerce")]
+    [InlineData("/commands/Commerce%2fWest/SubmitOrderCommand", null)]
+    [InlineData("domain/Commerce%5CWest/submit-order-command", null)]
+    [InlineData("/Counter%2FAdmin/Counter-View", null)]
+    [InlineData("https://localhost/commands/Commerce%2FWest/SubmitOrderCommand", null)]
+    [InlineData("https://localhost/counter/counter-view?return=%2Fhome", "counter")]
     [InlineData("/commands/commerce", null)]
     // Story 3-6 Review F-EH-004: 2-segment /domain/{bc} landing routes resolve to their BC so
     // persist / restore stays symmetric (previously returned null, asymmetric with capture).

@@ -2668,7 +2668,8 @@ resolution: Rejects network-path references before extracting shell navigation c
 origin: migrated from legacy ledger ("Deferred from: code review of story 3-4-fccommandpalette-and-keyboard-shortcuts — Chunk 3 re-review (2026-04-21 pass 4)"), 2026-08-27
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 reason: **`BoundedContextRouteParser` encoded-slash `%2F` in segment** — low-likelihood in practice; `Uri.AbsolutePath` decoding already normalises `%2F` for absolute URIs. Relative paths carry the raw encoding through, but v1 routes are framework-generated and never emit `%2F`. Reconciliation: Row: DW-0304; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC12, AC23, AC29, AC34; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of story 3-4-fccommandpalette-and-keyboard-shortcuts — Chunk 3 re-review (2026-04-21 pass 4).
-status: open
+status: done 2026-11-26
+resolution: Rejects encoded slash and backslash inside a bounded-context segment in absolute and app-relative paths.
 
 ### DW-1036: `BoundedContextRouteParser` Turkish-I (`İ` → `i̇`) casing via `ToLowerInvariant`
 
