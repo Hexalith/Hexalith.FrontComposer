@@ -140,54 +140,11 @@ public class WipeCacheCommand
     [Fact]
     [Trait("Category", "MutationErrorRegression")]
     public void Parse_ExpandedDestructivePatternWipe_EmitsHFC1020() {
-        // Story 2-5 Red Team Attack-2: the heuristic covers Wipe/Erase/Drop/Truncate.
+        // Story 2-5 Red Team Attack-2: expanded regex covers Wipe/Erase/Drop/Truncate.
         CommandParseResult result = CompilationHelper.ParseCommand(ExpandedNameWipeCommand, "TestDomain.WipeCacheCommand");
 
         _ = result.Model.ShouldNotBeNull();
         result.Diagnostics.ShouldContain(d => d.Id == "HFC1020");
-    }
-
-    [Theory]
-    [InlineData("Delete2Items")]
-    [InlineData("Remove0Entries")]
-    [InlineData("Wipe9")]
-    public void ParseWithDestructiveVerbAndDigitEmitsHfc1020(string name) {
-        const string originalName = "DeleteOrderCommand";
-        CommandParseResult result = CompilationHelper.ParseCommand(
-            DeleteNamedWithoutAttribute.Replace(originalName, name, StringComparison.Ordinal),
-            "TestDomain." + name);
-
-        CommandModel model = result.Model.ShouldNotBeNull();
-        model.IsDestructive.ShouldBeFalse();
-        result.Diagnostics.Single(d => d.Id == "HFC1020").Severity.ShouldBe("Info");
-    }
-
-    [Fact]
-    public void ParseWithDestructiveAttributeAndDigitOmitsHfc1020() {
-        const string name = "Delete2Items";
-        CommandParseResult result = CompilationHelper.ParseCommand(
-            DestructiveWithField.Replace("DeleteSomethingCommand", name, StringComparison.Ordinal),
-            "TestDomain." + name);
-
-        CommandModel model = result.Model.ShouldNotBeNull();
-        model.IsDestructive.ShouldBeTrue();
-        result.Diagnostics.ShouldNotContain(d => d.Id == "HFC1020");
-    }
-
-    [Theory]
-    [InlineData("Delete")]
-    [InlineData("DeleteableCommand")]
-    [InlineData("deleteOrderCommand")]
-    [InlineData("CanDeleteOrderCommand")]
-    [InlineData("Delete_OrderCommand")]
-    public void ParseWithoutDestructiveWordBoundaryOmitsHfc1020(string name) {
-        const string originalName = "DeleteOrderCommand";
-        CommandParseResult result = CompilationHelper.ParseCommand(
-            DeleteNamedWithoutAttribute.Replace(originalName, name, StringComparison.Ordinal),
-            "TestDomain." + name);
-
-        _ = result.Model.ShouldNotBeNull();
-        result.Diagnostics.ShouldNotContain(d => d.Id == "HFC1020");
     }
 
     [Theory]

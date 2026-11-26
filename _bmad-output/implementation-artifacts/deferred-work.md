@@ -2819,8 +2819,8 @@ resolution: Initializes every field of the idle singleton and tests the absence 
 origin: migrated from legacy ledger ("Deferred from: code review of story 2-5 full adversarial pass (2026-04-17)"), 2026-08-27
 location: CommandParser.cs
 reason: **`DestructiveNamePattern` `RegexOptions.Compiled` in source generator** — anti-pattern in Roslyn generators; prefer `[GeneratedRegex]`. Low priority, no correctness impact. `CommandParser.cs` Reconciliation: Row: DW-0325; Accepted constraint 2026-05-14; Decision owner: FrontComposer SourceTools maintainers; Evidence: `_bmad-output/implementation-artifacts/11-4-drift-detection-and-source-generator-coverage-hardening.md`, SourceTools focused tests, and performance lane evidence; Likelihood: low; Impact: low; Release risk: low because this is generator allocation hygiene, not drift correctness; Downstream impact: source-generator host performance only; Review trigger: generator host profiling flags this regex or `CommandParser` receives a broader policy/destructive parsing refactor; Previous owner was Story 11.4.
-status: done 2026-11-26
-resolution: Replaced the dynamically compiled regular expression with ordinal prefix and ASCII boundary checks compatible with the netstandard2.0 generator.
+status: open
+decision: 2026-11-26 Skipped. The compiled regex has a sealed mutation identity for its options. Removing the expression requires fresh mutation evidence and reconciliation of the finite identity inventory.
 
 ### DW-1057: `FormAbandonmentThresholdSeconds` unit inconsistency
 
@@ -2835,8 +2835,8 @@ decision: 2026-11-26 Skipped. Seconds are the documented configuration unit. The
 origin: migrated from legacy ledger ("Deferred from: code review of story 2-5 full adversarial pass (2026-04-17)"), 2026-08-27
 location: CommandParser.cs
 reason: **`DestructiveNamePattern` regex digit-prefix gap** — class names like `Delete2Items` are not matched; HFC1020 is Info severity so impact is advisory only. `CommandParser.cs` Reconciliation: Row: DW-0327; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.2; AC coverage: AC18, AC21-AC22, AC37; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.2.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Related: Story 11.2; Evidence: section: code review of story 2-5 full adversarial pass (2026-04-17).
-status: done 2026-11-26
-resolution: Emits advisory HFC1020 when an ASCII digit immediately follows a destructive verb, unless the command already has DestructiveAttribute.
+status: open
+decision: 2026-11-26 Skipped. Changing the destructive-name matcher invalidates the CommandParser source seal. It shares the mutation-evidence blocker in DW-1056.
 
 ### DW-1059: `BuildFcLifecycleRejectionCopy` trailing period from `reason` field
 
