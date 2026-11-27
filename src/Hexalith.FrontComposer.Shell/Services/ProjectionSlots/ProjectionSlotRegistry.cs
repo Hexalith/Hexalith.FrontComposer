@@ -20,6 +20,8 @@ namespace Hexalith.FrontComposer.Shell.Services.ProjectionSlots;
 /// projection type, role, and field name.
 /// </summary>
 public sealed class ProjectionSlotRegistry : IProjectionSlotRegistry {
+    private const string InvalidProjectionTypeMessage = "Projection type must be concrete and have no unbound generic parameters.";
+
     private readonly ConcurrentDictionary<RegistryKey, RegistryEntry> _entries = new();
     private readonly ILogger<ProjectionSlotRegistry> _logger;
     private readonly ICustomizationContractRejectionLog? _rejectionLog;
@@ -62,6 +64,9 @@ public sealed class ProjectionSlotRegistry : IProjectionSlotRegistry {
     public ProjectionSlotDescriptor? Resolve(Type projectionType, ProjectionRole? role, string fieldName) {
         ArgumentNullException.ThrowIfNull(projectionType);
         ArgumentException.ThrowIfNullOrWhiteSpace(fieldName);
+        if (!IsSupportedProjectionType(projectionType)) {
+            throw new ArgumentException(InvalidProjectionTypeMessage, nameof(projectionType));
+        }
 
         if (_entries.TryGetValue(new RegistryKey(projectionType, role, fieldName), out RegistryEntry exact)) {
             return exact.Ambiguous ? null : exact.Descriptor;
@@ -171,11 +176,19 @@ public sealed class ProjectionSlotRegistry : IProjectionSlotRegistry {
             });
     }
 
+    private static bool IsSupportedProjectionType(Type projectionType)
+        => !projectionType.ContainsGenericParameters && !projectionType.IsInterface && !projectionType.IsAbstract;
+
     [UnconditionalSuppressMessage(
         "Trimming",
         "IL2075:DynamicallyAccessedMembers",
         Justification = "Slot component types are registered explicitly by adopter startup code or generated registrations; ProjectionSlotDescriptor.ComponentType carries [DynamicallyAccessedMembers(PublicProperties|PublicConstructors|NonPublicConstructors)] so trim metadata flows through this reflection chain.")]
     private static bool IsCompatibleComponent(ProjectionSlotDescriptor descriptor, out string? reason) {
+        if (!IsSupportedProjectionType(descriptor.ProjectionType)) {
+            reason = InvalidProjectionTypeMessage;
+            return false;
+        }
+
         Type componentType = descriptor.ComponentType;
 
         // GB-P12 — reject open generics, abstract types, and interface types up front so the

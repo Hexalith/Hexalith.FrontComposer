@@ -17,12 +17,14 @@ public interface IProjectionSlotRegistry {
     /// Resolves a slot descriptor for a projection role and field. Exact role matches win,
     /// then role-agnostic descriptors, then default generated rendering.
     /// </summary>
-    /// <param name="projectionType">Projection CLR type.</param>
+    /// <param name="projectionType">Concrete projection CLR type with all generic parameters bound.</param>
     /// <param name="role">Optional projection role.</param>
     /// <param name="fieldName">Canonical projection property name, compared using ordinal case-sensitive matching.</param>
     /// <returns>The selected descriptor, or <see langword="null"/> when no valid slot exists
     /// or when ambiguous/incompatible registrations have been suppressed (the Shell
-    /// implementation logs HFC1040/HFC1041 in that case).</returns>
+    /// implementation logs HFC1039, HFC1040, or HFC1041 in that case).</returns>
+    /// <exception cref="ArgumentException">The projection type is an interface, is abstract, or
+    /// contains unbound generic parameters.</exception>
     ProjectionSlotDescriptor? Resolve(Type projectionType, ProjectionRole? role, string fieldName);
 
     /// <summary>

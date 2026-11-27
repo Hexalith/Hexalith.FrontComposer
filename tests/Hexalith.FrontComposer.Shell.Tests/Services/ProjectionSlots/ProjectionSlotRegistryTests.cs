@@ -107,6 +107,17 @@ public sealed class ProjectionSlotRegistryTests {
         Should.Throw<ArgumentNullException>(() => registry.Resolve(null!, null, "Priority"));
     }
 
+    [Theory]
+    [InlineData(typeof(List<>))]
+    [InlineData(typeof(IComparable))]
+    [InlineData(typeof(Stream))]
+    public void Resolve_UnsupportedProjectionType_Throws(Type projectionType) {
+        ProjectionSlotRegistry registry = NewRegistry();
+
+        Should.Throw<ArgumentException>(() => registry.Resolve(projectionType, null, "Priority"))
+            .ParamName.ShouldBe(nameof(projectionType));
+    }
+
     [Fact]
     public void Resolve_WhitespaceFieldName_Throws() {
         ProjectionSlotRegistry registry = NewRegistry();
@@ -168,6 +179,26 @@ public sealed class ProjectionSlotRegistryTests {
         logger.Entries.ShouldContain(e => e.Level == LogLevel.Information
             && e.Message.Contains("HFC1041")
             && e.Message.Contains("Override accepted"));
+    }
+
+    [Theory]
+    [InlineData(typeof(List<>), typeof(AnyPrioritySlot))]
+    [InlineData(typeof(IComparable), typeof(ProjectionSlotTestComponent<IComparable>))]
+    [InlineData(typeof(Stream), typeof(ProjectionSlotTestComponent<Stream>))]
+    public void Register_UnsupportedProjectionType_LogsHfc1039AndSkipsDescriptor(Type projectionType, Type componentType) {
+        ListLogger<ProjectionSlotRegistry> logger = new();
+        ProjectionSlotDescriptor invalid = new(
+            ProjectionType: projectionType,
+            FieldName: "Priority",
+            FieldType: typeof(int),
+            Role: null,
+            ComponentType: componentType,
+            ContractVersion: ProjectionSlotContractVersion.Current);
+
+        ProjectionSlotRegistry registry = new(logger, [new ProjectionSlotDescriptorSource([invalid])]);
+
+        registry.Descriptors.ShouldBeEmpty();
+        logger.Entries.ShouldHaveSingleItem().EventId.Name.ShouldBe("ProjectionSlotInvalidComponent");
     }
 
     [Fact]
