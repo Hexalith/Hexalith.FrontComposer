@@ -17,7 +17,8 @@ public sealed partial class FatalExceptionGuardGovernanceTests {
     // DW-925 adds a guard for failing identity accessors.
     // DW-994 routes location callback failures through the component error boundary.
     // DW-1102 guards reconnect dismissal failures before logging them.
-    private const int ExpectedCatchFilterCount = 85;
+    // DW-1187 preserves fatal causes before redacting both projection parse failures.
+    private const int ExpectedCatchFilterCount = 87;
     private const string ExceptionGuardPath = "Services/ExceptionGuard.cs";
     private static readonly HashSet<string> FatalTypeNames = new(StringComparer.Ordinal) {
         nameof(OutOfMemoryException),

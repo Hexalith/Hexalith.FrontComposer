@@ -32,7 +32,8 @@ public sealed class ProjectionSchemaCompatibilityFixtureTests {
 
         ProjectionSchemaMismatchException mismatch = new("FixtureOrderProjection", ex);
         mismatch.ProjectionType.ShouldBe("FixtureOrderProjection");
-        mismatch.InnerException.ShouldBe(ex);
+        mismatch.InnerException.ShouldBeNull();
+        mismatch.ToString().ShouldNotContain(ex.Message);
     }
 
     private static string ReadFixture(string fileName) {

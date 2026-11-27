@@ -260,6 +260,7 @@ public sealed class EventStoreTelemetryTests {
         const string secret = "secret-response-value";
         // The JSON parser includes the unexpected first character in its error.
         const string body = "!" + secret;
+        string parserCategory = Should.Throw<JsonException>(() => JsonDocument.Parse(body)).GetType().Name;
         RecordingHandler handler = new(_ => new HttpResponseMessage(HttpStatusCode.OK) {
             Content = new StringContent(body, Encoding.UTF8, "application/json"),
         });
@@ -277,15 +278,16 @@ public sealed class EventStoreTelemetryTests {
                     AggregateId: "order-1", QueryType: "ReadOrders"),
                 TestContext.Current.CancellationToken));
 
-        error.InnerException.ShouldBeAssignableTo<JsonException>();
-        error.InnerException!.Message.ShouldContain("'!'");
+        error.InnerException.ShouldBeNull();
+        error.ToString().ShouldNotContain("'!'");
+        error.ToString().ShouldNotContain(secret);
         CapturedLogEntry warning = TelemetryRedactionAssertions.AssertLog(
             logger.Entries, 5611, secret, "'!'", "tenant-secret", "user-secret");
-        warning.State["FailureCategory"].ShouldBe(error.InnerException!.GetType().Name);
+        warning.State["FailureCategory"].ShouldBe(parserCategory);
         Activity activity = TelemetryRedactionAssertions.AssertActivity(capture, parent.TraceId,
             FrontComposerTelemetry.QueryExecuteOperation, secret, "'!'", "tenant-secret", "user-secret");
         activity.Status.ShouldBe(ActivityStatusCode.Error);
-        activity.GetTagItem(FrontComposerTelemetry.FailureCategoryTag).ShouldBe(error.InnerException!.GetType().Name);
+        activity.GetTagItem(FrontComposerTelemetry.FailureCategoryTag).ShouldBe(parserCategory);
     }
 
     [Fact]

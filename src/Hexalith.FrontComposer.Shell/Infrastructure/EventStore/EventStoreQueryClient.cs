@@ -8,6 +8,7 @@ using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
+using Hexalith.FrontComposer.Shell.Services;
 using Hexalith.FrontComposer.Shell.State.ETagCache;
 
 using Microsoft.Extensions.Logging;
@@ -210,7 +211,7 @@ public sealed class EventStoreQueryClient(
                                 FrontComposerLog.QuerySchemaMismatch(
                                     logger,
                                     ex.ProjectionType,
-                                    ex.GetType().Name);
+                                    ex.FailureCategory ?? ex.GetType().Name);
                                 // The server validated the ETag, but these local bytes cannot
                                 // satisfy this query. Keep other pages and scopes intact.
                                 await TryInvalidateSchemaMismatchAsync(
@@ -263,7 +264,8 @@ public sealed class EventStoreQueryClient(
                             items = ReadPayloadItems<T>(document.RootElement);
                             totalCount = ReadTotalCount(document.RootElement, items.Count);
                         }
-                        catch (Exception ex) when (ex is JsonException or InvalidOperationException or NotSupportedException or ArgumentException) {
+                        catch (Exception ex) when (ex is (JsonException or InvalidOperationException or NotSupportedException or ArgumentException)
+                            && !ExceptionGuard.IsFatal(ex)) {
                             // P2 — broaden beyond JsonException so type-shape mismatches surfaced by
                             // ReadPayloadItems<T>.Deserialize (InvalidOperationException, NotSupportedException,
                             // ArgumentException) flow through the schema-mismatch path instead of bubbling raw.
@@ -411,7 +413,8 @@ public sealed class EventStoreQueryClient(
         }
         // P3 — broaden parity with the 200 OK path so type-shape mismatches in cached payload
         // also map to schema-mismatch instead of propagating raw.
-        catch (Exception ex) when (ex is JsonException or InvalidOperationException or NotSupportedException or ArgumentException) {
+        catch (Exception ex) when (ex is (JsonException or InvalidOperationException or NotSupportedException or ArgumentException)
+            && !ExceptionGuard.IsFatal(ex)) {
             throw new ProjectionSchemaMismatchException(projectionType ?? string.Empty, ex);
         }
     }
