@@ -107,9 +107,11 @@ public class FluxorRegistrationTests {
             var provider = (MutableTestAuthenticationStateProvider)scope.GetRequiredService<AuthenticationStateProvider>();
             provider.Publish(Task.FromResult(new AuthenticationState(new ClaimsPrincipal(
                 new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, userId)], "Test")))));
+            TenantContextSnapshot snapshot = new(tenantId, userId, true, "correlation");
+            TenantContextResult tenantContext = TenantContextResult.Success(snapshot);
             IFrontComposerTenantContextAccessor tenant = scope.GetRequiredService<IFrontComposerTenantContextAccessor>();
-            tenant.TryGetContext(Arg.Any<string?>(), Arg.Any<string>()).Returns(
-                TenantContextResult.Success(new TenantContextSnapshot(tenantId, userId, true, "correlation")));
+            tenant.TryGetContext(Arg.Any<string?>(), Arg.Any<string>()).Returns(tenantContext);
+            tenant.Revalidate(Arg.Any<TenantContextSnapshot>(), Arg.Any<string>()).Returns(tenantContext);
             IAuthorizationService authorization = scope.GetRequiredService<IAuthorizationService>();
             authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), policy).Returns(decision);
             await scope.GetRequiredService<IStore>().InitializeAsync().ConfigureAwait(false);

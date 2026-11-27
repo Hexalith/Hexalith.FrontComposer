@@ -1,3 +1,4 @@
+using System.Runtime.ExceptionServices;
 using System.Security.Claims;
 
 using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
@@ -66,16 +67,28 @@ public sealed class CommandAuthorizationEvaluator(
         void OnAuthenticationStateChanged(Task<AuthenticationState> stateTask)
             => Interlocked.Exchange(ref authenticationChanged, 1);
         authenticationStateProvider.AuthenticationStateChanged += OnAuthenticationStateChanged;
-        try {
+        try
+        {
             AuthenticationState? state;
-            try {
-                state = await authenticationStateProvider.GetAuthenticationStateAsync().ConfigureAwait(false);
+            Task<AuthenticationState>? authenticationStateTask = null;
+            try
+            {
+                authenticationStateTask = authenticationStateProvider.GetAuthenticationStateAsync();
+                state = await authenticationStateTask.WaitAsync(cancellationToken).ConfigureAwait(false);
             }
-            catch (OperationCanceledException) {
+            catch (OperationCanceledException ex)
+            {
+                if (ExceptionGuard.IsFatal(ex))
+                {
+                    throw;
+                }
+
+                ObserveLateFault(authenticationStateTask);
                 LogBlocked(request, CommandAuthorizationReason.Canceled, trimmedPolicy, correlationId);
                 return CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.Canceled, correlationId);
             }
-            catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
+            catch (Exception ex) when (!ExceptionGuard.IsFatal(ex))
+            {
                 FrontComposerSecurityLog.AuthorizationAuthenticationStateFailed(
                     logger,
                     request.CommandType.FullName ?? request.CommandType.Name,
@@ -85,35 +98,48 @@ public sealed class CommandAuthorizationEvaluator(
                 return CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.HandlerFailed, correlationId);
             }
 
+            if (cancellationToken.IsCancellationRequested)
+            {
+                LogBlocked(request, CommandAuthorizationReason.Canceled, trimmedPolicy, correlationId);
+                return CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.Canceled, correlationId);
+            }
+
+            if (Volatile.Read(ref authenticationChanged) != 0)
+            {
+                LogBlocked(request, CommandAuthorizationReason.StaleTenantContext, trimmedPolicy, correlationId);
+                return CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.StaleTenantContext, correlationId);
+            }
+
             ClaimsPrincipal? user = state?.User;
-            if (user is null) {
+            if (user is null)
+            {
                 // No state resolved yet — typical during prerender / SSR-to-interactive transition.
                 return CommandAuthorizationDecision.Pending(correlationId);
             }
 
-            if (user.Identity is null || !user.Identity.IsAuthenticated) {
+            if (user.Identity is null || !user.Identity.IsAuthenticated)
+            {
                 LogBlocked(request, CommandAuthorizationReason.Unauthenticated, trimmedPolicy, correlationId);
                 return CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.Unauthenticated, correlationId);
             }
 
-            TenantContextResult tenant;
-            try {
-                tenant = tenantContextAccessor.TryGetContext(operationKind: "command-authorization");
-            }
-            catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
-                FrontComposerSecurityLog.AuthorizationTenantContextFailed(
-                    logger,
-                    CommandAuthorizationReason.StaleTenantContext,
-                    request.CommandType.FullName ?? request.CommandType.Name,
-                    trimmedPolicy,
-                    correlationId,
-                    ex.GetType().FullName ?? "Exception");
+            if (!TryReadTenantContext(
+                () => tenantContextAccessor.TryGetContext(operationKind: "command-authorization"),
+                request,
+                trimmedPolicy,
+                correlationId,
+                out TenantContextResult? tenant))
+            {
                 return CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.StaleTenantContext, correlationId);
             }
 
-            if (!tenant.Succeeded) {
-                LogBlocked(request, CommandAuthorizationReason.StaleTenantContext, trimmedPolicy, tenant.CorrelationId);
-                return CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.StaleTenantContext, tenant.CorrelationId);
+            if (tenant is null || !tenant.Succeeded || tenant.Context is null || !tenant.Context.IsAuthenticated)
+            {
+                string staleCorrelationId = string.IsNullOrWhiteSpace(tenant?.CorrelationId)
+                    ? correlationId
+                    : tenant.CorrelationId;
+                LogBlocked(request, CommandAuthorizationReason.StaleTenantContext, trimmedPolicy, staleCorrelationId);
+                return CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.StaleTenantContext, staleCorrelationId);
             }
 
             var resource = new CommandAuthorizationResource(
@@ -124,26 +150,22 @@ public sealed class CommandAuthorizationEvaluator(
                 request.SourceSurface,
                 tenant.Context);
 
-            try {
-                AuthorizationResult? result = await authorizationService
-                    .AuthorizeAsync(user, resource, resource.PolicyName)
-                    .ConfigureAwait(false);
-
-                if (result?.Succeeded == true && !cancellationToken.IsCancellationRequested
-                    && Volatile.Read(ref authenticationChanged) == 0)
-                {
-                    LogPolicySuccess(request, trimmedPolicy, correlationId);
-                }
+            Task<AuthorizationResult>? authorizeTask = null;
+            try
+            {
+                authorizeTask = authorizationService.AuthorizeAsync(user, resource, resource.PolicyName);
+                AuthorizationResult? result = await authorizeTask.WaitAsync(cancellationToken).ConfigureAwait(false);
 
                 // Re-check cancellation: the AuthorizeAsync overload used does not accept a token, so an
-                // in-flight handler keeps running even when the caller cancels. The optional audit sink
-                // also runs host code, so keep the final cancellation and principal checks after it.
-                if (cancellationToken.IsCancellationRequested) {
+                // in-flight handler keeps running even when the caller cancels.
+                if (cancellationToken.IsCancellationRequested)
+                {
                     LogBlocked(request, CommandAuthorizationReason.Canceled, trimmedPolicy, correlationId);
                     return CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.Canceled, correlationId);
                 }
 
-                if (result is null) {
+                if (result is null)
+                {
                     FrontComposerSecurityLog.AuthorizationNullResult(
                         logger,
                         request.CommandType.FullName ?? request.CommandType.Name,
@@ -152,12 +174,52 @@ public sealed class CommandAuthorizationEvaluator(
                     return CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.HandlerFailed, correlationId);
                 }
 
-                if (Volatile.Read(ref authenticationChanged) != 0) {
+                if (Volatile.Read(ref authenticationChanged) != 0)
+                {
                     LogBlocked(request, CommandAuthorizationReason.StaleTenantContext, trimmedPolicy, correlationId);
                     return CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.StaleTenantContext, correlationId);
                 }
 
-                if (result.Succeeded) {
+                // Revalidate the tenant context before emitting audit logs or returning a policy decision so
+                // context-only transitions without an AuthenticationStateChanged event still fail closed.
+                if (!TryRevalidateTenantContext(
+                    tenant.Context,
+                    request,
+                    trimmedPolicy,
+                    correlationId,
+                    out string staleCorrelationId))
+                {
+                    return CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.StaleTenantContext, staleCorrelationId);
+                }
+
+                if (result.Succeeded)
+                {
+                    LogPolicySuccess(request, trimmedPolicy, correlationId);
+
+                    // The optional audit sink runs host code, so keep the final cancellation, principal,
+                    // and tenant-context revalidation checks after it.
+                    if (cancellationToken.IsCancellationRequested)
+                    {
+                        LogBlocked(request, CommandAuthorizationReason.Canceled, trimmedPolicy, correlationId);
+                        return CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.Canceled, correlationId);
+                    }
+
+                    if (Volatile.Read(ref authenticationChanged) != 0)
+                    {
+                        LogBlocked(request, CommandAuthorizationReason.StaleTenantContext, trimmedPolicy, correlationId);
+                        return CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.StaleTenantContext, correlationId);
+                    }
+
+                    if (!TryRevalidateTenantContext(
+                        tenant.Context,
+                        request,
+                        trimmedPolicy,
+                        correlationId,
+                        out staleCorrelationId))
+                    {
+                        return CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.StaleTenantContext, staleCorrelationId);
+                    }
+
                     return CommandAuthorizationDecision.Allowed(correlationId);
                 }
 
@@ -168,7 +230,8 @@ public sealed class CommandAuthorizationEvaluator(
                 // requirement means a handler explicitly rejected — that's Denied.
                 bool hasFailedRequirement = result.Failure?.FailedRequirements?.Any() ?? false;
                 bool failCalled = result.Failure?.FailCalled ?? false;
-                if (!failCalled && !hasFailedRequirement) {
+                if (!failCalled && !hasFailedRequirement)
+                {
                     LogBlocked(request, CommandAuthorizationReason.MissingPolicy, trimmedPolicy, correlationId);
                     return CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.MissingPolicy, correlationId);
                 }
@@ -176,11 +239,19 @@ public sealed class CommandAuthorizationEvaluator(
                 LogBlocked(request, CommandAuthorizationReason.Denied, trimmedPolicy, correlationId);
                 return CommandAuthorizationDecision.Denied(correlationId);
             }
-            catch (OperationCanceledException) {
+            catch (OperationCanceledException ex)
+            {
+                if (ExceptionGuard.IsFatal(ex))
+                {
+                    throw;
+                }
+
+                ObserveLateFault(authorizeTask);
                 LogBlocked(request, CommandAuthorizationReason.Canceled, trimmedPolicy, correlationId);
                 return CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.Canceled, correlationId);
             }
-            catch (InvalidOperationException ex) {
+            catch (InvalidOperationException ex)
+            {
                 // Most commonly thrown when the requested policy name is not registered with
                 // AuthorizationOptions ("No policy found: …"). Logged at Warning so operators can
                 // diagnose deployment misconfigurations, but the principal/claims/tokens are never
@@ -194,7 +265,8 @@ public sealed class CommandAuthorizationEvaluator(
                     ex.GetType().FullName ?? "Exception");
                 return CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.MissingPolicy, correlationId);
             }
-            catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
+            catch (Exception ex) when (!ExceptionGuard.IsFatal(ex))
+            {
                 FrontComposerSecurityLog.AuthorizationHandlerFailed(
                     logger,
                     request.CommandType.FullName ?? request.CommandType.Name,
@@ -204,9 +276,104 @@ public sealed class CommandAuthorizationEvaluator(
                 return CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.HandlerFailed, correlationId);
             }
         }
-        finally {
+        finally
+        {
             authenticationStateProvider.AuthenticationStateChanged -= OnAuthenticationStateChanged;
         }
+    }
+
+    private bool TryRevalidateTenantContext(
+        TenantContextSnapshot expected,
+        CommandAuthorizationRequest request,
+        string trimmedPolicy,
+        string correlationId,
+        out string staleCorrelationId)
+    {
+        if (!TryReadTenantContext(
+            () => tenantContextAccessor.Revalidate(expected, operationKind: "command-authorization"),
+            request,
+            trimmedPolicy,
+            correlationId,
+            out TenantContextResult? revalidated))
+        {
+            staleCorrelationId = correlationId;
+            return false;
+        }
+
+        if (!IsMatchingAuthenticatedContext(revalidated, expected))
+        {
+            staleCorrelationId = string.IsNullOrWhiteSpace(revalidated?.CorrelationId)
+                ? correlationId
+                : revalidated.CorrelationId;
+            LogBlocked(request, CommandAuthorizationReason.StaleTenantContext, trimmedPolicy, staleCorrelationId);
+            return false;
+        }
+
+        staleCorrelationId = correlationId;
+        return true;
+    }
+
+    private static bool IsMatchingAuthenticatedContext(
+        TenantContextResult? result,
+        TenantContextSnapshot expected)
+        => result is { Succeeded: true, Context: { IsAuthenticated: true } current }
+            && string.Equals(current.TenantId, expected.TenantId, StringComparison.Ordinal)
+            && string.Equals(current.UserId, expected.UserId, StringComparison.Ordinal);
+
+    private bool TryReadTenantContext(
+        Func<TenantContextResult> read,
+        CommandAuthorizationRequest request,
+        string trimmedPolicy,
+        string correlationId,
+        out TenantContextResult? result)
+    {
+        try
+        {
+            result = read();
+            return true;
+        }
+        catch (Exception ex) when (!ExceptionGuard.IsFatal(ex))
+        {
+            FrontComposerSecurityLog.AuthorizationTenantContextFailed(
+                logger,
+                CommandAuthorizationReason.StaleTenantContext,
+                request.CommandType.FullName ?? request.CommandType.Name,
+                trimmedPolicy,
+                correlationId,
+                ex.GetType().FullName ?? "Exception");
+            result = null;
+            return false;
+        }
+    }
+
+    private static void ObserveLateFault(Task? task)
+    {
+        if (task is null || task.IsCompletedSuccessfully || task.IsCanceled)
+        {
+            return;
+        }
+
+        if (task.IsFaulted)
+        {
+            if (task.Exception is AggregateException ex && ExceptionGuard.IsFatal(ex))
+            {
+                ExceptionDispatchInfo.Capture(ex.InnerExceptions.Count == 1 ? ex.InnerExceptions[0] : ex).Throw();
+            }
+
+            return;
+        }
+
+        _ = task.ContinueWith(
+            static faulted =>
+            {
+                if (faulted.Exception is AggregateException ex && ExceptionGuard.IsFatal(ex))
+                {
+                    ExceptionDispatchInfo.Capture(ex.InnerExceptions.Count == 1 ? ex.InnerExceptions[0] : ex).Throw();
+                }
+            },
+            CancellationToken.None,
+            TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
     }
 
     private void LogPolicySuccess(CommandAuthorizationRequest request, string policy, string correlationId)

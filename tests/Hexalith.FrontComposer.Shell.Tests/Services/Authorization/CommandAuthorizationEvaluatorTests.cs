@@ -1,3 +1,5 @@
+using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
@@ -6,8 +8,9 @@ using Hexalith.FrontComposer.Shell.Extensions;
 using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
 using Hexalith.FrontComposer.Shell.Options;
 using Hexalith.FrontComposer.Shell.Services.Authorization;
-using Hexalith.FrontComposer.Shell.Tests.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.Tests.Infrastructure;
+using Hexalith.FrontComposer.Shell.Tests.Infrastructure.Telemetry;
+using Hexalith.FrontComposer.Shell.Tests.Infrastructure.Tenancy;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -212,6 +215,268 @@ public sealed class CommandAuthorizationEvaluatorTests {
 
         result.IsAllowed.ShouldBeFalse();
         result.Reason.ShouldBe(CommandAuthorizationReason.StaleTenantContext);
+    }
+
+    [Fact]
+    public async Task ContextTransitionDuringAuthorizationWithoutAuthEventFailsClosedBeforeAuditAsync()
+    {
+        TestTenantContextAccessor tenant = new()
+        {
+            TenantId = "tenant-a",
+            UserId = "user-a",
+        };
+        IAuthorizationService authorization = Substitute.For<IAuthorizationService>();
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), "OrderApprover")
+            .Returns(_ =>
+            {
+                tenant.TenantId = "tenant-b";
+                return Task.FromResult(AuthorizationResult.Success());
+            });
+        CapturingLogger<CommandAuthorizationEvaluator> logger = new();
+        CommandAuthorizationEvaluator sut = Create(
+            authorization,
+            tenant: tenant,
+            logger: logger,
+            options: new FrontComposerAuthorizationOptions { LogAllowedDecisions = true });
+
+        CommandAuthorizationDecision result = await sut.EvaluateAsync(Request("OrderApprover"), TestContext.Current.CancellationToken);
+
+        result.IsAllowed.ShouldBeFalse();
+        result.Kind.ShouldBe(CommandAuthorizationDecisionKind.FailedClosed);
+        result.Reason.ShouldBe(CommandAuthorizationReason.StaleTenantContext);
+        logger.Entries.Where(entry => entry.Level == LogLevel.Information).ShouldBeEmpty();
+        logger.Entries.Where(entry => entry.EventId.Id == 5672).ShouldHaveSingleItem();
+    }
+
+    [Fact]
+    public async Task RevalidateNonFatalExceptionFailsClosedAsStaleTenantContextBeforeAuditAsync()
+    {
+        TenantContextSnapshot snapshot = new("tenant-a", "user-a", true, "corr-1");
+        IFrontComposerTenantContextAccessor tenant = Substitute.For<IFrontComposerTenantContextAccessor>();
+        tenant.TryGetContext(Arg.Any<string?>(), Arg.Any<string>())
+            .Returns(TenantContextResult.Success(snapshot));
+        tenant.Revalidate(Arg.Any<TenantContextSnapshot>(), Arg.Any<string>())
+            .Returns<TenantContextResult>(_ => throw new InvalidOperationException("revalidation provider fault"));
+        IAuthorizationService authorization = Substitute.For<IAuthorizationService>();
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), "OrderApprover")
+            .Returns(Task.FromResult(AuthorizationResult.Success()));
+        CapturingLogger<CommandAuthorizationEvaluator> logger = new();
+        CommandAuthorizationEvaluator sut = Create(
+            authorization,
+            tenant: tenant,
+            logger: logger,
+            options: new FrontComposerAuthorizationOptions { LogAllowedDecisions = true });
+
+        CommandAuthorizationDecision result = await sut.EvaluateAsync(Request("OrderApprover"), TestContext.Current.CancellationToken);
+
+        result.IsAllowed.ShouldBeFalse();
+        result.Kind.ShouldBe(CommandAuthorizationDecisionKind.FailedClosed);
+        result.Reason.ShouldBe(CommandAuthorizationReason.StaleTenantContext);
+        logger.Entries.Where(entry => entry.Level == LogLevel.Information).ShouldBeEmpty();
+        logger.Entries.ShouldContain(entry => entry.EventId.Id == 5668);
+    }
+
+    [Fact]
+    public async Task UncooperativeGetAuthenticationStateCancelsPromptlyUnsubscribesAndObservesLateFaultAsync()
+    {
+        InvalidOperationException lateFault = new("late uncooperative auth state fault");
+        int unobserved = 0;
+        void OnUnobserved(object? sender, UnobservedTaskExceptionEventArgs args)
+        {
+            if (args.Exception.Flatten().InnerExceptions.Any(ex => ReferenceEquals(ex, lateFault)))
+            {
+                Interlocked.Exchange(ref unobserved, 1);
+                args.SetObserved();
+            }
+        }
+
+        TaskScheduler.UnobservedTaskException += OnUnobserved;
+        try
+        {
+            await RunUncooperativeGetAuthenticationStateAsync(lateFault, TestContext.Current.CancellationToken);
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            GC.Collect();
+            Volatile.Read(ref unobserved).ShouldBe(0);
+        }
+        finally
+        {
+            TaskScheduler.UnobservedTaskException -= OnUnobserved;
+        }
+    }
+
+    [Fact]
+    public async Task UncooperativeAuthorizeAsyncCancelsPromptlyUnsubscribesAndObservesLateFaultAsync()
+    {
+        InvalidOperationException lateFault = new("late uncooperative authorization fault");
+        int unobserved = 0;
+        void OnUnobserved(object? sender, UnobservedTaskExceptionEventArgs args)
+        {
+            if (args.Exception.Flatten().InnerExceptions.Any(ex => ReferenceEquals(ex, lateFault)))
+            {
+                Interlocked.Exchange(ref unobserved, 1);
+                args.SetObserved();
+            }
+        }
+
+        TaskScheduler.UnobservedTaskException += OnUnobserved;
+        try
+        {
+            await RunUncooperativeAuthorizeAsync(lateFault, TestContext.Current.CancellationToken);
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            GC.Collect();
+            Volatile.Read(ref unobserved).ShouldBe(0);
+        }
+        finally
+        {
+            TaskScheduler.UnobservedTaskException -= OnUnobserved;
+        }
+    }
+
+    [Fact]
+    public async Task SynchronousGetAuthenticationStateCancelingTokenFailsClosedWithoutCallingTenantOrAuthorizationAsync()
+    {
+        using CancellationTokenSource cts = new();
+        CallbackAuthenticationStateProvider provider = new(() =>
+        {
+            cts.Cancel();
+            return Task.FromResult(new AuthenticationState(new ClaimsPrincipal(
+                new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, "user-a")], "Test"))));
+        });
+        IFrontComposerTenantContextAccessor tenant = DefaultTenant();
+        IAuthorizationService authorization = Substitute.For<IAuthorizationService>();
+        CommandAuthorizationEvaluator sut = Create(authorization, provider, tenant);
+
+        CommandAuthorizationDecision result = await sut.EvaluateAsync(Request("OrderApprover"), cts.Token);
+
+        result.IsAllowed.ShouldBeFalse();
+        result.Kind.ShouldBe(CommandAuthorizationDecisionKind.FailedClosed);
+        result.Reason.ShouldBe(CommandAuthorizationReason.Canceled);
+        _ = tenant.DidNotReceive().TryGetContext(Arg.Any<string?>(), Arg.Any<string>());
+        await authorization.DidNotReceive().AuthorizeAsync(
+            Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<string>());
+    }
+
+    [Fact]
+    public async Task ContextTransitionDuringAuditSinkWithoutAuthEventFailsClosedAsync()
+    {
+        TestTenantContextAccessor tenant = new()
+        {
+            TenantId = "tenant-a",
+            UserId = "user-a",
+        };
+        IAuthorizationService authorization = Substitute.For<IAuthorizationService>();
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), "OrderApprover")
+            .Returns(AuthorizationResult.Success());
+        ILogger<CommandAuthorizationEvaluator> logger = Substitute.For<ILogger<CommandAuthorizationEvaluator>>();
+        logger.IsEnabled(LogLevel.Information).Returns(_ =>
+        {
+            tenant.TenantId = "tenant-b";
+            return true;
+        });
+        CommandAuthorizationEvaluator sut = Create(
+            authorization,
+            tenant: tenant,
+            logger: logger,
+            options: new FrontComposerAuthorizationOptions { LogAllowedDecisions = true });
+
+        CommandAuthorizationDecision result = await sut.EvaluateAsync(Request("OrderApprover"), TestContext.Current.CancellationToken);
+
+        result.IsAllowed.ShouldBeFalse();
+        result.Kind.ShouldBe(CommandAuthorizationDecisionKind.FailedClosed);
+        result.Reason.ShouldBe(CommandAuthorizationReason.StaleTenantContext);
+    }
+
+    [Fact]
+    public async Task RevalidateReturningDifferentTenantIdFailsClosedAsStaleTenantContextBeforeAuditAsync()
+    {
+        IFrontComposerTenantContextAccessor tenant = Substitute.For<IFrontComposerTenantContextAccessor>();
+        tenant.TryGetContext(Arg.Any<string?>(), Arg.Any<string>())
+            .Returns(TenantContextResult.Success(new TenantContextSnapshot("tenant-a", "user-a", true, "corr-1")));
+        tenant.Revalidate(Arg.Any<TenantContextSnapshot>(), Arg.Any<string>())
+            .Returns(TenantContextResult.Success(new TenantContextSnapshot("tenant-b", "user-a", true, "corr-reval")));
+        IAuthorizationService authorization = Substitute.For<IAuthorizationService>();
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), "OrderApprover")
+            .Returns(Task.FromResult(AuthorizationResult.Success()));
+        CapturingLogger<CommandAuthorizationEvaluator> logger = new();
+        CommandAuthorizationEvaluator sut = Create(
+            authorization,
+            tenant: tenant,
+            logger: logger,
+            options: new FrontComposerAuthorizationOptions { LogAllowedDecisions = true });
+
+        CommandAuthorizationDecision result = await sut.EvaluateAsync(Request("OrderApprover"), TestContext.Current.CancellationToken);
+
+        result.IsAllowed.ShouldBeFalse();
+        result.Kind.ShouldBe(CommandAuthorizationDecisionKind.FailedClosed);
+        result.Reason.ShouldBe(CommandAuthorizationReason.StaleTenantContext);
+        result.CorrelationId.ShouldBe("corr-reval");
+        logger.Entries.Where(entry => entry.Level == LogLevel.Information).ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task FatalWrappedOperationCanceledAndFaultedFatalTasksPropagateAsync()
+    {
+        static OutOfMemoryException CreateFatal()
+            => (OutOfMemoryException)RuntimeHelpers.GetUninitializedObject(typeof(OutOfMemoryException));
+
+        CallbackAuthenticationStateProvider fatalCancelAuthProvider = new(
+            () => throw new OperationCanceledException("canceled", CreateFatal()));
+        CommandAuthorizationEvaluator authCancelSut = Create(Substitute.For<IAuthorizationService>(), fatalCancelAuthProvider);
+
+        OperationCanceledException? authCancelEx = null;
+        try
+        {
+            _ = await authCancelSut.EvaluateAsync(Request("OrderApprover"), TestContext.Current.CancellationToken);
+        }
+        catch (OperationCanceledException ex)
+        {
+            authCancelEx = ex;
+        }
+
+        authCancelEx.ShouldNotBeNull().InnerException.ShouldBeOfType<OutOfMemoryException>();
+
+        IAuthorizationService fatalCancelAuthz = Substitute.For<IAuthorizationService>();
+        fatalCancelAuthz.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), "OrderApprover")
+            .Returns<Task<AuthorizationResult>>(_ => throw new OperationCanceledException("canceled", CreateFatal()));
+        CommandAuthorizationEvaluator authzCancelSut = Create(fatalCancelAuthz);
+
+        OperationCanceledException? authzCancelEx = null;
+        try
+        {
+            _ = await authzCancelSut.EvaluateAsync(Request("OrderApprover"), TestContext.Current.CancellationToken);
+        }
+        catch (OperationCanceledException ex)
+        {
+            authzCancelEx = ex;
+        }
+
+        authzCancelEx.ShouldNotBeNull().InnerException.ShouldBeOfType<OutOfMemoryException>();
+
+        using CancellationTokenSource authCts = new();
+        CallbackAuthenticationStateProvider fatalFaultedAuthProvider = new(() =>
+        {
+            authCts.Cancel();
+            return Task.FromException<AuthenticationState>(CreateFatal());
+        });
+        CommandAuthorizationEvaluator authFaultedSut = Create(Substitute.For<IAuthorizationService>(), fatalFaultedAuthProvider);
+
+        _ = await Should.ThrowAsync<OutOfMemoryException>(
+            async () => await authFaultedSut.EvaluateAsync(Request("OrderApprover"), authCts.Token).ConfigureAwait(false));
+
+        using CancellationTokenSource authzCts = new();
+        IAuthorizationService fatalFaultedAuthz = Substitute.For<IAuthorizationService>();
+        fatalFaultedAuthz.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), "OrderApprover")
+            .Returns(_ =>
+            {
+                authzCts.Cancel();
+                return Task.FromException<AuthorizationResult>(CreateFatal());
+            });
+        CommandAuthorizationEvaluator authzFaultedSut = Create(fatalFaultedAuthz);
+
+        _ = await Should.ThrowAsync<OutOfMemoryException>(
+            async () => await authzFaultedSut.EvaluateAsync(Request("OrderApprover"), authzCts.Token).ConfigureAwait(false));
     }
 
     [Fact]
@@ -428,9 +693,12 @@ public sealed class CommandAuthorizationEvaluatorTests {
         _ = authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<string>())
             .Returns(AuthorizationResult.Failed(AuthorizationFailure.ExplicitFail()));
 
+        TenantContextSnapshot snapshot = new(sentinelTenant, sentinelUser, true, "corr-blocked");
         IFrontComposerTenantContextAccessor tenant = Substitute.For<IFrontComposerTenantContextAccessor>();
         _ = tenant.TryGetContext(Arg.Any<string?>(), Arg.Any<string>())
-            .Returns(TenantContextResult.Success(new TenantContextSnapshot(sentinelTenant, sentinelUser, true, "corr-blocked")));
+            .Returns(TenantContextResult.Success(snapshot));
+        _ = tenant.Revalidate(Arg.Any<TenantContextSnapshot>(), Arg.Any<string>())
+            .Returns(TenantContextResult.Success(snapshot));
 
         CapturingLogger<CommandAuthorizationEvaluator> capturingLogger = new();
         ClaimsIdentity identity = new([new Claim(ClaimTypes.NameIdentifier, sentinelUser)], "Test");
@@ -477,11 +745,78 @@ public sealed class CommandAuthorizationEvaluatorTests {
             Microsoft.Extensions.Options.Options.Create(options ?? new FrontComposerAuthorizationOptions()));
     }
 
-    private static IFrontComposerTenantContextAccessor DefaultTenant() {
+    private static IFrontComposerTenantContextAccessor DefaultTenant()
+    {
+        TenantContextSnapshot snapshot = new("tenant-a", "user-a", true, "corr-1");
         IFrontComposerTenantContextAccessor tenant = Substitute.For<IFrontComposerTenantContextAccessor>();
-        tenant.TryGetContext(Arg.Any<string?>(), Arg.Any<string>()).Returns(
-            TenantContextResult.Success(new TenantContextSnapshot("tenant-a", "user-a", true, "corr-1")));
+        tenant.TryGetContext(Arg.Any<string?>(), Arg.Any<string>()).Returns(TenantContextResult.Success(snapshot));
+        tenant.Revalidate(Arg.Any<TenantContextSnapshot>(), Arg.Any<string>()).Returns(TenantContextResult.Success(snapshot));
         return tenant;
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static async Task RunUncooperativeGetAuthenticationStateAsync(
+        InvalidOperationException lateFault,
+        CancellationToken testCancellationToken)
+    {
+        PendingAuthenticationStateProvider provider = new();
+        IAuthorizationService authorization = Substitute.For<IAuthorizationService>();
+        CommandAuthorizationEvaluator sut = Create(authorization, provider);
+        using CancellationTokenSource cts = new();
+
+        Task<CommandAuthorizationDecision> evaluation = sut.EvaluateAsync(Request("OrderApprover"), cts.Token);
+        await provider.Entered.Task.WaitAsync(TimeSpan.FromSeconds(2), testCancellationToken).ConfigureAwait(false);
+        AuthenticationStateChangedSubscriberCount(provider).ShouldBe(1);
+
+        cts.Cancel();
+
+        CommandAuthorizationDecision result = await evaluation.WaitAsync(TimeSpan.FromSeconds(2), testCancellationToken).ConfigureAwait(false);
+        result.IsAllowed.ShouldBeFalse();
+        result.Kind.ShouldBe(CommandAuthorizationDecisionKind.FailedClosed);
+        result.Reason.ShouldBe(CommandAuthorizationReason.Canceled);
+        AuthenticationStateChangedSubscriberCount(provider).ShouldBe(0);
+        provider.Fault(lateFault);
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static async Task RunUncooperativeAuthorizeAsync(
+        InvalidOperationException lateFault,
+        CancellationToken testCancellationToken)
+    {
+        TaskCompletionSource entered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource<AuthorizationResult> completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        IAuthorizationService authorization = Substitute.For<IAuthorizationService>();
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), "OrderApprover")
+            .Returns(_ =>
+            {
+                entered.TrySetResult();
+                return completion.Task;
+            });
+        FakeAuthenticationStateProvider provider = new(new AuthenticationState(new ClaimsPrincipal(
+            new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, "user-a")], "Test"))));
+        CommandAuthorizationEvaluator sut = Create(authorization, provider);
+        using CancellationTokenSource cts = new();
+
+        Task<CommandAuthorizationDecision> evaluation = sut.EvaluateAsync(Request("OrderApprover"), cts.Token);
+        await entered.Task.WaitAsync(TimeSpan.FromSeconds(2), testCancellationToken).ConfigureAwait(false);
+        AuthenticationStateChangedSubscriberCount(provider).ShouldBe(1);
+
+        cts.Cancel();
+
+        CommandAuthorizationDecision result = await evaluation.WaitAsync(TimeSpan.FromSeconds(2), testCancellationToken).ConfigureAwait(false);
+        result.IsAllowed.ShouldBeFalse();
+        result.Kind.ShouldBe(CommandAuthorizationDecisionKind.FailedClosed);
+        result.Reason.ShouldBe(CommandAuthorizationReason.Canceled);
+        AuthenticationStateChangedSubscriberCount(provider).ShouldBe(0);
+        completion.TrySetException(lateFault).ShouldBeTrue();
+    }
+
+    private static int AuthenticationStateChangedSubscriberCount(AuthenticationStateProvider provider)
+    {
+        FieldInfo eventField = typeof(AuthenticationStateProvider)
+            .GetFields(BindingFlags.Instance | BindingFlags.NonPublic)
+            .Single(static field => typeof(Delegate).IsAssignableFrom(field.FieldType));
+        return (eventField.GetValue(provider) as Delegate)?.GetInvocationList().Length ?? 0;
     }
 
     private static CommandAuthorizationRequest Request(string? policy)
@@ -496,5 +831,28 @@ public sealed class CommandAuthorizationEvaluatorTests {
     private sealed class FakeAuthenticationStateProvider(AuthenticationState? state) : AuthenticationStateProvider {
         public override Task<AuthenticationState> GetAuthenticationStateAsync()
             => Task.FromResult(state!);
+    }
+
+    private sealed class PendingAuthenticationStateProvider : AuthenticationStateProvider
+    {
+        private readonly TaskCompletionSource<AuthenticationState> _completion =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public TaskCompletionSource Entered { get; } =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public void Fault(Exception exception) => _completion.TrySetException(exception);
+
+        public override Task<AuthenticationState> GetAuthenticationStateAsync()
+        {
+            Entered.TrySetResult();
+            return _completion.Task;
+        }
+    }
+
+    private sealed class CallbackAuthenticationStateProvider(
+        Func<Task<AuthenticationState>> getState) : AuthenticationStateProvider
+    {
+        public override Task<AuthenticationState> GetAuthenticationStateAsync() => getState();
     }
 }
