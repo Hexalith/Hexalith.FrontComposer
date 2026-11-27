@@ -154,11 +154,19 @@ public sealed class ProjectionSlotRegistryTests {
         Should.Throw<ArgumentNullException>(() => registry.Resolve(null!, null, "Priority"));
     }
 
+    /// <summary>Gets invalid generic argument types for registry checks.</summary>
+    public static TheoryData<Type> InvalidProjectionTypes => new()
+    {
+        typeof(List<>),
+        typeof(void),
+        typeof(int).MakeByRefType(),
+        typeof(int).MakePointerType(),
+        typeof(Span<int>),
+    };
+
     [Theory]
-    [InlineData(typeof(List<>))]
-    [InlineData(typeof(IComparable))]
-    [InlineData(typeof(Stream))]
-    public void Resolve_UnsupportedProjectionType_Throws(Type projectionType) {
+    [MemberData(nameof(InvalidProjectionTypes), DisableDiscoveryEnumeration = true)]
+    public void Resolve_InvalidProjectionType_Throws(Type projectionType) {
         ProjectionSlotRegistry registry = NewRegistry();
 
         Should.Throw<ArgumentException>(() => registry.Resolve(projectionType, null, "Priority"))
@@ -229,23 +237,58 @@ public sealed class ProjectionSlotRegistryTests {
     }
 
     [Theory]
-    [InlineData(typeof(List<>), typeof(AnyPrioritySlot))]
-    [InlineData(typeof(IComparable), typeof(ProjectionSlotTestComponent<IComparable>))]
-    [InlineData(typeof(Stream), typeof(ProjectionSlotTestComponent<Stream>))]
-    public void Register_UnsupportedProjectionType_LogsHfc1039AndSkipsDescriptor(Type projectionType, Type componentType) {
+    [MemberData(nameof(InvalidProjectionTypes), DisableDiscoveryEnumeration = true)]
+    public void Register_InvalidProjectionType_LogsHfc1039AndSkipsDescriptor(Type projectionType) {
         ListLogger<ProjectionSlotRegistry> logger = new();
         ProjectionSlotDescriptor invalid = new(
             ProjectionType: projectionType,
             FieldName: "Priority",
             FieldType: typeof(int),
             Role: null,
-            ComponentType: componentType,
+            ComponentType: typeof(AnyPrioritySlot),
             ContractVersion: ProjectionSlotContractVersion.Current);
 
         ProjectionSlotRegistry registry = new(logger, [new ProjectionSlotDescriptorSource([invalid])]);
 
         registry.Descriptors.ShouldBeEmpty();
-        logger.Entries.ShouldHaveSingleItem().EventId.Name.ShouldBe("ProjectionSlotInvalidComponent");
+        var entry = logger.Entries.ShouldHaveSingleItem();
+        entry.EventId.Id.ShouldBe(5826);
+        entry.Message.ShouldContain("ReasonCategory=InvalidProjectionType.");
+    }
+
+    [Theory]
+    [InlineData(typeof(IReadOnlyCollection<int>), nameof(IReadOnlyCollection<int>.Count), typeof(ProjectionSlotTestComponent<IReadOnlyCollection<int>>))]
+    [InlineData(typeof(System.Text.Encoding), nameof(System.Text.Encoding.CodePage), typeof(ProjectionSlotTestComponent<System.Text.Encoding>))]
+    public void Resolve_NonConcreteProjectionType_SelectsExplicitRegistration(Type projectionType, string fieldName, Type componentType)
+    {
+        ListLogger<ProjectionSlotRegistry> logger = new();
+        ProjectionSlotDescriptor descriptor = new(
+            ProjectionType: projectionType,
+            FieldName: fieldName,
+            FieldType: typeof(int),
+            Role: null,
+            ComponentType: componentType,
+            ContractVersion: ProjectionSlotContractVersion.Current);
+        ProjectionSlotRegistry registry = new(logger, [new ProjectionSlotDescriptorSource([descriptor])]);
+
+        registry.Resolve(projectionType, ProjectionRole.Timeline, fieldName).ShouldBe(descriptor);
+        logger.Entries.ShouldBeEmpty();
+    }
+
+    [Theory]
+    [InlineData(typeof(IReadOnlyCollection<int>))]
+    [InlineData(typeof(System.Text.Encoding))]
+    public void Resolve_NonConcreteProjectionTypeWithoutRegistration_LogsBoundedDebugReason(Type projectionType)
+    {
+        ListLogger<ProjectionSlotRegistry> logger = new();
+        ProjectionSlotRegistry registry = new(logger, []);
+
+        registry.Resolve(projectionType, null, "clientField\r\nexample").ShouldBeNull();
+
+        var entry = logger.Entries.ShouldHaveSingleItem();
+        entry.Level.ShouldBe(LogLevel.Debug);
+        entry.EventId.Id.ShouldBe(6073);
+        entry.Message.ShouldBe("No Level 3 projection slot selected. Generated field rendering applies. Reason=UnsupportedProjectionType.");
     }
 
     [Fact]
@@ -262,6 +305,7 @@ public sealed class ProjectionSlotRegistryTests {
             && e.Message.Contains("HFC1039")
             && e.Message.Contains("ExpectedProjectionTypeDigest=sha256:")
             && e.Message.Contains("ComponentTypeDigest=sha256:")
+            && e.Message.Contains("ReasonCategory=sha256:")
             && !e.Message.Contains(typeof(WrongContextSlot).FullName!, StringComparison.Ordinal));
     }
 

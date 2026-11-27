@@ -91,6 +91,14 @@ public sealed class FcFieldSlotHostTests : BunitContext {
     }
 
     [Fact]
+    public void Render_InterfaceProjectionParent_UsesGeneratedFallback()
+        => AssertGeneratedFallback<IReadOnlyCollection<int>>(new List<int> { 7 }, nameof(IReadOnlyCollection<int>.Count));
+
+    [Fact]
+    public void Render_AbstractProjectionParent_UsesGeneratedFallback()
+        => AssertGeneratedFallback<System.Text.Encoding>(System.Text.Encoding.UTF8, nameof(System.Text.Encoding.CodePage));
+
+    [Fact]
     public void Render_DefaultRendererReturnsNull_RendersNothing()
     {
         Services.Replace(ServiceDescriptor.Singleton<IProjectionSlotRegistry>(EmptyRegistry()));
@@ -443,6 +451,24 @@ public sealed class FcFieldSlotHostTests : BunitContext {
 #else
         markup.ShouldNotContain(diagnostic);
 #endif
+    }
+
+    private void AssertGeneratedFallback<TProjection>(TProjection parent, string fieldName)
+        where TProjection : class
+    {
+        Services.Replace(ServiceDescriptor.Singleton<IProjectionSlotRegistry>(EmptyRegistry()));
+
+        IRenderedComponent<FcFieldSlotHost<TProjection, int>> cut = Render<FcFieldSlotHost<TProjection, int>>(parameters => parameters
+            .Add(p => p.Parent, parent)
+            .Add(p => p.Field, NewField(fieldName))
+            .Add(p => p.RenderContext, NewRenderContext())
+            .Add(p => p.RenderDefault, context => builder =>
+            {
+                context.Parent.ShouldBeSameAs(parent);
+                builder.AddContent(0, "generated fallback");
+            }));
+
+        cut.Markup.ShouldBe("generated fallback");
     }
 
     private static FieldDescriptor NewField(string name)

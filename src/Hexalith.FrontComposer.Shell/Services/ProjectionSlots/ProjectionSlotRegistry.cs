@@ -20,7 +20,7 @@ namespace Hexalith.FrontComposer.Shell.Services.ProjectionSlots;
 /// projection type, role, and field name.
 /// </summary>
 public sealed class ProjectionSlotRegistry : IProjectionSlotRegistry {
-    private const string InvalidProjectionTypeMessage = "Projection type must be concrete and have no unbound generic parameters.";
+    private const string InvalidProjectionTypeMessage = "Use a closed projection CLR type that is valid as a generic type argument.";
 
     private readonly ConcurrentDictionary<RegistryKey, RegistryEntry> _entries = new();
     private readonly ILogger<ProjectionSlotRegistry> _logger;
@@ -64,7 +64,7 @@ public sealed class ProjectionSlotRegistry : IProjectionSlotRegistry {
     public ProjectionSlotDescriptor? Resolve(Type projectionType, ProjectionRole? role, string fieldName) {
         ArgumentNullException.ThrowIfNull(projectionType);
         ArgumentException.ThrowIfNullOrWhiteSpace(fieldName);
-        if (!IsSupportedProjectionType(projectionType)) {
+        if (!CanBeSlotContextTypeArgument(projectionType)) {
             throw new ArgumentException(InvalidProjectionTypeMessage, nameof(projectionType));
         }
 
@@ -75,7 +75,10 @@ public sealed class ProjectionSlotRegistry : IProjectionSlotRegistry {
             return entry.Descriptor;
         }
 
-        FrontComposerDiagnosticLog.ProjectionSlotResolutionFallback(_logger, entry.Ambiguous);
+        FrontComposerDiagnosticLog.ProjectionSlotResolutionFallback(
+            _logger,
+            entry.Ambiguous,
+            projectionType.IsInterface || projectionType.IsAbstract);
         return null;
     }
 
@@ -143,7 +146,11 @@ public sealed class ProjectionSlotRegistry : IProjectionSlotRegistry {
                 comparison.Actual.Build);
         }
 
-        if (!IsCompatibleComponent(descriptor, out string? reason)) {
+        ProjectionSlotDescriptorIssue issue = CanBeSlotContextTypeArgument(descriptor.ProjectionType)
+            ? ProjectionSlotDescriptorIssue.None
+            : ProjectionSlotDescriptorIssue.InvalidProjectionType;
+        string? reason = null;
+        if (issue != ProjectionSlotDescriptorIssue.None || !IsCompatibleComponent(descriptor, out reason)) {
             FrontComposerWarningLog.ProjectionSlotInvalidComponent(
                 _logger,
                 descriptor.ProjectionType,
@@ -151,7 +158,8 @@ public sealed class ProjectionSlotRegistry : IProjectionSlotRegistry {
                 descriptor.ProjectionType,
                 descriptor.FieldType,
                 descriptor.ComponentType,
-                reason);
+                reason,
+                issue);
             return;
         }
 
@@ -175,19 +183,19 @@ public sealed class ProjectionSlotRegistry : IProjectionSlotRegistry {
             });
     }
 
-    private static bool IsSupportedProjectionType(Type projectionType)
-        => !projectionType.ContainsGenericParameters && !projectionType.IsInterface && !projectionType.IsAbstract;
+    private static bool CanBeSlotContextTypeArgument(Type type)
+        => !type.ContainsGenericParameters
+            && type != typeof(void)
+            && !type.IsByRef
+            && !type.IsByRefLike
+            && !type.IsPointer
+            && !type.IsFunctionPointer;
 
     [UnconditionalSuppressMessage(
         "Trimming",
         "IL2075:DynamicallyAccessedMembers",
         Justification = "Slot component types are registered explicitly by adopter startup code or generated registrations; ProjectionSlotDescriptor.ComponentType carries [DynamicallyAccessedMembers(PublicProperties|PublicConstructors|NonPublicConstructors)] so trim metadata flows through this reflection chain.")]
     private static bool IsCompatibleComponent(ProjectionSlotDescriptor descriptor, out string? reason) {
-        if (!IsSupportedProjectionType(descriptor.ProjectionType)) {
-            reason = InvalidProjectionTypeMessage;
-            return false;
-        }
-
         Type componentType = descriptor.ComponentType;
 
         // GB-P12 — reject open generics, abstract types, and interface types up front so the

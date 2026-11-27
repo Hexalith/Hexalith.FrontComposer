@@ -545,7 +545,8 @@ internal static partial class FrontComposerWarningLog
         object? expectedProjectionType,
         object? expectedFieldType,
         object? componentType,
-        object? reason)
+        object? reason,
+        ProjectionSlotDescriptorIssue issue = ProjectionSlotDescriptorIssue.None)
     {
         if (logger is null || !logger.IsEnabled(LogLevel.Warning))
         {
@@ -559,7 +560,7 @@ internal static partial class FrontComposerWarningLog
             Digest(expectedProjectionType),
             Digest(expectedFieldType),
             Digest(componentType),
-            Digest(reason));
+            issue == ProjectionSlotDescriptorIssue.None ? Digest(reason) : issue.ToString());
     }
 
     /// <summary>Emits the <c>ProjectionSlotDuplicate</c> residual warning-and-above event.</summary>
