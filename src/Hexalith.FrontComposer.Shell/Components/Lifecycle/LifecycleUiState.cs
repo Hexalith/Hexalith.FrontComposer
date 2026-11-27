@@ -30,6 +30,9 @@ public sealed record LifecycleUiState {
     /// <summary>The timer-driven phase (threshold bucket).</summary>
     public LifecycleTimerPhase TimerPhase { get; init; }
 
+    /// <summary>Gets whether local tracking capacity was exhausted.</summary>
+    internal bool PendingTrackingCapacityExceeded { get; init; }
+
     /// <summary>The ULID MessageId (nullable; present from Acknowledged onward).</summary>
     public string? MessageId { get; init; }
 
@@ -71,6 +74,7 @@ public sealed record LifecycleUiState {
         TimerPhase = LifecycleTimerPhase.NoPulse,
         MessageId = null,
         IdempotencyResolved = false,
+        PendingTrackingCapacityExceeded = false,
         LastTransitionAt = default,
         RejectionMessage = null,
         RejectionTitle = null,
@@ -116,6 +120,7 @@ public sealed record LifecycleUiState {
             TimerPhase = effectivePhase,
             MessageId = transition.MessageId,
             IdempotencyResolved = transition.IdempotencyResolved,
+            PendingTrackingCapacityExceeded = transition.PendingTrackingCapacityExceeded,
             LastTransitionAt = transition.LastTransitionAt,
             RejectionMessage = rejectionMessage,
             RejectionTitle = rejectionTitle,

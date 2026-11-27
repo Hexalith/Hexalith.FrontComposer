@@ -5,6 +5,7 @@ using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
+using Hexalith.FrontComposer.Shell.Services.Lifecycle;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -432,6 +433,7 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
 
             PendingCommandEntry evicted = oldest with {
                 Status = PendingCommandStatus.NeedsReview,
+                WasEvicted = true,
                 TerminalAt = _time.GetUtcNow(),
             };
 
@@ -463,20 +465,19 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
 
     private void DispatchEvictedLifecycle(IReadOnlyList<PendingCommandEntry> evicted) {
         foreach (PendingCommandEntry entry in evicted) {
-            // P2-P5 — re-check the entry's current status before transitioning. A concurrent
-            // ResolveTerminal may have moved this MessageId to Confirmed in the gap between the
-            // gate-protected drain and this dispatch; in that case the transition would dispatch
-            // Rejected over an already-Confirmed lifecycle.
             PendingCommandEntry? current;
+            long? lifecycleGeneration;
             lock (_gate) {
-                if (_disposed) {
+                if (_disposed || !IsScopeCurrentLocked()) {
                     return;
                 }
 
-                current = _byMessageId.TryGetValue(entry.MessageId, out PendingCommandEntry? c) ? c : null;
+                current = _byMessageId.GetValueOrDefault(entry.MessageId);
+                lifecycleGeneration = (_lifecycle as LifecycleStateService)?.ScopeGeneration;
             }
 
-            if (current is null || current.Status != PendingCommandStatus.NeedsReview) {
+            if (current is not { Status: PendingCommandStatus.NeedsReview, WasEvicted: true }
+                || !string.Equals(current.CorrelationId, entry.CorrelationId, StringComparison.Ordinal)) {
                 FrontComposerHotPathLog.PendingEvictedDispatchSkipped(
                     _logger,
                     entry.MessageId,
@@ -484,21 +485,19 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
                 continue;
             }
 
-            if (!DispatchNeedsReviewLifecycle(entry, "Evicted")) {
-                // Lifecycle service is disposed or unrecoverable; do not iterate further.
+            if (!DispatchNeedsReviewLifecycle(entry, "Evicted", lifecycleGeneration)) {
                 return;
             }
         }
     }
 
-    private bool DispatchNeedsReviewLifecycle(PendingCommandEntry entry, string reason) {
+    private bool DispatchNeedsReviewLifecycle(PendingCommandEntry entry, string reason, long? lifecycleGeneration = null) {
         try {
-            // The lifecycle service treats Rejected as a terminal-only state; NeedsReview is
-            // surfaced as Rejected to the lifecycle wrapper so the UI does not stay locked in
-            // Acknowledged/Syncing forever. The pending-command summary still shows the explicit
-            // NeedsReview status from PendingCommandStatus. The 3-arg overload forwards to the
-            // 4-arg with idempotencyResolved=false; an explicit "evicted" reason flag is a
-            // follow-up extension to the lifecycle API (P2-P18 is deferred — see deferred-work).
+            if (_lifecycle is LifecycleStateService concrete && lifecycleGeneration is { } generation) {
+                return concrete.TryTransitionForScope(generation, entry.CorrelationId, CommandLifecycleState.NeedsReview,
+                    entry.MessageId, idempotencyResolved: false, pendingTrackingCapacityExceeded: entry.WasEvicted);
+            }
+
             _lifecycle.Transition(entry.CorrelationId, CommandLifecycleState.NeedsReview, entry.MessageId);
             return true;
         }
@@ -516,6 +515,10 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
                 reason,
                 entry.MessageId,
                 ex.GetType().Name);
+            if (entry.WasEvicted) {
+                EnqueueLifecycleConvergence(entry);
+            }
+
             return true;
         }
     }
@@ -670,7 +673,8 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
             }
 
             if (_lifecycle is global::Hexalith.FrontComposer.Shell.Services.Lifecycle.LifecycleStateService concrete && lifecycleGeneration is { } generation) {
-                if (!concrete.TryTransitionForScope(generation, terminal.CorrelationId, lifecycleState, terminal.MessageId, idempotencyResolved)) {
+                if (!concrete.TryTransitionForScope(generation, terminal.CorrelationId, lifecycleState, terminal.MessageId,
+                    idempotencyResolved, pendingTrackingCapacityExceeded: terminal.WasEvicted)) {
                     return false;
                 }
             }

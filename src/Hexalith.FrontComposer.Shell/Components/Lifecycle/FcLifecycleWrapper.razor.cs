@@ -352,6 +352,17 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
         LifecycleTimerPhase phase = _timer?.CurrentPhase ?? LifecycleTimerPhase.NoPulse;
         var next = LifecycleUiState.From(transition, phase, RejectionMessage, RejectionTitle, RejectionDetails);
 
+        if (transition.NewState == CommandLifecycleState.NeedsReview
+            && !next.PendingTrackingCapacityExceeded
+            && transition.MessageId is { } messageId
+            && !string.IsNullOrWhiteSpace(messageId)
+            && Services.GetService(typeof(IPendingCommandStateService)) is IPendingCommandStateService pending
+            && pending.GetByMessageId(messageId) is { Status: PendingCommandStatus.NeedsReview, WasEvicted: true } entry
+            && string.Equals(entry.CorrelationId, transition.CorrelationId, StringComparison.Ordinal))
+        {
+            next = next with { PendingTrackingCapacityExceeded = true };
+        }
+
         switch (transition.NewState) {
             case CommandLifecycleState.Acknowledged:
                 _acceptanceAt ??= transition.LastTransitionAt;
@@ -469,6 +480,9 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
         });
     }
 
+    private string NeedsReviewResourceKey
+        => _state.PendingTrackingCapacityExceeded ? "LifecyclePendingTrackingCapacityExceeded" : "Am15NeedsReview";
+
     private string AnnouncementSurface => string.IsNullOrEmpty(_boundAnnouncementSurface)
         ? StatusSurface ?? "lifecycle:" + _boundCorrelationId
         : _boundAnnouncementSurface;
@@ -483,7 +497,7 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
             CommandLifecycleState.Syncing => "Am12Syncing",
             CommandLifecycleState.Confirmed or CommandLifecycleState.IdempotentConfirmed => "Am13Confirmed",
             CommandLifecycleState.Rejected when !MappedRejection => "Am14Rejected",
-            CommandLifecycleState.NeedsReview => "Am15NeedsReview",
+            CommandLifecycleState.NeedsReview => NeedsReviewResourceKey,
             CommandLifecycleState.Warning => "Am16Warning",
             CommandLifecycleState.Degraded => "Am17Degraded",
             CommandLifecycleState.DegradedExhausted => "Am24Exhausted",
@@ -500,10 +514,12 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
 
         ClaimAnnouncementGroup();
 
-        string message = state is CommandLifecycleState.IdempotentConfirmed
-            || (state is CommandLifecycleState.Confirmed && _state.IsIdempotent)
-            ? string.IsNullOrWhiteSpace(IdempotentInfoMessage) ? Localizer[key].Value : IdempotentInfoMessage
-            : Localizer[key].Value;
+        string message = state == CommandLifecycleState.NeedsReview
+            ? LocalizedLifecycleText(key)
+            : state is CommandLifecycleState.IdempotentConfirmed
+                || (state is CommandLifecycleState.Confirmed && _state.IsIdempotent)
+                ? string.IsNullOrWhiteSpace(IdempotentInfoMessage) ? Localizer[key].Value : IdempotentInfoMessage
+                : Localizer[key].Value;
         if (restoreDelivered && Announcements is SurfaceAnnouncementCoordinator coordinator
             && coordinator.RestoreDelivered(AnnouncementSurface, _boundAnnouncementGroup, state.ToString(), message))
         {
@@ -582,7 +598,9 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
                                     DateTimeOffset now = Time.GetUtcNow();
                                     ApplyTransition(new CommandLifecycleTransition(correlationId, _state.Current,
                                         lifecycleTerminal, messageId, now, now,
-                                        terminal.Status == PendingCommandStatus.IdempotentConfirmed));
+                                        terminal.Status == PendingCommandStatus.IdempotentConfirmed) {
+                                        PendingTrackingCapacityExceeded = terminal.WasEvicted,
+                                    });
                                     StateHasChanged();
                                 }
                                 resolved = _state.Current == lifecycleTerminal;

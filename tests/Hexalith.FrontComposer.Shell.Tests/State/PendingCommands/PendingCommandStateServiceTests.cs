@@ -464,6 +464,7 @@ public sealed class PendingCommandStateServiceTests {
         result.Status.ShouldBe(PendingCommandRegistrationStatus.Registered);
         result.EvictedEntry!.MessageId.ShouldBe(MessageId);
         result.EvictedEntry.Status.ShouldBe(PendingCommandStatus.NeedsReview);
+        result.EvictedEntry.WasEvicted.ShouldBeTrue();
         // P3 — evicted entries are re-inserted as terminal so Snapshot/FcPendingCommandSummary
         // can surface the unresolved tail; the cap applies to pending entries only.
         sut.GetByMessageId(MessageId)!.Status.ShouldBe(PendingCommandStatus.NeedsReview);

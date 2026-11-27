@@ -222,7 +222,7 @@
         CommandLifecycleState.Degraded;
 
     private string LifecycleStatusTitle => _state.Current switch {
-        CommandLifecycleState.NeedsReview => Localizer["Am15NeedsReview"],
+        CommandLifecycleState.NeedsReview => LocalizedLifecycleText(NeedsReviewResourceKey),
         CommandLifecycleState.Warning => Localizer["Am16Warning"],
         CommandLifecycleState.DegradedExhausted => Localizer["Am24Exhausted"],
         _ => Localizer["Am17Degraded"],

@@ -729,6 +729,7 @@
   <data name="Am12Syncing" xml:space="preserve"><value>Commande acceptée. Mise à jour de la vue.</value></data>
   <data name="Am13Confirmed" xml:space="preserve"><value>Commande confirmée.</value></data>
   <data name="Am14Rejected" xml:space="preserve"><value>Commande rejetée. Consultez le message et réessayez.</value></data>
+  <data name="LifecyclePendingTrackingCapacityExceeded" xml:space="preserve"><value>La capacité de suivi a été atteinte avant la confirmation du résultat de la commande. Vérifiez le résultat avant de réessayer.</value></data>
   <data name="Am15NeedsReview" xml:space="preserve"><value>La commande doit être examinée avant que son résultat puisse être confirmé.</value></data>
   <data name="Am16Warning" xml:space="preserve"><value>Commande terminée avec un avertissement. Consultez les détails.</value></data>
   <data name="Am17Degraded" xml:space="preserve"><value>La confirmation prend plus de temps que prévu. Consultez l’état ou poursuivez votre travail.</value></data>

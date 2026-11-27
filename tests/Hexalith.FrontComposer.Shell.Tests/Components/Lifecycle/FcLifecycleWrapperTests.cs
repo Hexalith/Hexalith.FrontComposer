@@ -2,8 +2,12 @@ using AngleSharp.Dom;
 
 using Bunit;
 
+using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
+using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Components.Lifecycle;
+using Hexalith.FrontComposer.Shell.Services.Lifecycle;
+using Hexalith.FrontComposer.Shell.State.PendingCommands;
 using Hexalith.FrontComposer.Shell.Resources;
 
 using Microsoft.AspNetCore.Components;
@@ -23,6 +27,56 @@ namespace Hexalith.FrontComposer.Shell.Tests.Components.Lifecycle;
 /// re-subscription (Task 2.5 D15 / OnParametersSet).
 /// </summary>
 public sealed class FcLifecycleWrapperTests : LifecycleWrapperTestBase {
+    [Theory]
+    [InlineData("en", true, "Tracking capacity was reached")]
+    [InlineData("fr", true, "La capacité de suivi a été atteinte")]
+    [InlineData("en", false, "Command needs review")]
+    public async Task PendingCapacityEvictionKeepsDistinctFeedbackOnReplay(string locale, bool evict, string expected)
+    {
+        using CultureScope culture = new(locale);
+        using LifecycleStateService lifecycle = new(
+            Microsoft.Extensions.Options.Options.Create(new LifecycleOptions()), FakeTime);
+        IUserContextAccessor user = Substitute.For<IUserContextAccessor>();
+        user.TenantId.Returns("tenant-test");
+        user.UserId.Returns("user-test");
+        using PendingCommandStateService pending = new(
+            Microsoft.Extensions.Options.Options.Create(new FcShellOptions
+            {
+                MaxPendingCommandEntries = 1,
+            }), lifecycle, user, FakeTime);
+        RegisterLifecycleService(lifecycle);
+        const string correlationId = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
+        const string messageId = "01ARZ3NDEKTSV4RRFFQ69G5FAW";
+        lifecycle.Transition(correlationId, CommandLifecycleState.Submitting);
+        lifecycle.Transition(correlationId, CommandLifecycleState.Acknowledged, messageId);
+        pending.Register(new PendingCommandRegistration(correlationId, messageId, "TestCommand"))
+            .Status.ShouldBe(PendingCommandRegistrationStatus.Registered);
+        var cut = Render<FcLifecycleWrapper>(parameters => parameters.Add(c => c.CorrelationId, correlationId));
+
+        await cut.InvokeAsync(() =>
+        {
+            if (evict)
+            {
+                pending.Register(new PendingCommandRegistration("01ARZ3NDEKTSV4RRFFQ69G5FAX",
+                    "01ARZ3NDEKTSV4RRFFQ69G5FAY", "TestCommand")).EvictedEntry.ShouldNotBeNull();
+            }
+            else
+            {
+                pending.ResolveTerminal(new PendingCommandTerminalObservation(messageId, PendingCommandTerminalOutcome.NeedsReview));
+            }
+
+            FakeTime.Advance(TimeSpan.FromMilliseconds(250));
+        });
+
+        cut.WaitForAssertion(() =>
+        {
+            cut.Find("[data-testid='fc-lifecycle-outcome']").TextContent.ShouldContain(expected);
+            cut.Find("[data-testid='fc-surface-status']").TextContent.ShouldContain(expected);
+        });
+        var replay = Render<FcLifecycleWrapper>(parameters => parameters.Add(c => c.CorrelationId, correlationId));
+        replay.WaitForAssertion(() => replay.Find("[data-testid='fc-lifecycle-outcome']").TextContent.ShouldContain(expected));
+    }
+
     [Fact]
     public void Idle_state_renders_only_child_content_no_aria_live() {
         IRenderedComponent<FcLifecycleWrapper> cut = RenderWrapperWithStubService(commandId: "increment");

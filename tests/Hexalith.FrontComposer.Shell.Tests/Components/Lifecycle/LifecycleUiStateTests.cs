@@ -1,3 +1,5 @@
+using System.Reflection;
+
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Shell.Components.Lifecycle;
@@ -35,7 +37,11 @@ public sealed class LifecycleUiStateTests {
             .Initializer.ShouldNotBeNull();
 
         initializer.Expressions.Cast<AssignmentExpressionSyntax>().Select(expression => expression.Left.ToString()).Order()
-            .ShouldBe(typeof(LifecycleUiState).GetProperties().Select(property => property.Name).Order());
+            .ShouldBe(typeof(LifecycleUiState)
+                .GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                .Where(property => property.SetMethod is not null)
+                .Select(property => property.Name)
+                .Order());
     }
 
     [Fact]
@@ -46,6 +52,7 @@ public sealed class LifecycleUiStateTests {
         state.TimerPhase.ShouldBe(LifecycleTimerPhase.NoPulse);
         state.MessageId.ShouldBeNull();
         state.IdempotencyResolved.ShouldBeFalse();
+        state.PendingTrackingCapacityExceeded.ShouldBeFalse();
         state.LastTransitionAt.ShouldBe(default(DateTimeOffset));
         state.RejectionMessage.ShouldBeNull();
         state.RejectionTitle.ShouldBeNull();

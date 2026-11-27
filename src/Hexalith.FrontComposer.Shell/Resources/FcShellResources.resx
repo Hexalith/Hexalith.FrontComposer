@@ -933,6 +933,7 @@
   <data name="Am12Syncing" xml:space="preserve"><value>Command accepted. Updating the view.</value></data>
   <data name="Am13Confirmed" xml:space="preserve"><value>Command confirmed.</value></data>
   <data name="Am14Rejected" xml:space="preserve"><value>Command rejected. Review the message and try again.</value></data>
+  <data name="LifecyclePendingTrackingCapacityExceeded" xml:space="preserve"><value>Tracking capacity was reached before the command result could be confirmed. Review the result before trying again.</value></data>
   <data name="Am15NeedsReview" xml:space="preserve"><value>Command needs review before its result can be confirmed.</value></data>
   <data name="Am16Warning" xml:space="preserve"><value>Command completed with a warning. Review the details.</value></data>
   <data name="Am17Degraded" xml:space="preserve"><value>Confirmation is taking longer than expected. Review status or continue working.</value></data>

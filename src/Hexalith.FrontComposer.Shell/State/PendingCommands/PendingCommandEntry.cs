@@ -20,6 +20,9 @@ public sealed record PendingCommandEntry(
     /// <summary>Gets the explicit pre-dispatch target snapshot associated with acceptance.</summary>
     public CommandTargetSnapshot? TargetSnapshot { get; init; }
 
+    /// <summary>Gets whether capacity eviction ended local tracking.</summary>
+    internal bool WasEvicted { get; init; }
+
     internal (string TenantId, string UserId)? RegistrationScope { get; init; }
 
     internal bool HasSameFrameworkMetadata(PendingCommandRegistration registration) =>

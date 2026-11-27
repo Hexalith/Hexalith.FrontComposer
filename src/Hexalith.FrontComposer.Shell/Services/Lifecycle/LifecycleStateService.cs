@@ -105,6 +105,7 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
             string? messageId;
             DateTimeOffset originalAt;
             bool idempotencyResolved;
+            bool pendingTrackingCapacityExceeded;
             lock (entry) {
                 current = entry.State;
                 messageId = entry.MessageId;
@@ -112,6 +113,7 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
                     ? entry.AcceptedAt ?? entry.OriginalTransitionAt
                     : entry.OriginalTransitionAt;
                 idempotencyResolved = entry.IdempotencyResolved;
+                pendingTrackingCapacityExceeded = entry.PendingTrackingCapacityExceeded;
             }
 
             try {
@@ -122,7 +124,9 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
                     MessageId: messageId,
                     TimestampUtc: _time.GetUtcNow(),
                     LastTransitionAt: originalAt,
-                    IdempotencyResolved: idempotencyResolved));
+                    IdempotencyResolved: idempotencyResolved) {
+                    PendingTrackingCapacityExceeded = pendingTrackingCapacityExceeded,
+                });
             }
             catch (Exception ex) when (ex is not OperationCanceledException) {
                 FrontComposerHotPathLog.LifecycleReplayCallbackFaulted(
@@ -198,14 +202,15 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
         CommandLifecycleState newState,
         string? messageId,
         bool idempotencyResolved,
-        DateTimeOffset? observedAt = null) {
+        DateTimeOffset? observedAt = null,
+        bool pendingTrackingCapacityExceeded = false) {
         CommandLifecycleTransition? transition;
         lock (_scopeGate) {
-            if (originatingGeneration != _scopeGeneration) {
+            if (Volatile.Read(ref _disposed) != 0 || originatingGeneration != _scopeGeneration) {
                 return false;
             }
 
-            transition = TransitionInScope(correlationId, newState, messageId, idempotencyResolved, observedAt);
+            transition = TransitionInScope(correlationId, newState, messageId, idempotencyResolved, observedAt, pendingTrackingCapacityExceeded);
         }
 
         if (transition is not null && Volatile.Read(ref _scopeGeneration) == originatingGeneration) {
@@ -247,7 +252,8 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
         CommandLifecycleState newState,
         string? messageId,
         bool idempotencyResolved,
-        DateTimeOffset? observedAt) {
+        DateTimeOffset? observedAt,
+        bool pendingTrackingCapacityExceeded) {
 
         DateTimeOffset now = _time.GetUtcNow();
         bool entryExistedBefore = _entries.TryGetValue(correlationId, out _);
@@ -317,6 +323,10 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
 
             applied = newState;
             entry.State = newState;
+            if (previous != newState) {
+                entry.PendingTrackingCapacityExceeded = pendingTrackingCapacityExceeded
+                    && newState == CommandLifecycleState.NeedsReview;
+            }
             entry.LastUpdated = now;
             entry.OriginalTransitionAt = now;
             if (newState is CommandLifecycleState.Acknowledged or CommandLifecycleState.Syncing or CommandLifecycleState.Degraded)
@@ -376,7 +386,9 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
             MessageId: messageId ?? entry.MessageId,
             TimestampUtc: now,
             LastTransitionAt: originalAt,
-            IdempotencyResolved: effectiveIdempotencyResolved);
+            IdempotencyResolved: effectiveIdempotencyResolved) {
+            PendingTrackingCapacityExceeded = pendingTrackingCapacityExceeded && applied == CommandLifecycleState.NeedsReview,
+        };
     }
 
     private void PublishTransition(CommandLifecycleTransition transition, long originatingGeneration) {
@@ -536,6 +548,7 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
         public DateTimeOffset? AcceptedAt;
         public int OutcomeNotifications;
         public bool IdempotencyResolved;
+        public bool PendingTrackingCapacityExceeded;
     }
 
     internal sealed class Subscription {

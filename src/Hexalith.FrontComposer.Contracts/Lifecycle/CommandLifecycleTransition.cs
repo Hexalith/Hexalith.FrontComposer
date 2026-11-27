@@ -27,4 +27,7 @@ public sealed record CommandLifecycleTransition(
     string? MessageId,
     DateTimeOffset TimestampUtc,
     DateTimeOffset LastTransitionAt,
-    bool IdempotencyResolved);
+    bool IdempotencyResolved) {
+    /// <summary>Gets whether local tracking capacity was exhausted before the outcome could be confirmed.</summary>
+    public bool PendingTrackingCapacityExceeded { get; init; }
+}
