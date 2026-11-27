@@ -3360,6 +3360,7 @@ severity: medium
 reason: **[MED] `PrefillDerivableFieldsAsync` sequential provider awaits** — per-submit latency scales linearly with derivable property count; `BeforeSubmit` calls the same helper, compounding. **Defer target:** Epic 9 performance pass. Reconciliation: Row: DW-0401; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.4; AC coverage: AC12, AC23, AC29, AC34; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.4.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Related: Story 11.4; Evidence: section: code review of 2-2-action-density-rules-and-rendering-modes (2026-04-16) — Group C (SourceTools layer) chunk.
 status: open
 decision: 2026-11-24 Skipped. Concurrent prefill would call adopter `IDerivedValueProvider` implementations concurrently, which the public contract does not allow today. The provider concurrency contract needs an owner decision first.
+decision: 2026-11-27 Skipped. The provider concurrency contract still requires an owner decision before parallel prefill can safely invoke adopter implementations.
 
 ### DW-1133: [MED] `TimeOnly` end-to-end compile path not verified
 
@@ -3429,6 +3430,7 @@ severity: medium
 reason: **[MED] Email canonicalization edge cases — Turkish-I, NFKC vs NFC, RFC 5321 local-part case sensitivity** — different IDNA forms produce different storage keys across devices for the same logical user. **Defer target:** Epic 7 (Authentication, Authorization & Multi-Tenancy) I18N email policy. Reconciliation: Row: DW-0410; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of 2-2-action-density-rules-and-rendering-modes (2026-04-16) — Group D (Shell services + Fluxor state + JS module) chunk.
 status: open
 decision: 2026-08-27 Keep open
+decision: 2026-11-27 Skipped. The ledger holds email normalization open pending an identity policy and storage-key compatibility decision.
 
 ### DW-1142: [LOW] `FrontComposerStorageKey.Build` has no key-length cap
 
@@ -3504,6 +3506,7 @@ location: src/Hexalith.FrontComposer.Contracts/FcShellOptions.cs
 reason: **FcShellOptions split into per-concern option classes** — `FcShellOptions` grew to 14 properties crossing both the ≥12-property and 3-cross-concern thresholds (lifecycle + forms + theming/locale). Split into `FcLifecycleOptions` / `FcFormOptions` / `FcThemingOptions` deferred to **Story 9-2** (L10 discipline). Story 2-5 precedent: add, don't split mid-epic. `src/Hexalith.FrontComposer.Contracts/FcShellOptions.cs` Reconciliation: Row: DW-0421; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: story 3-1-shell-layout-theme-and-typography (2026-04-18).
 status: open
 decision: 2026-08-27 Keep open
+decision: 2026-11-27 Skipped. The ledger holds the public shell options split open pending a compatible configuration and API migration design.
 
 ### DW-1153: `[SuppressHFC2105]` analyzer escape hatch
 
@@ -3512,6 +3515,7 @@ location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 reason: **`[SuppressHFC2105]` analyzer escape hatch** — `HFC2105` is logged at `Information` to tolerate samples that legitimately run without a real `IUserContextAccessor`. Escalation to `Warning` (for production audits) requires an adopter-facing suppression attribute. **Defer target:** Story 9-4 (diagnostic ID governance). Reconciliation: Row: DW-0422; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.2; AC coverage: AC17-AC20, AC35; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.2.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Related: Story 11.2; Evidence: section: story 3-1-shell-layout-theme-and-typography (2026-04-18).
 status: open
 decision: 2026-08-27 Keep open
+decision: 2026-11-27 Skipped. The ledger holds this open pending a diagnostic severity and suppression policy for adopters.
 
 ### DW-1154: Type specimen view + Playwright screenshot diffing + `axe-core` CI
 
@@ -3527,13 +3531,15 @@ reason: **`Typography` enum Fluent UI v5 spec divergence** — Story 3-1 D2 / AC
 status: open
 decision: 2026-08-27 Keep open
 decision: 2026-08-27 Keep open
+decision: 2026-11-27 Skipped. The pinned Fluent UI Blazor catalog still uses TextSize, TextWeight, and TextTag. The recorded Typography enum trigger has not occurred.
 
 ### DW-1156: Decorative theme toggle icons
 
 origin: migrated from legacy ledger ("Deferred from: story 3-1-shell-layout-theme-and-typography (2026-04-18)"), 2026-08-27
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 reason: **Decorative theme toggle icons** — Story 3-1 D5 specified `Icons.Regular.Size20.WeatherSunny / WeatherMoon / DesktopMac` on the theme toggle menu. `Microsoft.FluentUI.AspNetCore.Components.Icons` is only available up to v4.14 (net8.0 only); no v5 RC2-compatible Icons package exists yet. Toggle ships text-only; labels carry the full accessible meaning and AC3 still holds. **Defer target:** swap icons back in when a v5-compatible Icons package ships (likely bundled with 5.0 GA). Reconciliation: Row: DW-0425; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: story 3-1-shell-layout-theme-and-typography (2026-04-18).
-status: open
+status: done 2026-11-27
+resolution: Light, Dark, and System use the requested decorative Fluent UI v5 menu icons and retain their localized labels and accessible names.
 
 ### DW-1157: Playwright E2E smoke (Task 10.9)
 

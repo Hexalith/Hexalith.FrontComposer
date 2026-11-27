@@ -6,6 +6,7 @@ using Hexalith.FrontComposer.Shell.State.Theme;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
+using Microsoft.FluentUI.AspNetCore.Components;
 
 using Shouldly;
 
@@ -36,6 +37,22 @@ public sealed class FcThemeToggleTests : LayoutComponentTestBase {
         cut.Markup.ShouldContain(localizer["ThemeDarkLabel"].Value);
         cut.Find("fluent-menu-button").GetAttribute("aria-label")
             .ShouldBe($"{localizer["ThemeToggleAriaLabel"].Value}: {localizer["ThemeDarkLabel"].Value}");
+    }
+
+    [Theory]
+    [InlineData("Light", "WeatherSunny")]
+    [InlineData("Dark", "WeatherMoon")]
+    [InlineData("System", "DesktopMac")]
+    public void ThemeMenuItemsHaveIconsAndKeepTheirNames(string label, string iconName) {
+        using CultureScope culture = new("en");
+        IRenderedComponent<FcThemeToggle> cut = Render<FcThemeToggle>();
+
+        FluentMenuItem item = cut.FindComponents<FluentMenuItem>()
+            .Single(menuItem => menuItem.Find("fluent-menu-item").GetAttribute("aria-label") == label)
+            .Instance;
+
+        item.IconStart.ShouldNotBeNull().GetType().Name.ShouldBe(iconName);
+        cut.Find($"fluent-menu-item[aria-label='{label}']").TextContent.Trim().ShouldBe(label);
     }
 
     [Fact]
