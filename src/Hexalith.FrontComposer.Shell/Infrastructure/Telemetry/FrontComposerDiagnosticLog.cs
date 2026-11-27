@@ -1218,22 +1218,16 @@ internal static partial class FrontComposerDiagnosticLog
 
     /// <summary>Emits the <c>ProjectionSlotResolutionFallback</c> low-severity diagnostic event.</summary>
     /// <param name="logger">Registry logger.</param>
-    /// <param name="ambiguous">Whether conflicting registrations suppressed a matching slot.</param>
-    /// <param name="unsupportedProjectionType">Whether the declared type is an interface or abstract.</param>
-    public static void ProjectionSlotResolutionFallback(ILogger? logger, bool ambiguous, bool unsupportedProjectionType)
+    /// <param name="reason">The bounded reason the lookup used generated rendering.</param>
+    public static void ProjectionSlotResolutionFallback(ILogger? logger, ProjectionSlotResolutionFallbackReason reason)
     {
         if (logger is null || !logger.IsEnabled(LogLevel.Debug))
         {
             return;
         }
 
-        string reason = (ambiguous, unsupportedProjectionType) switch
-        {
-            (true, _) => "Ambiguous",
-            (false, true) => "UnsupportedProjectionType",
-            _ => "Missing",
-        };
-        LogProjectionSlotResolutionFallback(logger, reason);
+        string reasonText = reason.ToString();
+        LogProjectionSlotResolutionFallback(logger, reasonText);
     }
 
     [LoggerMessage(EventId = 6000, EventName = "BadgeProjectionTypeUnresolved", Level = LogLevel.Information,

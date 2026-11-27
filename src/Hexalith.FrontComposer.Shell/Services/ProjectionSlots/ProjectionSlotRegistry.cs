@@ -25,6 +25,7 @@ public sealed class ProjectionSlotRegistry : IProjectionSlotRegistry {
     private readonly ConcurrentDictionary<RegistryKey, RegistryEntry> _entries = new();
     private readonly ILogger<ProjectionSlotRegistry> _logger;
     private readonly ICustomizationContractRejectionLog? _rejectionLog;
+    private int _reportedFallbackReasons;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ProjectionSlotRegistry"/> class.
@@ -75,11 +76,29 @@ public sealed class ProjectionSlotRegistry : IProjectionSlotRegistry {
             return entry.Descriptor;
         }
 
-        FrontComposerDiagnosticLog.ProjectionSlotResolutionFallback(
-            _logger,
-            entry.Ambiguous,
-            projectionType.IsInterface || projectionType.IsAbstract);
+        ProjectionSlotResolutionFallbackReason reason = projectionType switch
+        {
+            _ when entry.Ambiguous => ProjectionSlotResolutionFallbackReason.Ambiguous,
+            { IsInterface: true } or { IsAbstract: true } => ProjectionSlotResolutionFallbackReason.UnsupportedProjectionType,
+            _ => ProjectionSlotResolutionFallbackReason.NoMatch,
+        };
+        ReportFallbackOnce(reason);
         return null;
+    }
+
+    private void ReportFallbackOnce(ProjectionSlotResolutionFallbackReason reason)
+    {
+        // Generated views probe the registry for each field. Keep Debug traffic bounded across circuits.
+        int flag = (int)reason;
+        if ((Volatile.Read(ref _reportedFallbackReasons) & flag) != 0 || !_logger.IsEnabled(LogLevel.Debug))
+        {
+            return;
+        }
+
+        if ((Interlocked.Or(ref _reportedFallbackReasons, flag) & flag) == 0)
+        {
+            FrontComposerDiagnosticLog.ProjectionSlotResolutionFallback(_logger, reason);
+        }
     }
 
     private void Register(ProjectionSlotDescriptor descriptor) {

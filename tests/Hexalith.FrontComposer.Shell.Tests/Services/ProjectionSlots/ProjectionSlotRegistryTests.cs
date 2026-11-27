@@ -52,18 +52,34 @@ public sealed class ProjectionSlotRegistryTests {
     }
 
     [Fact]
-    public void Resolve_MissingSlot_LogsOnlyTheFallbackReason()
+    public void Resolve_MissingSlots_LogOnlyOneFallbackReason()
     {
         ListLogger<ProjectionSlotRegistry> logger = new();
         ProjectionSlotRegistry registry = new(logger, []);
 
         registry.Resolve(typeof(SlotProjection), ProjectionRole.Timeline, "clientField\r\nexample").ShouldBeNull();
+        registry.Resolve(typeof(SlotProjection), ProjectionRole.DetailRecord, "otherField").ShouldBeNull();
 
         var entry = logger.Entries.ShouldHaveSingleItem();
         entry.Level.ShouldBe(LogLevel.Debug);
         entry.EventId.Id.ShouldBe(6073);
         entry.EventId.Name.ShouldBe("ProjectionSlotResolutionFallback");
-        entry.Message.ShouldBe("No Level 3 projection slot selected. Generated field rendering applies. Reason=Missing.");
+        entry.Message.ShouldBe("No Level 3 projection slot selected. Generated field rendering applies. Reason=NoMatch.");
+    }
+
+    [Fact]
+    public void Resolve_DebugDisabled_PreservesFallbackSampleForWhenEnabled()
+    {
+        ListLogger<ProjectionSlotRegistry> logger = new() { DebugEnabled = false };
+        ProjectionSlotRegistry registry = new(logger, []);
+
+        registry.Resolve(typeof(SlotProjection), null, "Name").ShouldBeNull();
+        logger.Entries.ShouldBeEmpty();
+
+        logger.DebugEnabled = true;
+        registry.Resolve(typeof(SlotProjection), null, "Name").ShouldBeNull();
+
+        logger.Entries.ShouldHaveSingleItem().EventId.Id.ShouldBe(6073);
     }
 
     [Theory]
@@ -84,12 +100,15 @@ public sealed class ProjectionSlotRegistryTests {
 
         ProjectionSlotRegistry registry = new(logger, [new ProjectionSlotDescriptorSource(descriptors)]);
 
+        registry.Resolve(typeof(SlotProjection), requestedRole, "Name").ShouldBeNull();
+        registry.Resolve(typeof(SlotProjection), requestedRole, "Priority").ShouldBeNull();
         registry.Resolve(typeof(SlotProjection), requestedRole, "Priority").ShouldBeNull();
 
-        var entry = logger.Entries.Where(static entry => entry.Level == LogLevel.Debug).ShouldHaveSingleItem();
-        entry.EventId.Id.ShouldBe(6073);
-        entry.EventId.Name.ShouldBe("ProjectionSlotResolutionFallback");
-        entry.Message.ShouldBe("No Level 3 projection slot selected. Generated field rendering applies. Reason=Ambiguous.");
+        var entries = logger.Entries.Where(static entry => entry.Level == LogLevel.Debug).ToArray();
+        entries.Select(static entry => entry.EventId.Id).ShouldBe([6073, 6073]);
+        entries.ShouldAllBe(static entry => entry.EventId.Name == "ProjectionSlotResolutionFallback");
+        entries[0].Message.ShouldBe("No Level 3 projection slot selected. Generated field rendering applies. Reason=NoMatch.");
+        entries[1].Message.ShouldBe("No Level 3 projection slot selected. Generated field rendering applies. Reason=Ambiguous.");
     }
 
     [Fact]
@@ -439,7 +458,9 @@ public sealed class ProjectionSlotRegistryTests {
 
         public IDisposable BeginScope<TState>(TState state) where TState : notnull => NullScope.Instance;
 
-        public bool IsEnabled(LogLevel logLevel) => true;
+        public bool DebugEnabled { get; set; } = true;
+
+        public bool IsEnabled(LogLevel logLevel) => logLevel != LogLevel.Debug || DebugEnabled;
 
         public void Log<TState>(
             LogLevel logLevel,
