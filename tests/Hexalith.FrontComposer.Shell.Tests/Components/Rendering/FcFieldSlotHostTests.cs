@@ -1,5 +1,6 @@
 using Bunit;
 
+using Hexalith.FrontComposer.Contracts.Attributes;
 using Hexalith.FrontComposer.Contracts.Diagnostics;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Components.Rendering;
@@ -110,6 +111,57 @@ public sealed class FcFieldSlotHostTests : BunitContext {
 
         renderCount.ShouldBe(1);
         cut.Markup.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void Render_RoleSwitch_IsolatesDefaultAndOverrideBoundaries()
+    {
+        ProjectionSlotRegistry registry = new(
+            NullLogger<ProjectionSlotRegistry>.Instance,
+            [new ProjectionSlotDescriptorSource([
+                new ProjectionSlotDescriptor(
+                    ProjectionType: typeof(SlotProjection),
+                    FieldName: nameof(SlotProjection.Priority),
+                    FieldType: typeof(int),
+                    Role: ProjectionRole.DetailRecord,
+                    ComponentType: typeof(EchoPrioritySlot),
+                    ContractVersion: ProjectionSlotContractVersion.Current),
+            ])]);
+        Services.Replace(ServiceDescriptor.Singleton<IProjectionSlotRegistry>(registry));
+        Services.AddSingleton(Substitute.For<IErrorBoundaryLogger>());
+
+        RenderFragment defaultChild = builder =>
+        {
+            builder.OpenComponent<ThrowingGeneratedFallback>(0);
+            builder.CloseComponent();
+        };
+        RenderFragment<Exception> defaultError = _ => builder => builder.AddContent(0, "Generated field fault");
+        RenderFragment DefaultFragment(FieldSlotContext<SlotProjection, int> _) => builder =>
+        {
+            builder.OpenComponent<ErrorBoundary>(0);
+            builder.AddAttribute(1, nameof(ErrorBoundary.ChildContent), defaultChild);
+            builder.AddAttribute(2, nameof(ErrorBoundary.ErrorContent), defaultError);
+            builder.CloseComponent();
+        };
+
+        IRenderedComponent<FcFieldSlotHost<SlotProjection, int>> cut = Render<FcFieldSlotHost<SlotProjection, int>>(parameters => parameters
+            .Add(p => p.Parent, new SlotProjection(7, "Bob"))
+            .Add(p => p.Value, 7)
+            .Add(p => p.Field, NewField(nameof(SlotProjection.Priority)))
+            .Add(p => p.RenderContext, NewRenderContext())
+            .Add(p => p.ProjectionRole, ProjectionRole.StatusOverview)
+            .Add(p => p.RenderDefault, DefaultFragment));
+
+        cut.Markup.ShouldBe("Generated field fault");
+
+        cut.Render(parameters => parameters.Add(p => p.ProjectionRole, ProjectionRole.DetailRecord));
+
+        cut.Markup.ShouldContain("priority=7");
+        cut.Markup.ShouldNotContain("Generated field fault");
+
+        cut.Render(parameters => parameters.Add(p => p.ProjectionRole, ProjectionRole.StatusOverview));
+
+        cut.Markup.ShouldBe("Generated field fault");
     }
 
     [Fact]

@@ -118,7 +118,8 @@ public sealed class FcFieldSlotHost<TProjection, TField> : ComponentBase {
         }
 
         if (descriptor is null) {
-            RenderDefault?.Invoke(context)?.Invoke(builder);
+            // Keep the fragment's sequence numbers inside a region separate from the slot boundary.
+            builder.AddContent(4, RenderDefault?.Invoke(context));
             return;
         }
 
