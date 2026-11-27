@@ -1,3 +1,5 @@
+using Hexalith.FrontComposer.Contracts.Diagnostics;
+
 
 using Microsoft.CodeAnalysis;
 
@@ -6,7 +8,7 @@ namespace Hexalith.FrontComposer.SourceTools.Diagnostics;
 /// Diagnostic descriptors for the FrontComposer source generator (HFC1000-1999).
 /// </summary>
 public static class DiagnosticDescriptors {
-    public const string CanonicalHelpLinkFormat = "https://hexalith.github.io/FrontComposer/diagnostics/{0}";
+    public const string CanonicalHelpLinkFormat = FcDiagnosticLinks.Format;
 
     private static DiagnosticDescriptor Create(
         string id,

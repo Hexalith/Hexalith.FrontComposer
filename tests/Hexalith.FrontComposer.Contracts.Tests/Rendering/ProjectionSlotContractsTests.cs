@@ -30,5 +30,17 @@ public sealed class ProjectionSlotContractsTests {
         => ProjectionSlotSelector.Parse<Projection, int>(projection => projection.Priority)
             .ShouldBe(new ProjectionSlotFieldIdentity("Priority", typeof(int)));
 
+    [Fact]
+    public void InvalidProjectionSlotSelectorPublishesCanonicalHelpLink()
+    {
+        ProjectionSlotSelectorException exception = Should.Throw<ProjectionSlotSelectorException>(() =>
+            ProjectionSlotSelector.Parse<Projection, int>(projection => projection.Priority + 1));
+
+        const string expectedLink = "https://hexalith.github.io/FrontComposer/diagnostics/HFC1038";
+        exception.HelpLink.ShouldBe(expectedLink);
+        exception.Message.ShouldContain(expectedLink);
+        exception.Message.ShouldStartWith("HFC1038");
+    }
+
     public sealed record Projection(int Priority);
 }

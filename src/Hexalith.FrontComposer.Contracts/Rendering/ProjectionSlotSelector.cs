@@ -9,7 +9,7 @@ namespace Hexalith.FrontComposer.Contracts.Rendering;
 /// Parses refactor-safe Level 3 slot selector expressions.
 /// </summary>
 public static class ProjectionSlotSelector {
-    private const string DocsLink = "https://hexalith.github.io/FrontComposer/diagnostics/HFC1038";
+    private const string DocsLink = FcDiagnosticLinks.Prefix + FcDiagnosticIds.HFC1038_ProjectionSlotSelectorInvalid;
 
     /// <summary>
     /// Parses a direct property selector.
@@ -90,5 +90,8 @@ public static class ProjectionSlotSelector {
             + "Expected: direct projection property expression like x => x.Priority. "
             + "Got: nested member, method call, captured value, indexer, computed expression, or unsupported conversion. "
             + "Fix: select one public projection property directly and register a separate slot for each field. "
-            + "Docs: " + DocsLink + ".");
+            + "Docs: " + DocsLink + ".")
+        {
+            HelpLink = DocsLink,
+        };
 }
