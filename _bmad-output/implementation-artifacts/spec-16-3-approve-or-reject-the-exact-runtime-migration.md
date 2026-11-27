@@ -1338,3 +1338,15 @@ Local `HEAD`, `main` and the cached `origin/main` ref all point to `a3b1e3da2e35
 **Outstanding owner decisions.** The Architect and Release Owner must record a disposition for the four failed comparisons under the [adopted recovery rule](../planning-artifacts/sprint-change-proposal-2026-11-21.md#1-admit-a-platform-revision-change). The passing comparisons apply only to the revisions in their rows. The FrontComposer maintainer, Architect and Release Owner must decide whether to align Builds first or authorize qualification with all four root presets disclosed above and evaluate their effective selections in the new capture. Before qualification, the applicable owners must also resolve the CiCd and retention follow-through, confirm live repository state and complete the new attempt's writer coordination, availability, storage and Git authorization.
 
 **Disposition.** Local evidence only. Story 16.3 and Epic 16 remain in progress and G-3 remains open. A future operative migration decision still requires timely exact-candidate evidence, three separate role receipts and the durable Release Owner comparison. No candidate or window is selected in this verification.
+
+## Owner decisions after local graph verification — 2026-11-27
+
+Jérôme Piquot (`jpiquot`) replied in the Story 16.3 owner decision conversation. The first UTC clock read after receipt was `2026-11-27T21:10:56Z`. The four comparisons and package inputs are from commit `55b5db43d2504e7e82508db1d895bf9b9baac62a`. [Confirmed owner roles](epic-16-context.md#named-authority-and-selected-incident-disposition--2026-11-15) · [Verification record](#local-graph-verification-after-candidate-drift--2026-11-27)
+
+### Dependency-graph disposition
+
+`jpiquot`, as Architect and as Release Owner, answered “yes” to adopting the proposed disposition in both roles. Retain the failed results for each of the three Platform pin comparisons (`4cecae4e → a79cc810`, `9d1e4f49 → f3147e72`, `bb01baf4 → adcc8b32`) and the consumer `Compile`/`ProjectReference` comparison (`1be4dc79 → 55445f13`). Keep recovery open until the actual recovery event base and candidate pass comparison and the affected-module evidence is available. [Exact comparisons](#local-graph-verification-after-candidate-drift--2026-11-27) · [Adopted recovery rule](../planning-artifacts/sprint-change-proposal-2026-11-21.md#1-admit-a-platform-revision-change)
+
+### Package-version direction
+
+`jpiquot` answered “use latest hexalith packages versions.” In response to the follow-up addressed to the Architect, Release Owner, and FrontComposer maintainer, `jpiquot` selected “Align Hexalith.Builds to the latest Hexalith package versions first, then qualify a fresh candidate.” The first UTC clock read after that selection was `2026-11-27T21:11:31Z`. [Package preset disclosure](#prospective-preflight-plan--2026-11-27)
