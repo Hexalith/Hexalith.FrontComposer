@@ -126,6 +126,23 @@ public sealed class FcPaletteResultListTests : LayoutComponentTestBase {
     }
 
     [Fact]
+    public void ShortcutRowsRenderOnlyResolvedDescriptionHints() {
+        EnsureStoreInitialized();
+        ImmutableArray<PaletteResult> results = [
+            new(PaletteResultCategory.Shortcut, "Ctrl+K", "", null, null, 0, false, null, "PaletteShortcutDescription"),
+            new(PaletteResultCategory.Shortcut, "Ctrl+J", "", null, null, 0, false, null, "MissingAdopterDescription"),
+        ];
+
+        IRenderedComponent<FcPaletteResultList> cut = Render<FcPaletteResultList>(p => p
+            .Add(c => c.Id, "shortcut-descriptions")
+            .Add(c => c.Results, results));
+
+        cut.FindAll(".fc-palette-option-hint").ShouldHaveSingleItem();
+        cut.FindAll("[role='option']").Select(row => row.TextContent).ShouldContain(text => text.Contains("Ctrl+J", StringComparison.Ordinal));
+        cut.Markup.ShouldNotContain("MissingAdopterDescription");
+    }
+
+    [Fact]
     public void SyntheticKeyboardShortcutsEntry_RendersDescriptionHint() {
         EnsureStoreInitialized();
         ImmutableArray<PaletteResult> results = [

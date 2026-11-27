@@ -42,9 +42,10 @@
                                 {
                                     <span class="fc-palette-option-context">@Localizer["PaletteInCurrentContextSuffix"].Value</span>
                                 }
-                                @if (!string.IsNullOrEmpty(result.DescriptionKey))
+                                @if (result.DescriptionKey is { Length: > 0 } key
+                                    && Localizer[key] is { ResourceNotFound: false } description)
                                 {
-                                    <span class="fc-palette-option-hint">@Localizer[result.DescriptionKey!].Value</span>
+                                    <span class="fc-palette-option-hint">@description.Value</span>
                                 }
                                 @if (HasAmbiguousRecentLabel(result))
                                 {

@@ -3581,6 +3581,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of 3-4-fccomman
 location: src/Hexalith.FrontComposer.Shell/Resources/FcShellResources.resx
 reason: **`PaletteResultCountTemplate` not plural-aware** — renders "1 results" / "1 résultats" for single-result case. v1.x a11y polish. `src/Hexalith.FrontComposer.Shell/Resources/FcShellResources.resx + .fr.resx` Reconciliation: Row: DW-0431; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC17-AC20, AC35; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of 3-4-fccommandpalette-and-keyboard-shortcuts (2026-04-21 pass 3).
 status: open
+decision: 2026-11-27 Skipped. The palette no longer renders or announces a positive result count. The current live region has a dedicated no-results announcement.
 
 ### DW-1163: Turkish `İ` → combining marks via `ToLowerInvariant`
 
@@ -3588,6 +3589,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of 3-4-fccomman
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 reason: **Turkish `İ` → combining marks via `ToLowerInvariant`** — culture-fragility for non-ASCII keys in both `PaletteScorer` and `ShortcutBinding.Normalize`. Story 3-4 scope explicitly defers fuzzy-scoring i18n to v2; same concern applies to shortcut key normalisation. **Defer target:** v2 i18n rolodex. Reconciliation: Row: DW-0432; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC18, AC21-AC22, AC37; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of 3-4-fccommandpalette-and-keyboard-shortcuts (2026-04-21 pass 3).
 status: open
+decision: 2026-11-27 Skipped. The recorded v2 internationalization decision must define Unicode scoring and shortcut key compatibility together.
 
 ### DW-1164: Chord fallthrough re-evaluation test gap
 
@@ -3606,7 +3608,8 @@ archived: 2026-09-18
 origin: migrated from legacy ledger ("Deferred from: code review of 3-4-fccommandpalette-and-keyboard-shortcuts (2026-04-21 pass 3)"), 2026-08-27
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 reason: **Missing `descriptionKey` resource fallback** — `IShortcutService.Register` accepts any string; missing resource key renders raw key in shortcut reference view. Validation (resource-key existence check or warning HFC diagnostic on Register) deferred. **Defer target:** v1.x. Reconciliation: Row: DW-0435; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.2; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.2.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of 3-4-fccommandpalette-and-keyboard-shortcuts (2026-04-21 pass 3).
-status: open
+status: done 2026-11-27
+resolution: Optional shortcut descriptions render only when their resource resolves in the current culture. The binding remains available if the resource is missing.
 
 ### DW-1167: `ProjectionTypeResolver` negative-lookup cache / throttling
 
