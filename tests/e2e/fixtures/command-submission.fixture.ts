@@ -5,10 +5,14 @@ import { expect, test } from './index.js';
 
 // Command-outcome tests own an isolated prebuilt host. Its slower acknowledgement keeps transient
 // Submitting observable; the opt-in mapped rejection exercises real generated-form recovery.
-export const submissionTest = test.extend<{ submissionBaseUrl: string; mappedRejectionEnabled: boolean; dispatchForbiddenEnabled: boolean }>({
+export const submissionTest = test.extend<{
+  submissionHost: { baseUrl: string; output: () => string };
+  mappedRejectionEnabled: boolean;
+  dispatchForbiddenEnabled: boolean;
+}>({
   mappedRejectionEnabled: [false, { option: true }],
   dispatchForbiddenEnabled: [false, { option: true }],
-  submissionBaseUrl: async ({ mappedRejectionEnabled, dispatchForbiddenEnabled }, use) => {
+  submissionHost: async ({ mappedRejectionEnabled, dispatchForbiddenEnabled }, use) => {
     const projectDirectory = new URL('../../../samples/Counter/Counter.Web/', import.meta.url);
     const configuration = process.env.FC_E2E_COMMAND_SUBMISSION_CONFIGURATION === 'Debug' ? 'Debug' : 'Release';
     const assembly = fileURLToPath(new URL(`bin/${configuration}/net11.0/Counter.Web.dll`, projectDirectory));
@@ -36,12 +40,12 @@ export const submissionTest = test.extend<{ submissionBaseUrl: string; mappedRej
       const baseUrl = [...host.listeningOrigins][0];
       await waitForOwnedServer(host, baseUrl, Date.now() + 10_000);
       clearTimeout(host.timer);
-      await use(baseUrl);
+      await use({ baseUrl, output: () => host.output });
     } finally {
       await stopOwnedProcess(host);
     }
   },
-  baseURL: async ({ submissionBaseUrl }, use) => {
-    await use(submissionBaseUrl);
+  baseURL: async ({ submissionHost }, use) => {
+    await use(submissionHost.baseUrl);
   },
 });

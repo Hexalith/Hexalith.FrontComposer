@@ -1,3 +1,5 @@
+using System.Globalization;
+
 using Counter.Domain;
 using Counter.Specimens;
 using Counter.Specimens.Domain;
@@ -21,6 +23,7 @@ internal sealed class CounterSampleCommandService :
     private readonly CounterCommandProjectionCatchUpChannel _catchUp;
     private readonly IUserContextAccessor _userContext;
     private readonly ILogger<CounterSampleCommandService> _logger;
+    private readonly bool _specimenOutcomesEnabled;
     private readonly bool _mappedRejectionEnabled;
     private readonly AccessibilitySpecimenState? _accessibilityScenarios;
     private readonly bool _dispatchForbiddenEnabled;
@@ -47,13 +50,13 @@ internal sealed class CounterSampleCommandService :
         _userContext = userContext ?? throw new ArgumentNullException(nameof(userContext));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         // This deterministic rejection is available only to the opt-in local Test specimen host.
-        bool specimenOutcomesEnabled = environment?.IsEnvironment("Test") == true
+        _specimenOutcomesEnabled = environment?.IsEnvironment("Test") == true
             && configuration is not null
             && FrontComposerSpecimenRoutes.IsEnabled(configuration, environment);
-        _accessibilityScenarios = specimenOutcomesEnabled ? accessibilityScenarios : null;
-        _mappedRejectionEnabled = specimenOutcomesEnabled
+        _accessibilityScenarios = _specimenOutcomesEnabled ? accessibilityScenarios : null;
+        _mappedRejectionEnabled = _specimenOutcomesEnabled
             && string.Equals(configuration?["Hexalith:FrontComposer:Specimens:MappedRejectionEnabled"], "true", StringComparison.OrdinalIgnoreCase);
-        _dispatchForbiddenEnabled = specimenOutcomesEnabled
+        _dispatchForbiddenEnabled = _specimenOutcomesEnabled
             && string.Equals(configuration?["Hexalith:FrontComposer:Specimens:DispatchForbiddenEnabled"], "true", StringComparison.OrdinalIgnoreCase);
     }
 
@@ -99,6 +102,15 @@ internal sealed class CounterSampleCommandService :
                     throw new CommandWarningException(CommandWarningKind.RetryableDispatchFailed, ProblemDetailsPayload.Empty);
             }
         }
+        if (_specimenOutcomesEnabled
+            && command is NativeTimeSpecimenCommand times
+            && _logger.IsEnabled(LogLevel.Information))
+        {
+            string requiredTime = times.RequiredTime.ToString("O", CultureInfo.InvariantCulture);
+            string optionalTime = times.OptionalTime?.ToString("O", CultureInfo.InvariantCulture) ?? "null";
+            CounterSampleCommandLog.NativeTimeSpecimenDispatched(_logger, requiredTime, optionalTime);
+        }
+
         if (_dispatchForbiddenEnabled && command is BatchIncrementCommand)
         {
             throw new CommandWarningException(

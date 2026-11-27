@@ -70,7 +70,9 @@ builder.Services.AddHexalithFrontComposerQuickstart(
                 typeof(PolicyDeniedSpecimenCommandLifecycleFeature),
                 typeof(PolicyDeniedSpecimenCommandReducers),
                 typeof(AccessibilityZeroFieldCommandLifecycleFeature),
-                typeof(AccessibilityZeroFieldCommandReducers));
+                typeof(AccessibilityZeroFieldCommandReducers),
+                typeof(NativeTimeSpecimenCommandLifecycleFeature),
+                typeof(NativeTimeSpecimenCommandReducers));
         }
         else {
             _ = o.ScanAssemblies(typeof(Program).Assembly, typeof(CounterDomain).Assembly);
