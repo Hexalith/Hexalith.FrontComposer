@@ -3913,6 +3913,58 @@ class ConsumerProjectionTests(unittest.TestCase):
             with self.subTest(overrides=overrides), self.assertRaises(dg.GraphError):
                 dg.assert_policy_well_formed({**self.fixture.policy, "consumer_projection_transition": transition})
 
+    def test_transition_can_change_catalog_and_presets_at_same_owner_revision(self) -> None:
+        owner = self.fixture.identity("Source")
+        root = self.root.root
+        base = self.write_policy()
+        self.builds.write_bytes("Props/Directory.Packages.props", BASELINE_CATALOG.replace(b"1.0.0", b"3.0.0"))
+        catalog = self.builds.commit()
+        self.root.link_gitlink("references/Builds", catalog)
+        package_props = OWNER_SHIM.replace("<Project>", "<Project><PropertyGroup><Preset>3.0.0</Preset></PropertyGroup>")
+        self.root.write_text("Directory.Packages.props", package_props)
+        preview = self.root.commit()
+        direct = dg._owner_edges(root, preview, self.fixture.identity("Root"), 1, self.fixture.policy, root)
+        successor = {**self.row, "builds_commit": catalog, "root_selectors_sha256": dg.canonical_digest([
+            {key: edge[key] for key in ("path", "repository", "commit")} for edge in direct]),
+            "consumer_configuration_sha256": dg.canonical_digest(dg.consumer_configuration(root, preview, self.fixture.policy))}
+        self.fixture.policy["consumer_projection_transition"] = {"owner_repository": owner, "to": successor, "profiles": {}}
+
+        def compare(before, after, event="push", expected=0):
+            with mock.patch("sys.stdout", new_callable=io.StringIO) as output:
+                code = dg.main(["--root", str(root), "diff", "--event", event, "--event-base", before, "--candidate", after])
+            self.assertEqual(code, expected, output.getvalue())
+            return json.loads(output.getvalue())
+
+        self_authorizing = self.write_policy()
+        compare(base, self_authorizing, expected=1)
+        self.root.link_gitlink("references/Builds", self.root_builds)
+        self.root.write_text("Directory.Packages.props", OWNER_SHIM)
+        staged = self.root.commit()
+        compare(base, staged)
+        self.root.link_gitlink("references/Builds", catalog)
+        mixed = self.root.commit()
+        self.assertIn("consumer configuration", compare(staged, mixed, expected=1)["error"])
+        self.root.write_text("Directory.Packages.props", package_props)
+        moved = self.root.commit()
+        for event in ("pull_request", "push"):
+            with self.subTest(event=event):
+                evidence = compare(staged, moved, event)["evidence"]
+                policy, _ = dg.validate_diff_evidence(root, evidence)
+                self.assertEqual(policy["consumer_source_projections"][owner], successor)
+
+        self.root.link_gitlink("references/Builds", self.root_builds)
+        self.root.write_text("Directory.Packages.props", OWNER_SHIM)
+        reversed_commit = self.root.commit()
+        self.assertIn("reverse", compare(moved, reversed_commit, expected=1)["error"])
+        self.root.link_gitlink("references/Builds", catalog)
+        self.root.write_text("Directory.Packages.props", package_props)
+        del self.fixture.policy["consumer_projection_transition"]
+        self.fixture.policy["consumer_source_projections"][owner] = successor
+        retired = self.write_policy()
+        compare(moved, retired)
+        self.root.write_text("README.md", "same owner and catalog\n")
+        compare(retired, self.root.commit())
+
     def test_changed_owner_pin_refuses_before_source_consumption(self) -> None:
         self.source.write_text("README.md", "different owner tree\n")
         changed_owner = self.source.commit()

@@ -794,18 +794,19 @@ def projection_policies(
     for commit in dict.fromkeys((base, candidate)):
         direct = _owner_edges(root_dir, commit, current["consumer_repository"], 1, policy, root_dir)
         pins = [edge["commit"] for edge in direct if edge["repository"] == owner]
-        if pins == [current["owner_commit"]]:
-            row = current
-        elif pins == [target["owner_commit"]]:
-            row = target
-        else:
+        endpoints = [row for row in (current, target) if pins == [row["owner_commit"]]]
+        if not endpoints:
             raise GraphError("projection transition requires exactly one authorized owner revision")
         selectors = [{key: edge[key] for key in ("path", "repository", "commit")} for edge in direct]
-        if canonical_digest(selectors) != row["root_selectors_sha256"]:
+        selectors_hash = canonical_digest(selectors)
+        endpoints = [row for row in endpoints if row["root_selectors_sha256"] == selectors_hash]
+        if not endpoints:
             raise GraphError("projection transition root selectors differ from the selected endpoint")
-        if canonical_digest(consumer_configuration(root_dir, commit, policy)) != row["consumer_configuration_sha256"]:
+        configuration_hash = canonical_digest(consumer_configuration(root_dir, commit, policy))
+        endpoints = [row for row in endpoints if row["consumer_configuration_sha256"] == configuration_hash]
+        if len(endpoints) != 1:
             raise GraphError("projection transition consumer configuration differs from the selected endpoint")
-        selections[commit] = row
+        selections[commit] = endpoints[0]
     if selections[base] is target and selections[candidate] is current:
         raise GraphError("reverse consumer projection transition is not authorized")
     active = policy.copy()
@@ -2805,8 +2806,12 @@ def assert_policy_well_formed(policy: dict[str, Any], *, allow_migration_marker:
             raise GraphError("projection transition requires an already sealed owner")
         target = _require_closed_object(transition["to"], projection_members, "transition target")
         current = _require_closed_object(projections[owner], projection_members, "transition source")
-        if target["owner_commit"] == current["owner_commit"] or target["consumer_repository"] != current["consumer_repository"]:
-            raise GraphError("transition requires distinct owner revisions for the same consumer")
+        if target["consumer_repository"] != current["consumer_repository"]:
+            raise GraphError("transition endpoints must name the same consumer")
+        if all(target[key] == current[key] for key in (
+            "owner_commit", "root_selectors_sha256", "consumer_configuration_sha256",
+        )):
+            raise GraphError("transition requires distinct committed projection endpoints")
         overrides = transition["profiles"]
         if not isinstance(overrides, dict) or not set(overrides).issubset(policy["profiles"]):
             raise GraphError("transition profiles must name existing semantic profiles")
