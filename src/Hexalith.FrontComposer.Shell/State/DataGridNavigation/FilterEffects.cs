@@ -17,8 +17,10 @@ namespace Hexalith.FrontComposer.Shell.State.DataGridNavigation;
 /// <para>
 /// <b>Single write path (D8):</b> every filter action handler reads the current snapshot,
 /// computes the next snapshot with reserved-key packing for status / search (D3), and dispatches
-/// <see cref="CaptureGridStateAction"/>. Story 2-2's reducer applies the snapshot to ViewStates,
-/// Story 3-6's effect persists it — no parallel write path.
+/// <see cref="CaptureGridStateAction"/> immediately. Story 2-2's reducer applies the snapshot
+/// to ViewStates. This effect uses its <see cref="TimeProvider"/> to timestamp the snapshot.
+/// <see cref="DataGridNavigationEffects"/> owns the 250 ms per-view persistence debounce and
+/// writes the snapshot to storage.
 /// </para>
 /// <para>
 /// <b>Reset (D17):</b> <see cref="FiltersResetAction"/> dispatches <see cref="ClearGridStateAction"/>

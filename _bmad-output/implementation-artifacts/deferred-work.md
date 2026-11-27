@@ -3617,6 +3617,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of 3-4-fccomman
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 reason: **`ProjectionTypeResolver` negative-lookup cache / throttling** — `AppDomain.CurrentDomain.GetAssemblies()` scanned per cache-miss; negative results not cached. Fine at current scale. **Defer target:** revisit when adopter profile shows palette perf regression in large solutions. Reconciliation: Row: DW-0436; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of 3-4-fccommandpalette-and-keyboard-shortcuts (2026-04-21 pass 3).
 status: open
+decision: 2026-11-27 Skipped. There is no adopter profile showing the recorded performance trigger. Caching misses can hide projection types loaded later.
 
 ### DW-1168: Registrar / `ShortcutService` scoped test-fixture reuse hygiene
 
@@ -3624,6 +3625,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of 3-4-fccomman
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 reason: **Registrar / `ShortcutService` scoped test-fixture reuse hygiene** — bUnit fixtures reusing the same `Services` container see stale registrations across tests. Test-infrastructure concern. **Defer target:** `LayoutComponentTestBase` refresh when Shell.Tests fixtures are next revisited. Reconciliation: Row: DW-0437; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of 3-4-fccommandpalette-and-keyboard-shortcuts (2026-04-21 pass 3).
 status: open
+decision: 2026-11-27 Skipped. Layout component tests now construct a fresh BunitContext and scoped services per test case. The shared-container premise no longer applies.
 
 ### DW-1169: Remaining spec-named tests (D3 option c — ~33 tests)
 
@@ -3631,6 +3633,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of 3-6-session-
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 reason: **Remaining spec-named tests (D3 option c — ~33 tests)** — Shipped this pass: `NFR17ComplianceTripwireTests` (AC6 blocking), `NavigationPersistenceBlobSchemaLockedTests` (AC8 blocking), `GridViewPersistenceBlobSchemaLockedTests` (AC8 blocking). **Still outstanding** (ADR-verification tests from spec's 15-file test plan): `ScopeFlipObserverEffectTests.DispatchesStorageReadyOnEachObservedActionType` + `NonObservedActionTypeDoesNotTriggerGate` (ADR-049), `CommandPaletteEffectsStorageReadyTests.ReHydratesWhenNotAlreadyHydrated` (ADR-049), `CapabilityDiscoveryEffectsStorageReadyTests.ReHydratesSeenSet` (ADR-049), `DataGridNavigationEffectsDebounceTests.CoalescesRapidCaptures` (ADR-050), `DataGridNavigationEffectsStorageReadyTests.ReHydratesOnStorageReady` (ADR-050), `FrontComposerShellSessionRestoreTests` (Task 4.4 / 7.1). Current coverage: 31 focused + 3 new schema/tripwire tests (34 vs. spec target ~67). **Defer target:** coverage-polish follow-up story; source-side behavior covered by existing focused tests passing the spec's AC matrix. Reconciliation: Row: DW-0438; Final classification 2026-05-13: accepted-with-risk; Decision owner: Story 11.6 release owner; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=low/medium; risk=low; cost=medium/high; adjacency=accepted; Rationale: Low release-readiness risk or existing lower-level evidence is sufficient for this release pass.; Validation/evidence: focused Story 11.6 Shell/Counter validation plus historical source row; revisit on matching regression or adopter request; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of 3-6-session-persistence-and-context-restoration (2026-04-22 fresh pass).
 status: open
+decision: 2026-11-27 Skipped. The existing release decision accepts the residual coverage pending a matching regression or adopter request. The current tests already cover the core storage-ready and restore invariants.
 
 ### DW-1170: `HydrationState=Hydrated` on hydrate error paths (F-EH-009)
 
@@ -3643,7 +3646,8 @@ archived: 2026-09-18
 origin: migrated from legacy ledger ("Deferred from: code review of 4-3-datagrid-filtering-sorting-and-search (2026-04-24 pass 2)"), 2026-08-27
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 reason: **`FilterEffects.TimeProvider` only used for `CapturedAt` timestamp — D8 wording implies debounce-anchoring** — Story 3-6 owns the 250 ms persistence debounce via its own TimeProvider; 4-3 does not need a second debounce. No behavioural defect, but the D8 text "TimeProvider-anchored" is misleading — clarify with a Known-Gap entry or reword D8 when the story is finalised. Reconciliation: Row: DW-0440; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of 4-3-datagrid-filtering-sorting-and-search (2026-04-24 pass 2).
-status: open
+status: done 2026-11-27
+resolution: FilterEffects documentation now states that it timestamps and dispatches captures immediately. DataGridNavigationEffects owns the 250 ms storage debounce.
 
 ### DW-1172: `FcFilterEmptyState` does not guard against `TotalCount < 0`
 
