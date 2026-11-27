@@ -68,15 +68,14 @@ public sealed class ProjectionSlotRegistry : IProjectionSlotRegistry {
             throw new ArgumentException(InvalidProjectionTypeMessage, nameof(projectionType));
         }
 
-        if (_entries.TryGetValue(new RegistryKey(projectionType, role, fieldName), out RegistryEntry exact)) {
-            return exact.Ambiguous ? null : exact.Descriptor;
+        bool found = _entries.TryGetValue(new RegistryKey(projectionType, role, fieldName), out RegistryEntry entry)
+            || (role is not null
+                && _entries.TryGetValue(new RegistryKey(projectionType, Role: null, fieldName), out entry));
+        if (found && !entry.Ambiguous) {
+            return entry.Descriptor;
         }
 
-        if (role is not null
-            && _entries.TryGetValue(new RegistryKey(projectionType, Role: null, fieldName), out RegistryEntry any)) {
-            return any.Ambiguous ? null : any.Descriptor;
-        }
-
+        FrontComposerDiagnosticLog.ProjectionSlotResolutionFallback(_logger, entry.Ambiguous);
         return null;
     }
 

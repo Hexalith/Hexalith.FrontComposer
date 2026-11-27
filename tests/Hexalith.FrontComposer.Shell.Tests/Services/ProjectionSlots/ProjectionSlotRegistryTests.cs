@@ -28,13 +28,19 @@ public sealed class ProjectionSlotRegistryTests {
 
     [Fact]
     public void Resolve_FallsBackToAnyRoleSlot_WhenExactRoleMissing() {
-        ProjectionSlotRegistry registry = NewRegistry(
-            Descriptor("Priority", typeof(int), null, typeof(AnyPrioritySlot)));
+        ListLogger<ProjectionSlotRegistry> logger = new();
+        ProjectionSlotRegistry registry = new(logger,
+        [
+            new ProjectionSlotDescriptorSource([
+                Descriptor("Priority", typeof(int), null, typeof(AnyPrioritySlot)),
+            ]),
+        ]);
 
         ProjectionSlotDescriptor? resolved = registry.Resolve(typeof(SlotProjection), ProjectionRole.Timeline, "Priority");
 
         resolved.ShouldNotBeNull();
         resolved!.ComponentType.ShouldBe(typeof(AnyPrioritySlot));
+        logger.Entries.ShouldBeEmpty();
     }
 
     [Fact]
@@ -43,6 +49,47 @@ public sealed class ProjectionSlotRegistryTests {
             Descriptor("Priority", typeof(int), null, typeof(AnyPrioritySlot)));
 
         registry.Resolve(typeof(SlotProjection), null, "Name").ShouldBeNull();
+    }
+
+    [Fact]
+    public void Resolve_MissingSlot_LogsOnlyTheFallbackReason()
+    {
+        ListLogger<ProjectionSlotRegistry> logger = new();
+        ProjectionSlotRegistry registry = new(logger, []);
+
+        registry.Resolve(typeof(SlotProjection), ProjectionRole.Timeline, "clientField\r\nexample").ShouldBeNull();
+
+        var entry = logger.Entries.ShouldHaveSingleItem();
+        entry.Level.ShouldBe(LogLevel.Debug);
+        entry.EventId.Id.ShouldBe(6073);
+        entry.EventId.Name.ShouldBe("ProjectionSlotResolutionFallback");
+        entry.Message.ShouldBe("No Level 3 projection slot selected. Generated field rendering applies. Reason=Missing.");
+    }
+
+    [Theory]
+    [InlineData(null, ProjectionRole.Timeline)]
+    [InlineData(ProjectionRole.DetailRecord, ProjectionRole.DetailRecord)]
+    public void Resolve_AmbiguousSlot_LogsFallbackAtDebugLevel(ProjectionRole? slotRole, ProjectionRole requestedRole)
+    {
+        ListLogger<ProjectionSlotRegistry> logger = new();
+        List<ProjectionSlotDescriptor> descriptors =
+        [
+            Descriptor("Priority", typeof(int), slotRole, typeof(DetailPrioritySlot)),
+            Descriptor("Priority", typeof(int), slotRole, typeof(SecondPrioritySlot)),
+        ];
+        if (slotRole is not null)
+        {
+            descriptors.Add(Descriptor("Priority", typeof(int), null, typeof(AnyPrioritySlot)));
+        }
+
+        ProjectionSlotRegistry registry = new(logger, [new ProjectionSlotDescriptorSource(descriptors)]);
+
+        registry.Resolve(typeof(SlotProjection), requestedRole, "Priority").ShouldBeNull();
+
+        var entry = logger.Entries.Where(static entry => entry.Level == LogLevel.Debug).ShouldHaveSingleItem();
+        entry.EventId.Id.ShouldBe(6073);
+        entry.EventId.Name.ShouldBe("ProjectionSlotResolutionFallback");
+        entry.Message.ShouldBe("No Level 3 projection slot selected. Generated field rendering applies. Reason=Ambiguous.");
     }
 
     [Fact]

@@ -12,7 +12,7 @@ internal static class FrontComposerDiagnosticLogInventoryAssertions
     /// <summary>
     /// Gets the exact number of diagnostic events and public wrappers.
     /// </summary>
-    public const int ExpectedEventCount = 73;
+    public const int ExpectedEventCount = 74;
 
     /// <summary>
     /// Asserts the exact normalized diagnostic inventory contract.
@@ -27,7 +27,7 @@ internal static class FrontComposerDiagnosticLogInventoryAssertions
         actual.Length.ShouldBe(ExpectedEventCount, $"Diagnostic event count drifted. {locations}");
         actual.Select(static entry => entry.EventId).ShouldBe(
             Enumerable.Range(6000, ExpectedEventCount),
-            $"Diagnostic EventIds must be the exact contiguous 6000-6072 band. {locations}");
+            $"Diagnostic EventIds must be the exact contiguous 6000-6073 band. {locations}");
         actual.ShouldAllBe(
             static entry => !string.IsNullOrWhiteSpace(entry.EventName),
             $"Every diagnostic event must have a nonblank name. {locations}");
@@ -41,7 +41,7 @@ internal static class FrontComposerDiagnosticLogInventoryAssertions
             56,
             $"The Information inventory drifted. {locations}");
         actual.Count(static entry => entry.Level == LogLevel.Debug).ShouldBe(
-            17,
+            18,
             $"The Debug inventory drifted. {locations}");
         actual.Count(static entry => entry.HasExceptionParameter).ShouldBe(
             20,

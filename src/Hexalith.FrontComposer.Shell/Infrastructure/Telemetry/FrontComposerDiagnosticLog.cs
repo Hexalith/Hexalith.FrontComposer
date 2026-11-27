@@ -16,9 +16,9 @@ namespace Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Every event keeps the exact level, message template, placeholder names, and cardinality of the
-/// direct call it replaces; this family only moves the emission onto <c>LoggerMessage</c> delegates
-/// (CA1848) and defers argument evaluation behind an <c>IsEnabled</c> check (CA1873).
+/// Migrated events retain the exact level, message template, placeholder names, and cardinality of their
+/// original calls. This family uses <c>LoggerMessage</c> delegates (CA1848) and evaluates support-safe
+/// arguments after checking that the log level is enabled (CA1873).
 /// </para>
 /// <para>
 /// String values generally flow through <see cref="Bounded(string?)"/>, the same support-safety posture
@@ -39,7 +39,7 @@ namespace Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 /// never an integrity or uniqueness proof, and no security decision may be taken on it.
 /// </para>
 /// <para>
-/// EventIds occupy <c>6000-6072</c>. The occupied Shell bands below it are
+/// EventIds occupy <c>6000-6073</c>. The occupied Shell bands below it are
 /// <see cref="FrontComposerLog"/> at <c>5601-5650</c> (pre-11.18), and the Story 11.18 families
 /// Security <c>5660-5692</c>, HotPath <c>5700-5780</c>, and Warning <c>5800-5855</c>;
 /// SourceTools-generated output owns <c>5900+</c>.
@@ -1216,6 +1216,19 @@ internal static partial class FrontComposerDiagnosticLog
         LogThemeHydrationCancelled(logger);
     }
 
+    /// <summary>Emits the <c>ProjectionSlotResolutionFallback</c> low-severity diagnostic event.</summary>
+    /// <param name="logger">Registry logger.</param>
+    /// <param name="ambiguous">Whether conflicting registrations suppressed a matching slot.</param>
+    public static void ProjectionSlotResolutionFallback(ILogger? logger, bool ambiguous)
+    {
+        if (logger is null || !logger.IsEnabled(LogLevel.Debug))
+        {
+            return;
+        }
+
+        LogProjectionSlotResolutionFallback(logger, ambiguous ? "Ambiguous" : "Missing");
+    }
+
     [LoggerMessage(EventId = 6000, EventName = "BadgeProjectionTypeUnresolved", Level = LogLevel.Information,
         Message = "{DiagnosticId}: Projection type-name '{TypeNameString}' failed Type.GetType resolution — most likely an adopter mis-registration.")]
     private static partial void LogBadgeProjectionTypeUnresolved(
@@ -1676,6 +1689,10 @@ internal static partial class FrontComposerDiagnosticLog
     [LoggerMessage(EventId = 6072, EventName = "ThemeHydrationCancelled", Level = LogLevel.Debug,
         Message = "Theme hydration cancelled — circuit disposing.")]
     private static partial void LogThemeHydrationCancelled(ILogger logger);
+
+    [LoggerMessage(EventId = 6073, EventName = "ProjectionSlotResolutionFallback", Level = LogLevel.Debug,
+        Message = "No Level 3 projection slot selected. Generated field rendering applies. Reason={Reason}.")]
+    private static partial void LogProjectionSlotResolutionFallback(ILogger logger, string reason);
 
     /// <summary>
     /// Returns <paramref name="value"/> unchanged when it is already bounded and free of characters
