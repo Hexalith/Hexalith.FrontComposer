@@ -8,6 +8,8 @@ using Fluxor;
 using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
+using Hexalith.FrontComposer.Shell.Components.EventStore;
+using Hexalith.FrontComposer.Shell.Components.Layout;
 using Hexalith.FrontComposer.Shell.Components.Lifecycle;
 using Hexalith.FrontComposer.Shell.Extensions;
 using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
@@ -16,15 +18,18 @@ using Hexalith.FrontComposer.Shell.Services.Authorization;
 using Hexalith.FrontComposer.Shell.Services.Feedback;
 using Hexalith.FrontComposer.Shell.State.Navigation;
 using Hexalith.FrontComposer.Shell.State.PendingCommands;
+using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
 using Hexalith.FrontComposer.Shell.Tests.Infrastructure;
 using Hexalith.FrontComposer.Shell.Tests.Infrastructure.Telemetry;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 using Microsoft.FluentUI.AspNetCore.Components;
 using Microsoft.JSInterop;
@@ -43,6 +48,65 @@ namespace Hexalith.FrontComposer.Shell.Tests.Generated;
 public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTestBase {
     private static readonly string[] ServerTitledWarningBodies =
         ["Restore the item first.", "Affected item", "Please review the warning and try again.", "Veuillez lire l’avertissement et réessayer."];
+
+    [Fact]
+    public async Task EditedGeneratedFormPreservesValuesAndEditContextThroughReconnect()
+    {
+        JSInterop.Mode = JSRuntimeMode.Loose;
+        var connectivity = JSInterop.SetupModule("./_content/Hexalith.FrontComposer.Shell/js/fc-connectivity.js");
+        connectivity.Setup<int>("watchConnectivity", _ => true).SetResult(1);
+        connectivity.Setup<bool>("isOnline").SetResult(true);
+        Services.RemoveAll<IPendingCommandOutcomeResolver>();
+        Services.RemoveAll<IPendingCommandOutcomeCoordinator>();
+        Services.AddHexalithFrontComposerQuickstart();
+        Services.Configure<FcShellOptions>(options => options.AllowDemoTenantContext = true);
+        Services.Replace(ServiceDescriptor.Scoped<Hexalith.FrontComposer.Contracts.Rendering.IUserContextAccessor>(_ => UserContext));
+        using ProjectionConnectionStateService connection = new(TimeProvider.System, NullLogger<ProjectionConnectionStateService>.Instance);
+        Services.Replace(ServiceDescriptor.Scoped<IProjectionConnectionState>(_ => connection));
+        AddAuthorization();
+        await InitializeStoreAsync();
+
+        var cut = Render<FrontComposerShell>(p => p.AddChildContent<TwoFieldCompactCommandForm>(form => form
+            .Add(c => c.InitialValue, new TwoFieldCompactCommand { Name = "Original", Amount = 7 })));
+        cut.WaitForAssertion(() => cut.FindComponents<TwoFieldCompactCommandForm>().Count.ShouldBe(1, cut.Markup));
+        EditContext context = cut.FindComponent<EditForm>().Instance.EditContext.ShouldNotBeNull();
+        FluentTextInput nameInput = cut.FindComponent<TwoFieldCompactCommandForm>().FindComponent<FluentTextInput>().Instance;
+        IRenderedComponent<FcProjectionConnectionStatus> connectionStatus = cut.FindComponent<FcProjectionConnectionStatus>();
+        IStringLocalizer<FcShellResources> localizer = Services.GetRequiredService<IStringLocalizer<FcShellResources>>();
+        FieldIdentifier nameField = context.Field(nameof(TwoFieldCompactCommand.Name));
+
+        context.IsModified(nameField).ShouldBeFalse();
+        await cut.InvokeAsync(() => nameInput.ValueChanged.InvokeAsync("Unsaved edit"));
+        context.IsModified(nameField).ShouldBeTrue();
+
+        (ProjectionConnectionStatus Status, string? ResourceKey)[] transitions = [
+            (ProjectionConnectionStatus.Disconnected, "Am06Fallback"),
+            (ProjectionConnectionStatus.Reconnecting, "ReconnectStatusText"),
+            (ProjectionConnectionStatus.Connected, null),
+        ];
+        foreach (var (status, resourceKey) in transitions)
+        {
+            await cut.InvokeAsync(() => connection.Apply(new ProjectionConnectionTransition(status)));
+            connectionStatus.WaitForAssertion(() => {
+                var banners = connectionStatus.FindAll("[data-fc-server-connectivity]");
+                if (resourceKey is null)
+                {
+                    banners.ShouldBeEmpty();
+                }
+                else
+                {
+                    banners.ShouldHaveSingleItem().TextContent.ShouldContain(localizer[resourceKey].Value);
+                }
+            });
+
+            cut.FindComponent<EditForm>().Instance.EditContext.ShouldBeSameAs(context);
+            context.IsModified(nameField).ShouldBeTrue();
+            var model = context.Model.ShouldBeOfType<TwoFieldCompactCommand>();
+            model.Name.ShouldBe("Unsaved edit");
+            model.Amount.ShouldBe(7);
+            cut.FindComponent<TwoFieldCompactCommandForm>().FindComponent<FluentTextInput>().Instance.Value.ShouldBe("Unsaved edit");
+        }
+    }
 
     [Theory]
     [InlineData("en", false, "Please review the warning and try again.", "Retry after 17 seconds.")]

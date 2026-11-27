@@ -3692,7 +3692,8 @@ archived: 2026-09-18
 origin: migrated from legacy ledger ("Deferred from: code review of 5-3-signalr-connection-and-disconnection-handling Pass-1 (2026-04-26)"), 2026-08-27
 location: EditForm
 reason: **P4 — Generated command form preservation tests (AC4 / T9.5)** — needs bUnit harness combining a generated `EditForm` with `IProjectionConnectionState` injection and field-edit simulation; the existing form preservation argument is structural ("connection UI is outside the form") but not test-witnessed. Reconciliation: Row: DW-0446; Split to Story 11.6 generated command form preservation coverage 2026-05-13; Disposition: split-to-named-story; Reason: bUnit generated form harness is Shell UX/sample coverage; Residual release-gate risk: low.; Related: Story 11.6; Evidence: section: code review of 5-3-signalr-connection-and-disconnection-handling Pass-1 (2026-04-26).
-status: open
+status: done 2026-11-27
+resolution: A bUnit test edits a generated command form and verifies its model, EditContext, and modified state through rendered disconnect and reconnect transitions.
 
 ### DW-1178: bUnit negative assertions for `FcProjectionConnectionStatus` — additive: no `.fluent-overlay`/`.fluent-dialog` rendered, no focus migration into the indicator, no `NavigationManager.NavigateTo` invoked. Reconciliation: Row: DW-0447; Resolved 2026-05-13; Disposition: fixed-in-11.7; Validation: FcProjectionConnectionStatusTests negative overlay/focus/navigation assertions; Residual release-gate risk: none.; Related: Story 11.6; Evidence: section: code review of 5-3-signalr-connection-and-disconnection-handling Pass-1 (2026-04-26).
 
