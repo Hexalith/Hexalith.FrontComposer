@@ -57,6 +57,10 @@ internal static class FrontComposerBootstrapValidator {
                 + "registration.");
         }
 
+        if (ordered[quickstartIndex] is QuickstartBootstrapMarker quickstart) {
+            quickstart.ValidateRegistrations?.Invoke();
+        }
+
         if (eventStoreIndex >= 0 && eventStoreIndex < quickstartIndex) {
             throw new InvalidOperationException(
                 "FrontComposer bootstrap is mis-ordered: AddHexalithEventStore(...) was called before "

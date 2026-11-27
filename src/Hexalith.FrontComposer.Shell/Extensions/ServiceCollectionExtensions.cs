@@ -196,7 +196,9 @@ public static class ServiceCollectionExtensions {
         // twice neither double-registers the marker nor double-runs the gate. The gate is also
         // registered by AddHexalithDomain/AddHexalithEventStore so a host that wires ONLY a
         // downstream call (forgetting this foundational one) still fails fast with a named message.
-        services.TryAddEnumerable(ServiceDescriptor.Singleton<IFrontComposerBootstrapMarker, QuickstartBootstrapMarker>());
+        ValidateNewItemIndicatorRegistration(services);
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IFrontComposerBootstrapMarker>(
+            new QuickstartBootstrapMarker(() => ValidateNewItemIndicatorRegistration(services))));
         _ = services.AddHostedService<FrontComposerBootstrapValidationGate>();
 
         // Story 7-3 Pass 4 — the dispatch decorator and the empty-state CTA region both depend on
@@ -631,6 +633,18 @@ public static class ServiceCollectionExtensions {
             resolverDescriptor,
             coordinatorDescriptor,
             concreteDescriptor));
+    }
+
+    private static void ValidateNewItemIndicatorRegistration(IServiceCollection services) {
+        ServiceDescriptor? invalid = services.FirstOrDefault(static descriptor =>
+            descriptor.ServiceType == typeof(INewItemIndicatorStateService)
+            && !descriptor.IsKeyedService
+            && descriptor.Lifetime != ServiceLifetime.Scoped);
+        if (invalid is not null) {
+            throw new InvalidOperationException(
+                $"{nameof(INewItemIndicatorStateService)} must be registered as Scoped (found: {invalid.Lifetime}). "
+                + "Each circuit needs its own indicator state and timers.");
+        }
     }
 
     private static void ValidateCommandExecutionAdmissionGateRegistration(IServiceCollection services) {

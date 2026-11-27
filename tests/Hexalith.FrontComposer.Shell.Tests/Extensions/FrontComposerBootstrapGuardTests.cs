@@ -2,11 +2,14 @@ using Counter.Domain;
 
 using Hexalith.FrontComposer.Contracts.Storage;
 using Hexalith.FrontComposer.Shell.Extensions;
+using Hexalith.FrontComposer.Shell.State.PendingCommands;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+
+using NSubstitute;
 
 using Shouldly;
 
@@ -19,6 +22,51 @@ namespace Hexalith.FrontComposer.Shell.Tests.Extensions;
 /// the guard is idempotent against duplicate registration.
 /// </summary>
 public sealed class FrontComposerBootstrapGuardTests {
+    [Theory]
+    [InlineData(ServiceLifetime.Singleton)]
+    [InlineData(ServiceLifetime.Transient)]
+    public void QuickstartRejectsNonScopedIndicatorOverrides(ServiceLifetime lifetime)
+    {
+        ServiceCollection services = [];
+        services.Add(new ServiceDescriptor(typeof(INewItemIndicatorStateService),
+            static _ => Substitute.For<INewItemIndicatorStateService>(), lifetime));
+
+        Should.Throw<InvalidOperationException>(() => services.AddHexalithFrontComposerQuickstart())
+            .Message.ShouldContain("INewItemIndicatorStateService must be registered as Scoped");
+    }
+
+    [Fact]
+    public async Task BootstrapRejectsAnIndicatorSingletonAddedAfterQuickstart()
+    {
+        ServiceCollection services = [];
+        services.AddHexalithFrontComposerQuickstart();
+        services.AddSingleton(Substitute.For<INewItemIndicatorStateService>());
+        await using ServiceProvider provider = services.BuildServiceProvider();
+        FrontComposerBootstrapValidationGate gate = new(
+            provider.GetServices<IFrontComposerBootstrapMarker>(),
+            NullLogger<FrontComposerBootstrapValidationGate>.Instance);
+
+        var exception = await Should.ThrowAsync<InvalidOperationException>(() =>
+            gate.StartAsync(TestContext.Current.CancellationToken));
+        exception.Message.ShouldContain("INewItemIndicatorStateService must be registered as Scoped");
+    }
+
+    [Fact]
+    public async Task QuickstartRetainsScopedIndicatorOverride()
+    {
+        ServiceCollection services = [];
+        services.AddScoped(static _ => Substitute.For<INewItemIndicatorStateService>());
+        services.AddHexalithFrontComposerQuickstart();
+        await using ServiceProvider provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
+        await using AsyncServiceScope first = provider.CreateAsyncScope();
+        await using AsyncServiceScope second = provider.CreateAsyncScope();
+
+        INewItemIndicatorStateService firstIndicator = first.ServiceProvider.GetRequiredService<INewItemIndicatorStateService>();
+        firstIndicator.ShouldBeSameAs(first.ServiceProvider.GetRequiredService<INewItemIndicatorStateService>());
+        firstIndicator.ShouldNotBeSameAs(second.ServiceProvider.GetRequiredService<INewItemIndicatorStateService>());
+        services.Count(descriptor => descriptor.ServiceType == typeof(INewItemIndicatorStateService)).ShouldBe(1);
+    }
+
     // ── Validator unit tests (synthesised markers, in DI insertion order) ──────────────────────────
 
     [Fact]
@@ -218,7 +266,7 @@ public sealed class FrontComposerBootstrapGuardTests {
         ServiceCollection services = [];
         _ = services.AddHexalithFrontComposerQuickstart();
 
-        services.Count(d => d.ImplementationType == typeof(QuickstartBootstrapMarker)).ShouldBe(1);
+        services.Count(d => d.ImplementationInstance is QuickstartBootstrapMarker).ShouldBe(1);
         services.Count(d => d.ImplementationType == typeof(FrontComposerBootstrapValidationGate)).ShouldBe(1);
     }
 
@@ -229,7 +277,7 @@ public sealed class FrontComposerBootstrapGuardTests {
         _ = services.AddHexalithFrontComposerQuickstart();
         _ = services.AddHexalithFrontComposerQuickstart();
 
-        services.Count(d => d.ImplementationType == typeof(QuickstartBootstrapMarker)).ShouldBe(1);
+        services.Count(d => d.ImplementationInstance is QuickstartBootstrapMarker).ShouldBe(1);
         services.Count(d => d.ImplementationType == typeof(FrontComposerBootstrapValidationGate)).ShouldBe(1);
 
         using ServiceProvider provider = services.BuildServiceProvider();
@@ -288,7 +336,7 @@ public sealed class FrontComposerBootstrapGuardTests {
         ServiceCollection services = [];
         _ = services.AddHexalithFrontComposer();
 
-        services.Count(d => d.ImplementationType == typeof(QuickstartBootstrapMarker)).ShouldBe(1);
+        services.Count(d => d.ImplementationInstance is QuickstartBootstrapMarker).ShouldBe(1);
         services.Count(d => d.ImplementationType == typeof(FrontComposerBootstrapValidationGate)).ShouldBe(1);
 
         using ServiceProvider provider = services.BuildServiceProvider();
