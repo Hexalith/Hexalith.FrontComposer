@@ -52,7 +52,7 @@ public sealed class ProjectionSlotRegistryTests {
     }
 
     [Fact]
-    public void Resolve_MissingSlots_LogOnlyOneFallbackReason()
+    public void MissingSlotsLogOneFallbackReason()
     {
         ListLogger<ProjectionSlotRegistry> logger = new();
         ProjectionSlotRegistry registry = new(logger, []);
@@ -68,7 +68,7 @@ public sealed class ProjectionSlotRegistryTests {
     }
 
     [Fact]
-    public void Resolve_DebugDisabled_PreservesFallbackSampleForWhenEnabled()
+    public void DisabledDebugLoggingPreservesFallbackSample()
     {
         ListLogger<ProjectionSlotRegistry> logger = new() { DebugEnabled = false };
         ProjectionSlotRegistry registry = new(logger, []);
@@ -85,7 +85,7 @@ public sealed class ProjectionSlotRegistryTests {
     [Theory]
     [InlineData(null, ProjectionRole.Timeline)]
     [InlineData(ProjectionRole.DetailRecord, ProjectionRole.DetailRecord)]
-    public void Resolve_AmbiguousSlot_LogsFallbackAtDebugLevel(ProjectionRole? slotRole, ProjectionRole requestedRole)
+    public void AmbiguousSlotLogsFallbackAtDebugLevel(ProjectionRole? slotRole, ProjectionRole requestedRole)
     {
         ListLogger<ProjectionSlotRegistry> logger = new();
         List<ProjectionSlotDescriptor> descriptors =
@@ -112,7 +112,7 @@ public sealed class ProjectionSlotRegistryTests {
     }
 
     [Fact]
-    public void Resolve_FieldNamesUseOrdinalCaseSensitiveMatching()
+    public void FieldNamesUseOrdinalCaseSensitiveMatching()
     {
         ProjectionSlotDescriptor canonical = Descriptor(
             nameof(SlotProjection.Priority), typeof(int), null, typeof(AnyPrioritySlot));
@@ -185,7 +185,7 @@ public sealed class ProjectionSlotRegistryTests {
 
     [Theory]
     [MemberData(nameof(InvalidProjectionTypes), DisableDiscoveryEnumeration = true)]
-    public void Resolve_InvalidProjectionType_Throws(Type projectionType) {
+    public void ResolveRejectsInvalidProjectionType(Type projectionType) {
         ProjectionSlotRegistry registry = NewRegistry();
 
         Should.Throw<ArgumentException>(() => registry.Resolve(projectionType, null, "Priority"))
@@ -257,7 +257,7 @@ public sealed class ProjectionSlotRegistryTests {
 
     [Theory]
     [MemberData(nameof(InvalidProjectionTypes), DisableDiscoveryEnumeration = true)]
-    public void Register_InvalidProjectionType_LogsHfc1039AndSkipsDescriptor(Type projectionType) {
+    public void RegistrationLogsHfc1039AndSkipsInvalidProjectionType(Type projectionType) {
         ListLogger<ProjectionSlotRegistry> logger = new();
         ProjectionSlotDescriptor invalid = new(
             ProjectionType: projectionType,
@@ -278,7 +278,7 @@ public sealed class ProjectionSlotRegistryTests {
     [Theory]
     [InlineData(typeof(IReadOnlyCollection<int>), nameof(IReadOnlyCollection<int>.Count), typeof(ProjectionSlotTestComponent<IReadOnlyCollection<int>>))]
     [InlineData(typeof(System.Text.Encoding), nameof(System.Text.Encoding.CodePage), typeof(ProjectionSlotTestComponent<System.Text.Encoding>))]
-    public void Resolve_NonConcreteProjectionType_SelectsExplicitRegistration(Type projectionType, string fieldName, Type componentType)
+    public void NonConcreteProjectionTypeResolvesExplicitRegistration(Type projectionType, string fieldName, Type componentType)
     {
         ListLogger<ProjectionSlotRegistry> logger = new();
         ProjectionSlotDescriptor descriptor = new(
@@ -297,7 +297,7 @@ public sealed class ProjectionSlotRegistryTests {
     [Theory]
     [InlineData(typeof(IReadOnlyCollection<int>))]
     [InlineData(typeof(System.Text.Encoding))]
-    public void Resolve_NonConcreteProjectionTypeWithoutRegistration_LogsBoundedDebugReason(Type projectionType)
+    public void UnregisteredNonConcreteProjectionTypeLogsBoundedDebugReason(Type projectionType)
     {
         ListLogger<ProjectionSlotRegistry> logger = new();
         ProjectionSlotRegistry registry = new(logger, []);
@@ -311,7 +311,7 @@ public sealed class ProjectionSlotRegistryTests {
     }
 
     [Fact]
-    public void Register_UndefinedRole_LogsHfc1039AndPreservesAnyRoleFallback()
+    public void UndefinedRegistrationRoleLogsHfc1039AndPreservesAnyRoleFallback()
     {
         ListLogger<ProjectionSlotRegistry> logger = new();
         const ProjectionRole undefinedRole = (ProjectionRole)(-123_456_789);

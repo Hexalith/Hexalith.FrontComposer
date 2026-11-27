@@ -91,15 +91,15 @@ public sealed class FcFieldSlotHostTests : BunitContext {
     }
 
     [Fact]
-    public void Render_InterfaceProjectionParent_UsesGeneratedFallback()
+    public void InterfaceProjectionParentUsesGeneratedFallback()
         => AssertGeneratedFallback<IReadOnlyCollection<int>>(new List<int> { 7 }, nameof(IReadOnlyCollection<int>.Count));
 
     [Fact]
-    public void Render_AbstractProjectionParent_UsesGeneratedFallback()
+    public void AbstractProjectionParentUsesGeneratedFallback()
         => AssertGeneratedFallback<System.Text.Encoding>(System.Text.Encoding.UTF8, nameof(System.Text.Encoding.CodePage));
 
     [Fact]
-    public void Render_DefaultRendererReturnsNull_RendersNothing()
+    public void NullDefaultFragmentRendersNothing()
     {
         Services.Replace(ServiceDescriptor.Singleton<IProjectionSlotRegistry>(EmptyRegistry()));
 
@@ -122,7 +122,7 @@ public sealed class FcFieldSlotHostTests : BunitContext {
     }
 
     [Fact]
-    public void Render_RoleSwitch_IsolatesDefaultAndOverrideBoundaries()
+    public void RoleSwitchIsolatesDefaultAndOverrideBoundaries()
     {
         ProjectionSlotRegistry registry = new(
             NullLogger<ProjectionSlotRegistry>.Instance,

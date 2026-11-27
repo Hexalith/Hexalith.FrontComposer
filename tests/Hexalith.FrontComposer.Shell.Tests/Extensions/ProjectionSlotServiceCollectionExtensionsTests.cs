@@ -67,7 +67,7 @@ public sealed class ProjectionSlotServiceCollectionExtensionsTests {
     }
 
     [Fact]
-    public void AddSlotOverride_UndefinedRole_ThrowsBeforeRegisteringServices()
+    public void AddSlotOverrideRejectsUndefinedRoleBeforeRegisteringServices()
     {
         ServiceCollection services = [];
         const ProjectionRole role = (ProjectionRole)(-1);
