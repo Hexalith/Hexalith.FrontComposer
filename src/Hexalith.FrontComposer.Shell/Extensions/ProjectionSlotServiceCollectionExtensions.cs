@@ -34,6 +34,7 @@ public static class ProjectionSlotServiceCollectionExtensions {
     /// <param name="field">Direct property selector such as <c>x =&gt; x.Priority</c>.</param>
     /// <param name="role">Optional projection role. Omit for a role-agnostic slot.</param>
     /// <returns>The service collection for chaining.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">The specified role is undefined.</exception>
     public static IServiceCollection AddSlotOverride<
         TProjection,
         TField,
@@ -58,6 +59,7 @@ public static class ProjectionSlotServiceCollectionExtensions {
     /// <param name="componentType">Razor component type with a compatible <c>Context</c> parameter.</param>
     /// <param name="role">Optional projection role. Omit for a role-agnostic slot.</param>
     /// <returns>The service collection for chaining.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">The specified role is undefined.</exception>
     public static IServiceCollection AddSlotOverride<TProjection, TField>(
         this IServiceCollection services,
         Expression<Func<TProjection, TField>> field,
@@ -68,6 +70,11 @@ public static class ProjectionSlotServiceCollectionExtensions {
         ArgumentNullException.ThrowIfNull(componentType);
 
         ProjectionSlotFieldIdentity identity = ProjectionSlotSelector.Parse(field);
+        if (role is ProjectionRole specifiedRole && !Enum.IsDefined(specifiedRole))
+        {
+            throw new ArgumentOutOfRangeException(nameof(role), specifiedRole, "The projection role must be defined.");
+        }
+
         ProjectionSlotDescriptor descriptor = new(
             ProjectionType: typeof(TProjection),
             FieldName: identity.Name,

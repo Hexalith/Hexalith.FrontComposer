@@ -67,6 +67,22 @@ public sealed class ProjectionSlotServiceCollectionExtensionsTests {
     }
 
     [Fact]
+    public void AddSlotOverride_UndefinedRole_ThrowsBeforeRegisteringServices()
+    {
+        ServiceCollection services = [];
+        const ProjectionRole role = (ProjectionRole)(-1);
+
+        Should.Throw<ArgumentOutOfRangeException>(() =>
+            services.AddSlotOverride<SlotProjection, int, AnyPrioritySlot>(p => p.Priority, role))
+            .ParamName.ShouldBe(nameof(role));
+        Should.Throw<ArgumentOutOfRangeException>(() =>
+            services.AddSlotOverride<SlotProjection, int>(p => p.Priority, typeof(AnyPrioritySlot), role))
+            .ParamName.ShouldBe(nameof(role));
+
+        services.ShouldBeEmpty();
+    }
+
+    [Fact]
     public void AddSlotOverride_DuplicateIdenticalCall_DedupsViaRecordEquality_NoHfc1040() {
         ServiceCollection services = NewServices();
         _ = services.AddSlotOverride<SlotProjection, int, AnyPrioritySlot>(p => p.Priority);
