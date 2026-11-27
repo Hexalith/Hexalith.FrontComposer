@@ -1,3 +1,5 @@
+using System.Text.RegularExpressions;
+
 using Fluxor;
 
 using Hexalith.FrontComposer.Contracts.Attributes;
@@ -55,5 +57,17 @@ public partial class FcStatusFilterChips : ComponentBase {
         return InvokeAsync(StateHasChanged);
     }
 
-    private static string HumanizeSlotName(BadgeSlot slot) => slot.ToString();
+    private string GetSlotLabel(BadgeSlot slot) {
+        string slotName = slot.ToString();
+        LocalizedString label = Localizer[$"StatusFilterChipSlot{slotName}"];
+        if (!label.ResourceNotFound) {
+            return label.Value;
+        }
+
+        string sentence = SlotWordBoundary().Replace(slotName, " ");
+        return string.Concat(sentence.AsSpan(0, 1), sentence[1..].ToLowerInvariant());
+    }
+
+    [GeneratedRegex(@"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])", RegexOptions.CultureInvariant | RegexOptions.ExplicitCapture)]
+    private static partial Regex SlotWordBoundary();
 }

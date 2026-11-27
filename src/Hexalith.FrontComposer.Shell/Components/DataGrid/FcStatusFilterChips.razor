@@ -8,7 +8,7 @@
     @foreach (BadgeSlot slot in AvailableSlots) {
         bool active = _activeSet.Contains(slot);
         (BadgeColor color, _) = Components.Badges.SlotAppearanceTable.Resolve(slot);
-        string label = HumanizeSlotName(slot);
+        string label = GetSlotLabel(slot);
         string stateLabel = Localizer[active ? "StatusFilterChipActiveLabel" : "StatusFilterChipInactiveLabel"].Value;
         string chipAriaLabel = Localizer["StatusFilterChipAriaLabelTemplate", label, stateLabel].Value;
         <FluentButton Appearance="ButtonAppearance.Subtle"

@@ -398,6 +398,24 @@
     <value>{0}, currently {1}</value>
     <comment>Story 4-3 D19 / AC2 — per-chip aria-label. {0}=slot label, {1}=active/inactive status.</comment>
   </data>
+  <data name="StatusFilterChipSlotNeutral" xml:space="preserve">
+    <value>Neutral</value>
+  </data>
+  <data name="StatusFilterChipSlotInfo" xml:space="preserve">
+    <value>Info</value>
+  </data>
+  <data name="StatusFilterChipSlotSuccess" xml:space="preserve">
+    <value>Success</value>
+  </data>
+  <data name="StatusFilterChipSlotWarning" xml:space="preserve">
+    <value>Warning</value>
+  </data>
+  <data name="StatusFilterChipSlotDanger" xml:space="preserve">
+    <value>Danger</value>
+  </data>
+  <data name="StatusFilterChipSlotAccent" xml:space="preserve">
+    <value>Accent</value>
+  </data>
   <data name="StatusFilterChipActiveLabel" xml:space="preserve">
     <value>active</value>
     <comment>Story 4-3 Review pass 2 — localized "active" substitution for StatusFilterChipAriaLabelTemplate {1}.</comment>

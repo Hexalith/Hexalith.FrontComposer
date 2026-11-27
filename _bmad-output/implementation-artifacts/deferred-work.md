@@ -3663,13 +3663,15 @@ origin: migrated from legacy ledger ("Deferred from: code review of 4-3-datagrid
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 reason: **`FrontComposerShortcutRegistrar` slash handler does not wrap `DataGridFocusScope.IsFocusWithinDataGridAsync` in try/catch** — A JS-interop failure (disconnected circuit, disposed module) bubbles unhandled out of the shortcut pump. Defensive `try/catch` returning `false` would align with other shortcut handlers. Reconciliation: Row: DW-0442; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of 4-3-datagrid-filtering-sorting-and-search (2026-04-24 pass 2).
 status: open
+decision: 2026-11-27 Skipped. The current slash shortcut uses FocusSolePageSearchAsync with JS failure handling. The cited focus call remains only on an obsolete compatibility path.
 
 ### DW-1174: `FcStatusFilterChips.HumanizeSlotName` returns raw `slot.ToString()`
 
 origin: migrated from legacy ledger ("Deferred from: code review of 4-3-datagrid-filtering-sorting-and-search (2026-04-24 pass 2)"), 2026-08-27
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 reason: **`FcStatusFilterChips.HumanizeSlotName` returns raw `slot.ToString()`** — "InProgress" renders literally instead of "In progress" / "En cours". Already in the story's Known Gaps; logging here so the review record matches the gap ledger. Reconciliation: Row: DW-0443; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC17-AC20, AC35; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of 4-3-datagrid-filtering-sorting-and-search (2026-04-24 pass 2).
-status: open
+status: done 2026-11-27
+resolution: Status chips use English and French slot resources for visible and accessible names, with deterministic sentence casing if a resource is missing. Filter keys and dispatch still use enum names.
 decision: 2026-09-06 Localize enum keys — Resolve resources by BadgeSlot name, add English and French values, and fall back to deterministic sentence case.
 decision: 2026-09-06 Localize enum keys — Resolve resources by BadgeSlot name, add English and French values, and fall back to deterministic sentence case.
 

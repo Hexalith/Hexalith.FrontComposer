@@ -236,7 +236,7 @@ public sealed class FcShellResourcesTests {
     [InlineData("ColumnFilterPlaceholderTemplate", "Filter {0}", "Filtrer {0}")]
     [InlineData("ColumnFilterAriaLabelTemplate", "Filter column {0}", "Filtrer la colonne {0}")]
     [InlineData("StatusFilterChipsAriaLabel", "Status filter chips", "Puces de filtrage par statut")]
-    [InlineData("StatusFilterChipAriaLabelTemplate", "{0}, currently {1}", "{0}, actuellement {1}")]
+    [InlineData("StatusFilterChipAriaLabelTemplate", "{0}, currently {1}", "{0}, état actuel\u00A0: {1}")]
     [InlineData("GlobalSearchPlaceholder", "Search…", "Rechercher…")]
     [InlineData("GlobalSearchAriaLabel", "Search across all columns", "Rechercher dans toutes les colonnes")]
     [InlineData("FilterSummaryShowingTemplate", "Showing {0} of {1} {2}", "Affichage de {0} sur {1} {2}")]
