@@ -15,6 +15,7 @@ using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
 using Hexalith.FrontComposer.Shell.State.ReconnectionReconciliation;
 using Hexalith.FrontComposer.Shell.State.Navigation;
 
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
@@ -26,6 +27,53 @@ using Shouldly;
 namespace Hexalith.FrontComposer.Shell.Tests.Infrastructure.ProjectionConnection;
 
 public sealed class ProjectionFallbackRefreshSchedulerTests {
+    [Fact]
+    public async Task FluxorComparisonReports304RestorationAsChangedAndKeepsTheRestoredPage()
+    {
+        ServiceCollection services = [];
+        services.AddLogging();
+        services.AddOptions<FcShellOptions>();
+        services.AddFluxor(options => options.ScanTypes(typeof(LoadedPageFeature), typeof(LoadedPageReducers), typeof(FallbackPageReducer)));
+        await using ServiceProvider provider = services.BuildServiceProvider();
+        await using AsyncServiceScope scope = provider.CreateAsyncScope();
+        IServiceProvider scoped = scope.ServiceProvider;
+        await scoped.GetRequiredService<IStore>().InitializeAsync();
+        IDispatcher dispatcher = scoped.GetRequiredService<IDispatcher>();
+        var terminalActions = new ConcurrentQueue<object>();
+        dispatcher.ActionDispatched += (_, args) =>
+        {
+            if (args.Action is LoadPageSucceededAction or LoadPageNotModifiedAction)
+            {
+                terminalActions.Enqueue(args.Action);
+            }
+        };
+        var pages = scoped.GetRequiredService<IState<LoadedPageState>>();
+        const string viewKey = "fallback-compare";
+        var result = new ProjectionPageResult(["cached row"], 1, "same-etag", IsNotModified: true);
+        var connection = new TestConnectionState(new ProjectionConnectionSnapshot(
+            ProjectionConnectionStatus.Connected, DateTimeOffset.UtcNow, 0, null));
+        var scheduler = new ProjectionFallbackRefreshScheduler(connection, LoaderReturning(result),
+            dispatcher, new FallbackPageState(pages),
+            Microsoft.Extensions.Options.Options.Create(new FcShellOptions()).ToMonitor(),
+            NullLogger<ProjectionFallbackRefreshScheduler>.Instance, null, null);
+
+        using IDisposable lane = scheduler.RegisterLane(DefaultLane(viewKey));
+        CancellationToken token = TestContext.Current.CancellationToken;
+        ProjectionReconciliationRefreshResult first = await scheduler.TriggerReconciliationOnceAsync(1, token)
+            .WaitAsync(TimeSpan.FromSeconds(5), token);
+        first.ChangedViewKeys.ShouldBe([viewKey]);
+        pages.Value.PagesByKey[(viewKey, 0)].ShouldBe(["cached row"]);
+        LoadedPageResult restored = pages.Value.LastResultByKey[viewKey];
+
+        ProjectionReconciliationRefreshResult second = await scheduler.TriggerReconciliationOnceAsync(2, token)
+            .WaitAsync(TimeSpan.FromSeconds(5), token);
+        second.ChangedViewKeys.ShouldBeEmpty();
+        second.RefreshedCount.ShouldBe(1);
+        pages.Value.LastResultByKey[viewKey].ShouldBeSameAs(restored);
+        terminalActions.OfType<LoadPageSucceededAction>().ShouldHaveSingleItem().ViewKey.ShouldBe(viewKey);
+        terminalActions.OfType<LoadPageNotModifiedAction>().ShouldHaveSingleItem().ViewKey.ShouldBe(viewKey);
+    }
+
     [Fact]
     public async Task SynchronousCustomReconciliationCallbackLeavesDeadlineAndLaterReadAvailable()
     {

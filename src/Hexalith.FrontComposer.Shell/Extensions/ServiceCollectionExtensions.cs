@@ -459,7 +459,16 @@ public static class ServiceCollectionExtensions {
             sp.GetRequiredService<IStorageScopeResolver>())));
 
         services.TryAddScoped<IProjectionConnectionState, ProjectionConnectionStateService>();
-        services.TryAddScoped<IProjectionFallbackRefreshScheduler, ProjectionFallbackRefreshScheduler>();
+        services.TryAddScoped<FallbackPageState>();
+        services.TryAddScoped<IProjectionFallbackRefreshScheduler>(sp => new ProjectionFallbackRefreshScheduler(
+            sp.GetRequiredService<IProjectionConnectionState>(),
+            sp.GetRequiredService<IProjectionPageLoader>(),
+            sp.GetRequiredService<IDispatcher>(),
+            sp.GetRequiredService<FallbackPageState>(),
+            sp.GetRequiredService<IOptionsMonitor<FcShellOptions>>(),
+            sp.GetRequiredService<ILogger<ProjectionFallbackRefreshScheduler>>(),
+            sp.GetService<IFrontComposerTenantContextAccessor>(),
+            sp.GetService<TimeProvider>()));
         services.TryAddScoped<IReconnectionReconciliationState, ReconnectionReconciliationStateService>();
         services.TryAddScoped<IReconnectionReconciliationCoordinator, ReconnectionReconciliationCoordinator>();
         services.TryAddScoped<IPendingCommandStateService, PendingCommandStateService>();

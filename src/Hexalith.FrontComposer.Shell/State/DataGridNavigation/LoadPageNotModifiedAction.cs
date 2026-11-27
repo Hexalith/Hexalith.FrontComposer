@@ -9,6 +9,9 @@ namespace Hexalith.FrontComposer.Shell.State.DataGridNavigation;
 /// success transition, no badge animation, and no success toast.
 /// </summary>
 public sealed record LoadPageNotModifiedAction {
+    /// <summary>Gets whether the fallback reducer has already applied this notification.</summary>
+    internal bool AlreadyApplied { get; init; }
+
 
     /// <summary>Initializes a new instance of the <see cref="LoadPageNotModifiedAction"/> record.</summary>
     /// <param name="viewKey">Stable per-view key.</param>

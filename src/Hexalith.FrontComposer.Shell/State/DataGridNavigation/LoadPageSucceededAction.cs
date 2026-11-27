@@ -7,6 +7,9 @@ namespace Hexalith.FrontComposer.Shell.State.DataGridNavigation;
 /// and resolves the matching TCS via <c>TrySetResult</c>.
 /// </summary>
 public sealed record LoadPageSucceededAction {
+    /// <summary>Gets whether the fallback reducer has already applied this notification.</summary>
+    internal bool AlreadyApplied { get; init; }
+
 
     /// <summary>Initializes a new instance of the <see cref="LoadPageSucceededAction"/> record.</summary>
     /// <param name="viewKey">Stable per-view key.</param>

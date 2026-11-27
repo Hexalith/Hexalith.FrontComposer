@@ -27,7 +27,7 @@ public sealed class RelocatedInfrastructureRegistrationTests {
     public async Task QuickstartEventStoreComposition_RelocatedImplementationsAreScopedPerCircuit() {
         ServiceCollection services = CreateProductionComposition();
 
-        AssertScopedImplementation<IProjectionFallbackRefreshScheduler, ProjectionFallbackRefreshScheduler>(services);
+        services.Single(d => d.ServiceType == typeof(IProjectionFallbackRefreshScheduler)).Lifetime.ShouldBe(ServiceLifetime.Scoped);
         AssertScopedImplementation<ProjectionFallbackPollingDriver, ProjectionFallbackPollingDriver>(services);
         AssertScopedImplementation<PendingCommandPollingDriver, PendingCommandPollingDriver>(services);
 

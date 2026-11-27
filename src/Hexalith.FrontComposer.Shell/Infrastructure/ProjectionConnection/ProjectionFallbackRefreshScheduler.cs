@@ -19,15 +19,53 @@ using Microsoft.Extensions.Options;
 namespace Hexalith.FrontComposer.Shell.Infrastructure.ProjectionConnection;
 
 /// <summary>Bounded fallback refresh scheduler that reuses the Story 5-2 page loader seam.</summary>
-public sealed class ProjectionFallbackRefreshScheduler(
-    IProjectionConnectionState connectionState,
-    IProjectionPageLoader loader,
-    IDispatcher dispatcher,
-    IState<LoadedPageState> loadedPages,
-    IOptionsMonitor<FcShellOptions> options,
-    ILogger<ProjectionFallbackRefreshScheduler> logger,
-    IFrontComposerTenantContextAccessor? tenantContextAccessor = null,
-    TimeProvider? timeProvider = null) : IProjectionFallbackRefreshScheduler, IProjectionIncompleteReadWaiter, IProjectionAbandonedReadRetirer {
+public sealed class ProjectionFallbackRefreshScheduler : IProjectionFallbackRefreshScheduler, IProjectionIncompleteReadWaiter, IProjectionAbandonedReadRetirer {
+    private readonly IProjectionConnectionState _connectionState;
+    private readonly IProjectionPageLoader _loader;
+    private readonly IDispatcher _dispatcher;
+    private readonly FallbackPageState _pages;
+    private readonly IOptionsMonitor<FcShellOptions> _options;
+    private readonly ILogger<ProjectionFallbackRefreshScheduler> _logger;
+    private readonly IFrontComposerTenantContextAccessor? _tenantContextAccessor;
+    private readonly TimeProvider? _timeProvider;
+    private readonly bool _compareInReducer;
+
+    /// <summary>Initializes a scheduler with an explicitly supplied page state.</summary>
+    public ProjectionFallbackRefreshScheduler(
+        IProjectionConnectionState connectionState,
+        IProjectionPageLoader loader,
+        IDispatcher dispatcher,
+        IState<LoadedPageState> loadedPages,
+        IOptionsMonitor<FcShellOptions> options,
+        ILogger<ProjectionFallbackRefreshScheduler> logger,
+        IFrontComposerTenantContextAccessor? tenantContextAccessor = null,
+        TimeProvider? timeProvider = null)
+        : this(connectionState, loader, dispatcher, new FallbackPageState(loadedPages ?? throw new ArgumentNullException(nameof(loadedPages))), options, logger,
+            tenantContextAccessor, timeProvider, compareInReducer: false) {
+    }
+
+    /// <summary>Initializes a scheduler using scoped page snapshots and the Fluxor comparison reducer.</summary>
+    internal ProjectionFallbackRefreshScheduler(
+        IProjectionConnectionState connectionState,
+        IProjectionPageLoader loader,
+        IDispatcher dispatcher,
+        FallbackPageState pages,
+        IOptionsMonitor<FcShellOptions> options,
+        ILogger<ProjectionFallbackRefreshScheduler> logger,
+        IFrontComposerTenantContextAccessor? tenantContextAccessor,
+        TimeProvider? timeProvider,
+        bool compareInReducer = true) {
+        _connectionState = connectionState;
+        _loader = loader;
+        _dispatcher = dispatcher;
+        _pages = pages;
+        _options = options;
+        _logger = logger;
+        _tenantContextAccessor = tenantContextAccessor;
+        _timeProvider = timeProvider;
+        _compareInReducer = compareInReducer;
+    }
+
     private static readonly TimeSpan CustomSweepReadLimit = TimeSpan.FromSeconds(5);
     private readonly ConcurrentDictionary<string, LaneEntry> _lanes = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, TaskCompletionSource<bool>> _inFlight = new(StringComparer.Ordinal);
@@ -134,8 +172,8 @@ public sealed class ProjectionFallbackRefreshScheduler(
     /// <inheritdoc />
     public async Task<int> TriggerFallbackOnceAsync(CancellationToken cancellationToken = default) {
         using Activity? activity = FrontComposerTelemetry.StartProjectionFallbackPoll();
-        FcShellOptions current = options.CurrentValue;
-        if (current.ProjectionFallbackPollingIntervalSeconds <= 0 || !connectionState.Current.IsDisconnected) {
+        FcShellOptions current = _options.CurrentValue;
+        if (current.ProjectionFallbackPollingIntervalSeconds <= 0 || !_connectionState.Current.IsDisconnected) {
             FrontComposerTelemetry.SetOutcome(activity, "skipped");
             return 0;
         }
@@ -154,18 +192,18 @@ public sealed class ProjectionFallbackRefreshScheduler(
 
             // P20 — re-check disconnected per-lane so an in-progress sweep stops promptly when
             // the hub reconnects mid-loop. AC7 explicitly requires "stops when the hub reconnects".
-            if (!connectionState.Current.IsDisconnected) {
+            if (!_connectionState.Current.IsDisconnected) {
                 reconnectedDuringLoop = true;
                 break;
             }
 
             IReadOnlyList<ProjectionLaneRefreshResult> results = await RefreshLaneSequenceAsync(
-                entry, budget - attempted, cancellationToken, () => connectionState.Current.IsDisconnected, requiresDisconnected: true).ConfigureAwait(false);
+                entry, budget - attempted, cancellationToken, () => _connectionState.Current.IsDisconnected, requiresDisconnected: true).ConfigureAwait(false);
             attempted += results.Count;
             if (results.Any(static result => result is ProjectionLaneRefreshResult.Changed or ProjectionLaneRefreshResult.NotModified)) {
                 refreshed++;
             }
-            if (!connectionState.Current.IsDisconnected) {
+            if (!_connectionState.Current.IsDisconnected) {
                 reconnectedDuringLoop = true;
                 break;
             }
@@ -185,7 +223,7 @@ public sealed class ProjectionFallbackRefreshScheduler(
         using Activity? activity = FrontComposerTelemetry.StartProjectionNudge(
             safeProjectionType,
             FrontComposerTelemetry.TenantMarker(safeTenantId));
-        int budget = Math.Max(0, options.CurrentValue.MaxProjectionFallbackPollingLanes);
+        int budget = Math.Max(0, _options.CurrentValue.MaxProjectionFallbackPollingLanes);
         int refreshed = 0;
         int attempted = 0;
         IEnumerable<LaneEntry> matches = _lanes.Values
@@ -222,12 +260,12 @@ public sealed class ProjectionFallbackRefreshScheduler(
             return ProjectionReconciliationRefreshResult.Empty;
         }
 
-        int budget = Math.Max(0, options.CurrentValue.MaxProjectionFallbackPollingLanes);
+        int budget = Math.Max(0, _options.CurrentValue.MaxProjectionFallbackPollingLanes);
         // P22 — log when the configured budget is zero so misconfiguration is visible instead
         // of silently suppressing every reconcile pass.
         if (budget == 0) {
             FrontComposerHotPathLog.ReconciliationBudgetZero(
-                logger,
+                _logger,
                 budget);
             return ProjectionReconciliationRefreshResult.Empty;
         }
@@ -260,7 +298,7 @@ public sealed class ProjectionFallbackRefreshScheduler(
             // surface as a structured "lane skipped" diagnostic rather than as a silent miss.
             if (string.IsNullOrWhiteSpace(lane.TenantId)) {
                 FrontComposerHotPathLog.ReconciliationLaneMissingTenant(
-                    logger,
+                    _logger,
                     lane.ViewKey,
                     lane.ProjectionType);
                 continue;
@@ -268,7 +306,7 @@ public sealed class ProjectionFallbackRefreshScheduler(
 
             if (!IsGroupEligibleForReconciliation(lane)) {
                 FrontComposerHotPathLog.ReconciliationLaneDegraded(
-                    logger,
+                    _logger,
                     lane.ViewKey,
                     lane.ProjectionType);
                 continue;
@@ -385,7 +423,7 @@ public sealed class ProjectionFallbackRefreshScheduler(
                 if (reconciliationEpoch is null && entry.Lane.RefreshAsync is not null)
                 {
                     // A custom callback may ignore cancellation. Bound only that
-                    // callback; a standard loader read keeps its own transport budget.
+                    // callback; a standard _loader read keeps its own transport budget.
                     CancellationTokenSource bounded = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                     TaskCompletionSource<bool>? admission = null;
                     Task<ProjectionLaneRefreshResult> read = RefreshLaneOnceAsync(entry, bounded.Token,
@@ -394,7 +432,7 @@ public sealed class ProjectionFallbackRefreshScheduler(
                     bool abandonedRead = false;
                     try
                     {
-                        result = await read.WaitAsync(CustomSweepReadLimit, timeProvider ?? TimeProvider.System,
+                        result = await read.WaitAsync(CustomSweepReadLimit, _timeProvider ?? TimeProvider.System,
                             cancellationToken).ConfigureAwait(false);
                     }
                     catch (TimeoutException)
@@ -429,7 +467,7 @@ public sealed class ProjectionFallbackRefreshScheduler(
                 }
                 else
                 {
-                    // Reconciliation keeps its 30-second deadline. A standard loader
+                    // Reconciliation keeps its 30-second deadline. A standard _loader
                     // read is not cut by the custom-callback bound. The lane admission
                     // completes before this Task is returned. A custom callback itself
                     // runs separately so a synchronous provider cannot hold the
@@ -467,7 +505,7 @@ public sealed class ProjectionFallbackRefreshScheduler(
             if (!_pendingRetry.TryRemove(entry.Lane.ViewKey, out var pending) || !IsLaneActive(pending.Entry)) {
                 break;
             }
-            if (pending.RequiresDisconnected && !connectionState.Current.IsDisconnected) {
+            if (pending.RequiresDisconnected && !_connectionState.Current.IsDisconnected) {
                 break;
             }
             if (remainingBudget == 0 || (mayContinue is not null && !mayContinue())) {
@@ -500,7 +538,7 @@ public sealed class ProjectionFallbackRefreshScheduler(
         try
         {
             cancellation = source.CancelAsync();
-            await cancellation.WaitAsync(CustomSweepReadLimit, timeProvider ?? TimeProvider.System).ConfigureAwait(false);
+            await cancellation.WaitAsync(CustomSweepReadLimit, _timeProvider ?? TimeProvider.System).ConfigureAwait(false);
         }
         catch (TimeoutException)
         {
@@ -530,7 +568,7 @@ public sealed class ProjectionFallbackRefreshScheduler(
                 // A replay is a separately budgeted sweep, never a recursive continuation of
                 // the read that received the nudge. A short yield also coalesces later nudges.
                 await Task.Delay(50).ConfigureAwait(false);
-                int budget = Math.Max(0, options.CurrentValue.MaxProjectionFallbackPollingLanes);
+                int budget = Math.Max(0, _options.CurrentValue.MaxProjectionFallbackPollingLanes);
                 int attempted = 0;
                 while (attempted < budget && !_pendingRetry.IsEmpty) {
                     Task queueChanged = Volatile.Read(ref _replayQueueChanged).Task;
@@ -545,7 +583,7 @@ public sealed class ProjectionFallbackRefreshScheduler(
                             continue;
                         }
                         if (!_pendingRetry.TryRemove(pending) || !IsLaneActive(pending.Value.Entry)
-                            || (pending.Value.RequiresDisconnected && !connectionState.Current.IsDisconnected)) {
+                            || (pending.Value.RequiresDisconnected && !_connectionState.Current.IsDisconnected)) {
                             continue;
                         }
                         processedReady = true;
@@ -571,12 +609,12 @@ public sealed class ProjectionFallbackRefreshScheduler(
                 // already woken the pump; the next sweep rechecks lane ownership.
             }
             catch (Exception ex) when (ex is not OperationCanceledException && !ExceptionGuard.IsFatal(ex)) {
-                FrontComposerLog.ProjectionRefreshFailed(logger, "pending-nudge", ex.GetType().Name);
+                FrontComposerLog.ProjectionRefreshFailed(_logger, "pending-nudge", ex.GetType().Name);
             }
             finally {
                 Volatile.Write(ref _replayPumpRunning, 0);
                 if (_pendingRetry.Any(pending => !_inFlight.ContainsKey(pending.Key))
-                    && options.CurrentValue.MaxProjectionFallbackPollingLanes > 0) {
+                    && _options.CurrentValue.MaxProjectionFallbackPollingLanes > 0) {
                     SchedulePendingReplay();
                 }
             }
@@ -589,7 +627,7 @@ public sealed class ProjectionFallbackRefreshScheduler(
     private async Task ObservePendingReplayAsync((LaneEntry Entry, bool RequiresDisconnected) pending) {
         try {
             _ = await RefreshLaneSequenceAsync(pending.Entry, 1, CancellationToken.None,
-                pending.RequiresDisconnected ? () => connectionState.Current.IsDisconnected : null,
+                pending.RequiresDisconnected ? () => _connectionState.Current.IsDisconnected : null,
                 requiresDisconnected: pending.RequiresDisconnected).ConfigureAwait(false);
         }
         catch (OperationCanceledException) {
@@ -597,7 +635,7 @@ public sealed class ProjectionFallbackRefreshScheduler(
             // already reconsidered by RefreshLaneSequenceAsync.
         }
         catch (Exception ex) when (ex is not OperationCanceledException && !ExceptionGuard.IsFatal(ex)) {
-            FrontComposerLog.ProjectionRefreshFailed(logger, "pending-nudge", ex.GetType().Name);
+            FrontComposerLog.ProjectionRefreshFailed(_logger, "pending-nudge", ex.GetType().Name);
         }
     }
 
@@ -606,7 +644,7 @@ public sealed class ProjectionFallbackRefreshScheduler(
         Action<TaskCompletionSource<bool>>? onAdmission = null, bool queueSkippedReconciliationReplay = true) {
         cancellationToken.ThrowIfCancellationRequested();
         ProjectionFallbackLane lane = entry.Lane;
-        if (!IsLaneActive(entry) || !IsLaneCurrentScope(entry) || (requiresDisconnected && !connectionState.Current.IsDisconnected)) {
+        if (!IsLaneActive(entry) || !IsLaneCurrentScope(entry) || (requiresDisconnected && !_connectionState.Current.IsDisconnected)) {
             return ProjectionLaneRefreshResult.Skipped;
         }
 
@@ -655,16 +693,13 @@ public sealed class ProjectionFallbackRefreshScheduler(
             () => RetireInFlight(entry, completion));
 
         entry.OriginScopeGeneration = entry.RegisteredGeneration;
-        entry.OriginRequestIdentity = loadedPages.Value.ActiveRequestIdentityByView.TryGetValue(lane.ViewKey, out string? identity)
-            ? identity : string.Empty;
-        entry.OriginRequestGeneration = loadedPages.Value.ActiveRequestGenerationByView.TryGetValue(lane.ViewKey, out long generation)
-            ? generation : null;
+        (_, entry.OriginRequestIdentity, entry.OriginRequestGeneration) = _pages.Request(lane.ViewKey);
 
         ProjectionLaneRefreshResult outcome;
         try
         {
             try {
-                if (requiresDisconnected && !connectionState.Current.IsDisconnected) {
+                if (requiresDisconnected && !_connectionState.Current.IsDisconnected) {
                     return ProjectionLaneRefreshResult.ReadSkipped;
                 }
                 if (lane.RefreshAsync is not null) {
@@ -676,7 +711,8 @@ public sealed class ProjectionFallbackRefreshScheduler(
                     outcome = MapCustomOutcome(refreshed);
                 }
                 else {
-                    ProjectionPageResult result = await loader.LoadPageAsync(
+                    long originReadSequence = _compareInReducer ? _pages.ReadSequence(lane.ViewKey, lane.Skip) : 0;
+                    ProjectionPageResult result = await _loader.LoadPageAsync(
                         lane.ProjectionType,
                         lane.Skip,
                         lane.Take,
@@ -689,13 +725,22 @@ public sealed class ProjectionFallbackRefreshScheduler(
                     if (!IsCurrentAdmission(entry, completion)) {
                         return ProjectionLaneRefreshResult.StaleRead;
                     }
-                    outcome = ClassifyRefreshResult(entry, result, completion);
+                    if (TryRejectInvalidPage(lane, result))
+                    {
+                        outcome = ProjectionLaneRefreshResult.Failed;
+                    }
+                    else
+                    {
+                        outcome = _compareInReducer
+                            ? await ComparePageAsync(entry, result, originReadSequence, completion, cancellationToken).ConfigureAwait(false)
+                            : ClassifyRefreshResult(entry, result, completion);
+                    }
                 }
             }
             catch (Exception ex) when (ex is not OperationCanceledException && !ExceptionGuard.IsFatal(ex)) {
                 // P5 — log only the redacted exception type. Raw exception messages can carry
                 // tenant/group/payload data; structured `FailureCategory` keeps logs bounded.
-                FrontComposerLog.ProjectionRefreshFailed(logger, lane.ProjectionType, ex.GetType().Name);
+                FrontComposerLog.ProjectionRefreshFailed(_logger, lane.ProjectionType, ex.GetType().Name);
                 outcome = ProjectionLaneRefreshResult.Failed;
             }
             cancellationToken.ThrowIfCancellationRequested();
@@ -707,7 +752,7 @@ public sealed class ProjectionFallbackRefreshScheduler(
             }
             else if (outcome is ProjectionLaneRefreshResult.Skipped)
             {
-                // Callback and loader classification skips still followed an admitted read.
+                // Callback and _loader classification skips still followed an admitted read.
                 outcome = ProjectionLaneRefreshResult.ReadSkipped;
             }
             else if (outcome is ProjectionLaneRefreshResult.Failed)
@@ -716,7 +761,7 @@ public sealed class ProjectionFallbackRefreshScheduler(
                 {
                     if (IsCurrentAdmission(entry, completion) && IsLaneActive(entry) && IsCurrentRequest(entry))
                     {
-                        dispatcher.Dispatch(new MarkProjectionStaleAction(lane.ViewKey, lane.Skip, entry.OriginScopeGeneration,
+                        _dispatcher.Dispatch(new MarkProjectionStaleAction(lane.ViewKey, lane.Skip, entry.OriginScopeGeneration,
                             entry.OriginRequestIdentity, entry.OriginRequestGeneration));
                     }
                 }
@@ -750,6 +795,84 @@ public sealed class ProjectionFallbackRefreshScheduler(
         }
     }
 
+    private async Task<ProjectionLaneRefreshResult> ComparePageAsync(
+        LaneEntry entry, ProjectionPageResult result, long originReadSequence, TaskCompletionSource<bool> completion,
+        CancellationToken cancellationToken)
+    {
+        ProjectionFallbackLane lane = entry.Lane;
+        string? signature = null;
+        bool reliable = true;
+        if (!result.IsNotModified && string.IsNullOrEmpty(result.ETag))
+        {
+            signature = ProjectionFallbackRowSignature.Create(result, out reliable);
+        }
+
+        var applied = new TaskCompletionSource<ProjectionLaneRefreshResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+        bool hadValidator;
+        CompareFallbackPageAction action;
+        lock (entry.DispatchGate)
+        {
+            lock (_laneGate)
+            {
+                if (!IsCurrentAdmission(entry, completion) || !IsLaneActiveWithoutLock(entry) || !IsCurrentRequest(entry))
+                {
+                    return ProjectionLaneRefreshResult.Skipped;
+                }
+
+                bool hadEtag = _lastEtagByLane.TryGetValue(lane.ViewKey, out string? etag);
+                bool hadSignature = _lastNoEtagSignatureByLane.TryGetValue(lane.ViewKey, out string? priorSignature);
+                hadValidator = hadEtag || hadSignature;
+                bool hasEtag = !string.IsNullOrEmpty(result.ETag);
+                action = new CompareFallbackPageAction(
+                    new LoadPageNotModifiedAction(lane.ViewKey, lane.Skip, result.Items) {
+                        OriginScopeGeneration = entry.OriginScopeGeneration,
+                        RequestIdentity = entry.OriginRequestIdentity,
+                        RequestGeneration = entry.OriginRequestGeneration,
+                        TotalCount = result.TotalCount,
+                        MaxCachedPages = _options.CurrentValue.MaxCachedPages,
+                    },
+                    result.IsNotModified, reliable, hasEtag ? etag : priorSignature, hasEtag ? result.ETag : signature,
+                    originReadSequence, entry.LastValidatorReadSequence, entry.DispatchGate, completion.Task, applied, cancellationToken);
+            }
+        }
+
+        _dispatcher.Dispatch(action);
+
+        // Either reducer acknowledgement or retirement can be first when Fluxor
+        // queues this action behind an in-progress dispatch.
+        try
+        {
+            await Task.WhenAny(applied.Task, completion.Task)
+                .WaitAsync(CustomSweepReadLimit, _timeProvider ?? TimeProvider.System, cancellationToken).ConfigureAwait(false);
+        }
+        catch (TimeoutException)
+        {
+            // Store middleware may veto this action, or delay notification after reduction.
+            // The timeout is not evidence that the current page should be marked stale.
+            return ProjectionLaneRefreshResult.Skipped;
+        }
+        if (!applied.Task.IsCompletedSuccessfully)
+        {
+            return ProjectionLaneRefreshResult.Skipped;
+        }
+
+        ProjectionLaneRefreshResult outcome = await applied.Task.ConfigureAwait(false);
+        lock (entry.DispatchGate)
+        {
+            if (outcome is ProjectionLaneRefreshResult.Changed || outcome is ProjectionLaneRefreshResult.NotModified && hadValidator)
+            {
+                if (!IsCurrentAdmission(entry, completion) || !TryRecordValidatorState(entry, result, signature))
+                {
+                    return ProjectionLaneRefreshResult.Skipped;
+                }
+
+                entry.LastValidatorReadSequence = action.AppliedReadSequence;
+            }
+        }
+
+        return outcome;
+    }
+
     /// <summary>
     /// DN4=b — classify the refresh result as Changed/NotModified using the wire-level ETag as
     /// the canonical change signal. P25 — guard against negative TotalCount which indicates a
@@ -761,19 +884,6 @@ public sealed class ProjectionFallbackRefreshScheduler(
         ProjectionFallbackLane lane = entry.Lane;
         if (!IsLaneActive(entry)) {
             return ProjectionLaneRefreshResult.Skipped;
-        }
-
-        // P25 — negative TotalCount is a protocol issue, not a Changed signal.
-        if (result.TotalCount < 0) {
-            FrontComposerHotPathLog.ProjectionRefreshNegativeCount(
-                logger,
-                lane.ViewKey);
-            return ProjectionLaneRefreshResult.Failed;
-        }
-
-        if (result.Items is null) {
-            FrontComposerLog.ProjectionRefreshFailed(logger, lane.ProjectionType, "InvalidItems");
-            return ProjectionLaneRefreshResult.Failed;
         }
 
         bool reducerPageMissing = !HasReducerPage(lane);
@@ -837,6 +947,23 @@ public sealed class ProjectionFallbackRefreshScheduler(
         return TryDispatchPageNotModified(entry, result, completion)
             ? ProjectionLaneRefreshResult.NotModified
             : ProjectionLaneRefreshResult.Skipped;
+    }
+
+    private bool TryRejectInvalidPage(ProjectionFallbackLane lane, ProjectionPageResult result)
+    {
+        if (result.TotalCount < 0)
+        {
+            FrontComposerHotPathLog.ProjectionRefreshNegativeCount(_logger, lane.ViewKey);
+            return true;
+        }
+
+        if (result.Items is null)
+        {
+            FrontComposerLog.ProjectionRefreshFailed(_logger, lane.ProjectionType, "InvalidItems");
+            return true;
+        }
+
+        return false;
     }
 
     private void DecrementLane(string viewKey, LaneEntry expected) {
@@ -968,28 +1095,21 @@ public sealed class ProjectionFallbackRefreshScheduler(
     }
 
     private bool HasReducerPage(ProjectionFallbackLane lane) {
-        (string ViewKey, int Skip) pageKey = (lane.ViewKey, lane.Skip);
-        return loadedPages.Value.PagesByKey.ContainsKey(pageKey);
+        return _pages.HasPage(lane.ViewKey, lane.Skip);
     }
 
     private bool IsCurrentRequest(LaneEntry entry)
         => IsLaneCurrentScope(entry)
-            && loadedPages.Value.ScopeGeneration == entry.OriginScopeGeneration
-            && string.Equals(
-                loadedPages.Value.ActiveRequestIdentityByView.TryGetValue(entry.Lane.ViewKey, out string? identity) ? identity : string.Empty,
-                entry.OriginRequestIdentity,
-                StringComparison.Ordinal)
-            && (!loadedPages.Value.ActiveRequestGenerationByView.TryGetValue(entry.Lane.ViewKey, out long generation)
-                ? entry.OriginRequestGeneration is null
-                : generation == entry.OriginRequestGeneration);
+            && _pages.Request(entry.Lane.ViewKey)
+                == (entry.OriginScopeGeneration, entry.OriginRequestIdentity, entry.OriginRequestGeneration);
 
     private (long Generation, string? User, bool HasProof) CaptureRegistrationScope(ProjectionFallbackLane lane) {
-        long generation = loadedPages.Value.ScopeGeneration;
-        if (tenantContextAccessor is null) {
+        long generation = _pages.ScopeGeneration;
+        if (_tenantContextAccessor is null) {
             return (generation, null, true);
         }
         try {
-            TenantContextResult current = tenantContextAccessor.TryGetContext(lane.TenantId, "projection-fallback");
+            TenantContextResult current = _tenantContextAccessor.TryGetContext(lane.TenantId, "projection-fallback");
             return current.Succeeded && current.Context is not null
                 ? (generation, current.Context.UserId, true)
                 : (generation, null, false);
@@ -1001,15 +1121,15 @@ public sealed class ProjectionFallbackRefreshScheduler(
 
     private bool IsLaneCurrentScope(LaneEntry entry) {
         ProjectionFallbackLane lane = entry.Lane;
-        if (!entry.HasScopeProof || loadedPages.Value.ScopeGeneration != entry.RegisteredGeneration
-            || lane.ScopeGeneration is { } generation && loadedPages.Value.ScopeGeneration != generation) {
+        if (!entry.HasScopeProof || _pages.ScopeGeneration != entry.RegisteredGeneration
+            || lane.ScopeGeneration is { } generation && _pages.ScopeGeneration != generation) {
             return false;
         }
-        if (tenantContextAccessor is null) {
+        if (_tenantContextAccessor is null) {
             return lane.UserId is null;
         }
         try {
-            TenantContextResult current = tenantContextAccessor.TryGetContext(lane.TenantId, "projection-fallback");
+            TenantContextResult current = _tenantContextAccessor.TryGetContext(lane.TenantId, "projection-fallback");
             return current.Succeeded && current.Context is not null
                 && string.Equals(current.Context.UserId, entry.RegisteredUser, StringComparison.Ordinal)
                 && (lane.UserId is null || string.Equals(current.Context.UserId, lane.UserId, StringComparison.Ordinal));
@@ -1078,12 +1198,12 @@ public sealed class ProjectionFallbackRefreshScheduler(
             }
 
             ProjectionFallbackLane lane = entry.Lane;
-            dispatcher.Dispatch(new LoadPageNotModifiedAction(lane.ViewKey, lane.Skip, result.Items) {
+            _dispatcher.Dispatch(new LoadPageNotModifiedAction(lane.ViewKey, lane.Skip, result.Items) {
                 OriginScopeGeneration = entry.OriginScopeGeneration,
                 RequestIdentity = entry.OriginRequestIdentity,
                 RequestGeneration = entry.OriginRequestGeneration,
                 TotalCount = result.TotalCount,
-                MaxCachedPages = options.CurrentValue.MaxCachedPages,
+                MaxCachedPages = _options.CurrentValue.MaxCachedPages,
             });
             if (!HasReducerPage(lane)) {
                 return false;
@@ -1093,7 +1213,7 @@ public sealed class ProjectionFallbackRefreshScheduler(
     }
 
     private void DispatchPageSuccess(LaneEntry entry, ProjectionPageResult result)
-        => dispatcher.Dispatch(new LoadPageSucceededAction(
+        => _dispatcher.Dispatch(new LoadPageSucceededAction(
             entry.Lane.ViewKey,
             entry.Lane.Skip,
             result.Items,
@@ -1116,16 +1236,8 @@ public sealed class ProjectionFallbackRefreshScheduler(
         public long OriginScopeGeneration { get; set; }
         public string OriginRequestIdentity { get; set; } = string.Empty;
         public long? OriginRequestGeneration { get; set; }
+        public long? LastValidatorReadSequence { get; set; }
         public int RefCount = 1;
-    }
-
-    private enum ProjectionLaneRefreshResult {
-        Skipped,
-        ReadSkipped,
-        StaleRead,
-        NotModified,
-        Changed,
-        Failed,
     }
 
     private sealed class Registration(Action dispose) : IDisposable {

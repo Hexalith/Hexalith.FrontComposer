@@ -4,6 +4,7 @@ using Fluxor;
 
 using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.State.Navigation;
+using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -204,6 +205,10 @@ public sealed class LoadedPageReducers {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(action);
 
+        if (action.AlreadyApplied) {
+            return state;
+        }
+
         if (action.OriginScopeGeneration is { } origin && origin != state.ScopeGeneration) {
             return state;
         }
@@ -328,6 +333,60 @@ public sealed class LoadedPageReducers {
         };
     }
 
+    /// <summary>Applies a fallback page and returns its actual result to the scheduler.</summary>
+    internal LoadedPageState CompareFallbackPage(LoadedPageState state, CompareFallbackPageAction action)
+    {
+        LoadPageNotModifiedAction page = action.Page;
+        var request = FallbackPageState.Request(state, page.ViewKey);
+        if (action.AdmissionRetired.IsCompleted || action.CancellationToken.IsCancellationRequested
+            || request != (page.OriginScopeGeneration, page.RequestIdentity, page.RequestGeneration))
+        {
+            action.Outcome = ProjectionLaneRefreshResult.Skipped;
+            return state;
+        }
+
+        var key = (page.ViewKey, page.Skip);
+        bool hasPage = state.PagesByKey.ContainsKey(key);
+        long currentReadSequence = state.SuccessfulReadSequenceByPage.GetValueOrDefault(key);
+        if (hasPage && action.IsNotModified && currentReadSequence != action.OriginReadSequence)
+        {
+            action.Outcome = ProjectionLaneRefreshResult.Skipped;
+            return state;
+        }
+
+        if (!hasPage && page.CachedItems.Count == 0 && page.Skip < page.TotalCount)
+        {
+            action.Outcome = ProjectionLaneRefreshResult.Failed;
+            return state;
+        }
+
+        bool validatorMatches = action.IsNotModified
+            || action.ValidatorReliable && action.PriorValidator is not null
+                && action.PriorReadSequence == currentReadSequence
+                && string.Equals(action.PriorValidator, action.CurrentValidator, StringComparison.Ordinal);
+        if (hasPage && validatorMatches)
+        {
+            LoadedPageState unchanged = ReduceLoadPageNotModified(state, page);
+            action.Outcome = ProjectionLaneRefreshResult.NotModified;
+            action.AppliedReadSequence = unchanged.SuccessfulReadSequenceByPage.GetValueOrDefault(key);
+            action.Notification = page with { AlreadyApplied = true };
+            return unchanged;
+        }
+
+        var succeeded = new LoadPageSucceededAction(
+            page.ViewKey, page.Skip, page.CachedItems, page.TotalCount.GetValueOrDefault(), elapsedMs: 0)
+        {
+            OriginScopeGeneration = page.OriginScopeGeneration,
+            RequestIdentity = page.RequestIdentity,
+            RequestGeneration = page.RequestGeneration,
+        };
+        LoadedPageState refreshed = ReduceLoadPageSucceeded(state, succeeded);
+        action.Notification = succeeded with { AlreadyApplied = true };
+        action.Outcome = ProjectionLaneRefreshResult.Changed;
+        action.AppliedReadSequence = refreshed.SuccessfulReadSequenceByPage.GetValueOrDefault(key);
+        return refreshed;
+    }
+
     /// <summary>
     /// Story 5-2 D4 / AC4 — explicit no-change path for 304 Not Modified responses with a
     /// compatible cached payload. Resolves the matching TCS from the cached items and
@@ -340,6 +399,10 @@ public sealed class LoadedPageReducers {
     public static LoadedPageState ReduceLoadPageNotModified(LoadedPageState state, LoadPageNotModifiedAction action) {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(action);
+
+        if (action.AlreadyApplied) {
+            return state;
+        }
 
         if (action.OriginScopeGeneration is { } origin && origin != state.ScopeGeneration) {
             return state;
