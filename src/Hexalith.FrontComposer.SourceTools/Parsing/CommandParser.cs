@@ -847,8 +847,8 @@ public static class CommandParser {
             }
 
             if (!assignable) {
-                var attrSyntax = attr.ApplicationSyntaxReference?.GetSyntax() as AttributeSyntax;
-                Microsoft.CodeAnalysis.Text.LinePosition linePos = attrSyntax?.GetLocation().GetLineSpan().StartLinePosition ?? default;
+                FileLinePositionSpan? attributeSpan = attr.ApplicationSyntaxReference?.GetSyntax().GetLocation().GetLineSpan();
+                Microsoft.CodeAnalysis.Text.LinePosition linePos = attributeSpan?.StartLinePosition ?? default;
                 diagnostics.Add(new DiagnosticInfo(
                     "HFC1012",
                     string.Format(
@@ -858,7 +858,7 @@ public static class CommandParser {
                         actualTypeDisplay,
                         propertySymbol.Type.ToDisplayString()),
                     "Error",
-                    filePath,
+                    attributeSpan?.Path ?? filePath,
                     linePos.Line,
                     linePos.Character));
             }

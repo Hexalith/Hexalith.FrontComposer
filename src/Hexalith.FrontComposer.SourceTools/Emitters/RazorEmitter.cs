@@ -81,23 +81,23 @@ public static class RazorEmitter {
     }
 
     private static void EmitNamespaceOpening(StringBuilder sb, RazorModel model) {
-        if (!string.IsNullOrEmpty(model.Namespace)) {
-            _ = sb.AppendLine("namespace " + model.Namespace + ";");
+        if (!string.IsNullOrEmpty(model.GeneratedNamespace)) {
+            _ = sb.AppendLine("namespace " + model.GeneratedNamespace + ";");
             _ = sb.AppendLine();
         }
     }
 
     private static void EmitClassHeader(StringBuilder sb, RazorModel model) {
         _ = sb.AppendLine("/// <summary>");
-        _ = sb.AppendLine("/// Auto-generated DataGrid view for <see cref=\"" + model.TypeName + "\"/>.");
+        _ = sb.AppendLine("/// Auto-generated DataGrid view for <see cref=\"" + model.TypeReference + "\"/>.");
         _ = sb.AppendLine("/// </summary>");
         // Story 4-4 T2.6 — grid-rendering strategies need IAsyncDisposable to dispatch
         // ClearPendingPagesAction + DataGridScrollInterop.DisposeViewKeyAsync on view teardown.
         if (RoleBodyHelpers.IsGridRenderingStrategy(model.Strategy)) {
-            _ = sb.AppendLine("public partial class " + model.TypeName + "View : ComponentBase, IAsyncDisposable");
+            _ = sb.AppendLine("public partial class " + model.ArtifactName + "View : ComponentBase, IAsyncDisposable");
         }
         else {
-            _ = sb.AppendLine("public partial class " + model.TypeName + "View : ComponentBase, IDisposable");
+            _ = sb.AppendLine("public partial class " + model.ArtifactName + "View : ComponentBase, IDisposable");
         }
 
         _ = sb.AppendLine("{");
@@ -105,7 +105,7 @@ public static class RazorEmitter {
 
     private static void EmitInjections(StringBuilder sb, RazorModel model) {
         _ = sb.AppendLine("    [Inject]");
-        _ = sb.AppendLine("    private IState<" + model.TypeName + "State> " + model.TypeName + "State { get; set; } = default!;");
+        _ = sb.AppendLine("    private IState<" + model.ArtifactName + "State> " + model.ArtifactName + "State { get; set; } = default!;");
         _ = sb.AppendLine();
         _ = sb.AppendLine("    [Inject]");
         _ = sb.AppendLine("    private NavigationManager Navigation { get; set; } = default!;");
@@ -279,7 +279,7 @@ public static class RazorEmitter {
             string itemKeyExpr = RoleBodyHelpers.ResolveItemKeyAccessorExpression(model);
             _ = sb.AppendLine("    private const string _viewKey = \"" + RoleBodyHelpers.EscapeString(viewKey) + "\";");
             _ = sb.AppendLine();
-            _ = sb.AppendLine("    private static readonly System.Func<" + model.TypeName + ", object> _itemKeyAccessor = static x => " + itemKeyExpr + ";");
+            _ = sb.AppendLine("    private static readonly System.Func<" + model.TypeReference + ", object> _itemKeyAccessor = static x => " + itemKeyExpr + ";");
             _ = sb.AppendLine();
             _ = sb.AppendLine("    private global::Microsoft.JSInterop.DotNetObjectReference<object>? _dotNetRef;");
             _ = sb.AppendLine();
@@ -354,11 +354,11 @@ public static class RazorEmitter {
 
         if (model.Strategy == ProjectionRenderStrategy.ActionQueue) {
             _ = sb.AppendLine("    private object? _cachedActionQueueSource;");
-            _ = sb.AppendLine("    private List<" + model.TypeName + ">? _cachedActionQueueItems;");
+            _ = sb.AppendLine("    private List<" + model.TypeReference + ">? _cachedActionQueueItems;");
             _ = sb.AppendLine();
         }
         else if (model.Strategy == ProjectionRenderStrategy.StatusOverview) {
-            _ = sb.AppendLine("    private sealed record " + model.TypeName + "StatusOverviewRow(Enum? Status, string StatusLabel, int Count, long SortOrder, IEnumerable<" + model.TypeName + "> Items)");
+            _ = sb.AppendLine("    private sealed record " + model.ArtifactName + "StatusOverviewRow(Enum? Status, string StatusLabel, int Count, long SortOrder, IEnumerable<" + model.TypeReference + "> Items)");
             _ = sb.AppendLine("    {");
             _ = sb.AppendLine("        public string StatusKey { get; } = Status?.ToString(\"D\") ?? \"null\";");
             _ = sb.AppendLine("    }");
@@ -421,7 +421,7 @@ public static class RazorEmitter {
         // used by generated role bodies: Level 1 formatting, enum badges, unsupported-field
         // placeholders, null glyphs, and culture-aware formatting. Templates rearrange layout
         // by invoking this delegate instead of materializing raw values themselves.
-        _ = sb.AppendLine("    private global::Microsoft.AspNetCore.Components.RenderFragment RenderTemplateField(" + model.TypeName + " row, string columnPropertyName)");
+        _ = sb.AppendLine("    private global::Microsoft.AspNetCore.Components.RenderFragment RenderTemplateField(" + model.TypeReference + " row, string columnPropertyName)");
         _ = sb.AppendLine("    {");
         _ = sb.AppendLine("        if (row is null || string.IsNullOrEmpty(columnPropertyName))");
         _ = sb.AppendLine("        {");
@@ -489,7 +489,7 @@ public static class RazorEmitter {
         string defaultFieldModifier = ReferencesProjectionInstanceMember(sb, defaultFieldBody.ToString())
             ? "    private "
             : "    private static ";
-        _ = sb.AppendLine(defaultFieldModifier + "global::Microsoft.AspNetCore.Components.RenderFragment RenderTemplateDefaultField(" + model.TypeName + " row, string columnPropertyName)");
+        _ = sb.AppendLine(defaultFieldModifier + "global::Microsoft.AspNetCore.Components.RenderFragment RenderTemplateDefaultField(" + model.TypeReference + " row, string columnPropertyName)");
         _ = sb.AppendLine("    {");
         _ = sb.Append(defaultFieldBody);
         _ = sb.AppendLine("    }");
@@ -628,7 +628,7 @@ public static class RazorEmitter {
         => char.IsLetterOrDigit(value) || value == '_';
 
     private static void EmitTemplateRowRenderer(StringBuilder sb, RazorModel model) {
-        _ = sb.AppendLine("    private global::Microsoft.AspNetCore.Components.RenderFragment RenderTemplateRow(" + model.TypeName + " row)");
+        _ = sb.AppendLine("    private global::Microsoft.AspNetCore.Components.RenderFragment RenderTemplateRow(" + model.TypeReference + " row)");
         _ = sb.AppendLine("    {");
         _ = sb.AppendLine("        if (row is null)");
         _ = sb.AppendLine("        {");
@@ -661,7 +661,7 @@ public static class RazorEmitter {
             return;
         }
 
-        _ = sb.AppendLine("    private global::Microsoft.AspNetCore.Components.RenderFragment RenderTemplateDetailSection(" + model.TypeName + "State state)");
+        _ = sb.AppendLine("    private global::Microsoft.AspNetCore.Components.RenderFragment RenderTemplateDetailSection(" + model.ArtifactName + "State state)");
         _ = sb.AppendLine("    {");
         if (HasBadgeMappings(model)) {
             _ = sb.AppendLine("        var __detailItems = TemplateItems(state.Items, CurrentGridSnapshot());");
@@ -685,7 +685,7 @@ public static class RazorEmitter {
 
         _ = sb.AppendLine("            global::Hexalith.FrontComposer.Shell.State.ExpandedRow.ExpandedRowEntry? _expandedEntry = ExpandedRowState.Value.GetEntry(_ephemeralViewKey);");
         _ = sb.AppendLine("            object? _expandedItemKey = _expandedEntry?.ItemKey;");
-        _ = sb.AppendLine("            " + model.TypeName + "? _expandedItem = null;");
+        _ = sb.AppendLine("            " + model.TypeReference + "? _expandedItem = null;");
         _ = sb.AppendLine("            if (_expandedItemKey is not null)");
         _ = sb.AppendLine("            {");
         _ = sb.AppendLine("                foreach (var __candidate in " + detailItemsExpression + ")");
@@ -712,10 +712,10 @@ public static class RazorEmitter {
                 + ProjectionRoleBodyEmitter.ContractsAttributesNamespace + ".ProjectionRole." + model.Strategy.ToString();
 
         _ = sb.AppendLine("    private bool HasProjectionSlot(string fieldName)");
-        _ = sb.AppendLine("        => ProjectionSlotRegistry.Resolve(typeof(" + model.TypeName + "), " + roleExpr + ", fieldName) is not null;");
+        _ = sb.AppendLine("        => ProjectionSlotRegistry.Resolve(typeof(" + model.TypeReference + "), " + roleExpr + ", fieldName) is not null;");
         _ = sb.AppendLine();
         _ = sb.AppendLine("    private global::Microsoft.AspNetCore.Components.RenderFragment RenderSlotField<TField>(");
-        _ = sb.AppendLine("        " + model.TypeName + " row,");
+        _ = sb.AppendLine("        " + model.TypeReference + " row,");
         _ = sb.AppendLine("        string fieldName,");
         _ = sb.AppendLine("        string displayName,");
         _ = sb.AppendLine("        string? format,");
@@ -723,7 +723,7 @@ public static class RazorEmitter {
         _ = sb.AppendLine("        bool isFieldReadOnly,");
         _ = sb.AppendLine("        string? description,");
         _ = sb.AppendLine("        TField? value,");
-        _ = sb.AppendLine("        global::Microsoft.AspNetCore.Components.RenderFragment<global::Hexalith.FrontComposer.Contracts.Rendering.FieldSlotContext<" + model.TypeName + ", TField>> renderDefault)");
+        _ = sb.AppendLine("        global::Microsoft.AspNetCore.Components.RenderFragment<global::Hexalith.FrontComposer.Contracts.Rendering.FieldSlotContext<" + model.TypeReference + ", TField>> renderDefault)");
         _ = sb.AppendLine("    {");
         // GD-DN3 (review of Story 6-3 Group D, 2026-05-01, resolved option 3) — Synthesize a
         // sentinel RenderContext when the cascading parameter is absent. The framework does not
@@ -760,7 +760,7 @@ public static class RazorEmitter {
             _ = sb.AppendLine("            builder.AddAttribute(1, \"Value\", __pendingCommandRowIdentity);");
             _ = sb.AppendLine("            builder.AddAttribute(2, \"ChildContent\", (global::Microsoft.AspNetCore.Components.RenderFragment)(__cascadeBuilder =>");
             _ = sb.AppendLine("            {");
-            _ = sb.AppendLine("                __cascadeBuilder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcFieldSlotHost<" + model.TypeName + ", TField>>(0);");
+            _ = sb.AppendLine("                __cascadeBuilder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcFieldSlotHost<" + model.TypeReference + ", TField>>(0);");
             _ = sb.AppendLine("                __cascadeBuilder.AddAttribute(1, \"Parent\", row);");
             _ = sb.AppendLine("                __cascadeBuilder.AddAttribute(2, \"Value\", value);");
             _ = sb.AppendLine("                __cascadeBuilder.AddAttribute(3, \"Field\", __field);");
@@ -772,7 +772,7 @@ public static class RazorEmitter {
             _ = sb.AppendLine("            builder.CloseComponent();");
         }
         else {
-            _ = sb.AppendLine("            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcFieldSlotHost<" + model.TypeName + ", TField>>(0);");
+            _ = sb.AppendLine("            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcFieldSlotHost<" + model.TypeReference + ", TField>>(0);");
             _ = sb.AppendLine("            builder.AddAttribute(1, \"Parent\", row);");
             _ = sb.AppendLine("            builder.AddAttribute(2, \"Value\", value);");
             _ = sb.AppendLine("            builder.AddAttribute(3, \"Field\", __field);");
@@ -834,14 +834,14 @@ public static class RazorEmitter {
         _ = sb.AppendLine(indent + "        Convention: new global::Hexalith.FrontComposer.Contracts.DevMode.ConventionDescriptor(\"" + RoleBodyHelpers.EscapeString(conventionName) + "\", \"" + RoleBodyHelpers.EscapeString(description) + "\", \"" + RoleBodyHelpers.EscapeString(recommendedOverride) + "\", global::Hexalith.FrontComposer.Contracts.DevMode.CustomizationLevel." + currentLevel + "),");
         _ = sb.AppendLine(indent + "        ContractTypeName: \"" + RoleBodyHelpers.EscapeString(contractTypeName) + "\",");
         _ = sb.AppendLine(indent + "        CurrentLevel: global::Hexalith.FrontComposer.Contracts.DevMode.CustomizationLevel." + currentLevel + ",");
-        _ = sb.AppendLine(indent + "        OriginatingProjectionTypeName: typeof(" + model.TypeName + ").FullName ?? typeof(" + model.TypeName + ").Name,");
+        _ = sb.AppendLine(indent + "        OriginatingProjectionTypeName: typeof(" + model.TypeReference + ").FullName ?? typeof(" + model.TypeReference + ").Name,");
         _ = sb.AppendLine(indent + "        Role: " + roleExpr + ",");
         _ = sb.AppendLine(indent + "        FieldAccessor: " + fieldLiteral + ",");
         _ = sb.AppendLine(indent + "        Children: global::System.Collections.Immutable.ImmutableArray<global::Hexalith.FrontComposer.Contracts.DevMode.ComponentTreeNode>.Empty,");
         _ = sb.AppendLine(indent + "        RenderEpoch: 0,");
         _ = sb.AppendLine(indent + "        ComponentTreeContractVersion: global::Hexalith.FrontComposer.Contracts.DevMode.ComponentTreeContractVersion.Current,");
-        _ = sb.AppendLine(indent + "        DescriptorHash: \"" + RoleBodyHelpers.EscapeString(model.TypeName + ":" + annotationKey) + "\",");
-        _ = sb.AppendLine(indent + "        SourceComponentIdentity: \"" + RoleBodyHelpers.EscapeString(model.TypeName + "." + annotationKey) + "\",");
+        _ = sb.AppendLine(indent + "        DescriptorHash: \"" + RoleBodyHelpers.EscapeString(model.ArtifactName + ":" + annotationKey) + "\",");
+        _ = sb.AppendLine(indent + "        SourceComponentIdentity: \"" + RoleBodyHelpers.EscapeString(model.ArtifactName + "." + annotationKey) + "\",");
         _ = sb.AppendLine(indent + "        StaleReasons: global::System.Collections.Immutable.ImmutableArray<global::Hexalith.FrontComposer.Contracts.DevMode.ComponentTreeStaleReason>.Empty,");
         _ = sb.AppendLine(indent + "        IsUnsupported: " + (isUnsupported ? "true" : "false") + "));");
         _ = sb.AppendLine(indent + "    " + builderName + ".AddAttribute(" + seqVariable + "++, \"CssClass\", \"" + cssClass + "\");");
@@ -1039,7 +1039,7 @@ public static class RazorEmitter {
             }
             _ = sb.AppendLine("        _viewportScrollTop = CurrentGridSnapshot()?.ScrollTop ?? 0d;");
         }
-        _ = sb.AppendLine("        " + model.TypeName + "State.StateChanged += OnStateChanged;");
+        _ = sb.AppendLine("        " + model.ArtifactName + "State.StateChanged += OnStateChanged;");
         _ = sb.AppendLine("        AnnounceProjectionState();");
         if (isGrid) {
             _ = sb.AppendLine("        _newItemIndicatorSubscription = NewItemIndicators.Subscribe(_viewKey, OnNewItemIndicatorsChanged);");
@@ -1061,16 +1061,16 @@ public static class RazorEmitter {
         _ = sb.AppendLine("            if (System.Threading.Volatile.Read(ref _disposed) != 0) { return; }");
         _ = sb.AppendLine("            AnnounceProjectionState();");
         if (isGrid) {
-            _ = sb.AppendLine("            DismissMaterializedIndicators(" + model.TypeName + "State.Value.Items);");
+            _ = sb.AppendLine("            DismissMaterializedIndicators(" + model.ArtifactName + "State.Value.Items);");
         }
         _ = sb.AppendLine("            StateHasChanged();");
         _ = sb.AppendLine("        });");
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
 
-        string surfaceExpression = isGrid ? "_viewKey" : "(typeof(" + model.TypeName + ").FullName ?? typeof(" + model.TypeName + ").Name)";
+        string surfaceExpression = isGrid ? "_viewKey" : "(typeof(" + model.TypeReference + ").FullName ?? typeof(" + model.TypeReference + ").Name)";
         _ = sb.AppendLine("    private static string AnnouncementSurface => \"projection:\" + " + surfaceExpression + ";");
-        _ = sb.AppendLine("    private static bool CanClaimUnstampedInitialState(" + model.TypeName + "State state)");
+        _ = sb.AppendLine("    private static bool CanClaimUnstampedInitialState(" + model.ArtifactName + "State state)");
         _ = sb.AppendLine("        => state.Items is null && state.Error is null && !state.IsLoading && !state.RequiresScopedRequest");
         _ = sb.AppendLine("            && state.ActiveCorrelationId is null && state.LastResultCorrelationId is null;");
         _ = sb.AppendLine("    private void AnnounceProjectionState()");
@@ -1096,7 +1096,7 @@ public static class RazorEmitter {
             _ = sb.AppendLine("            _pageRequestGeneration = 0;");
             _ = sb.AppendLine("        }");
         }
-        _ = sb.AppendLine("        var state = " + model.TypeName + "State.Value;");
+        _ = sb.AppendLine("        var state = " + model.ArtifactName + "State.Value;");
         _ = sb.AppendLine("        if (!global::Hexalith.FrontComposer.Shell.Services.ProjectionStateScopeOwnership.For(Dispatcher).IsCurrent(AnnouncementSurface, state.ScopeTenantId, state.ScopeUserId, currentScope.Context, " + (isGrid ? "LoadedPageState.Value.ScopeGeneration" : "null") + ", CanClaimUnstampedInitialState(state))) { CancelOwnedAnnouncements(); return; }");
         _ = sb.AppendLine("        if (state.RequiresScopedRequest) { CancelOwnedAnnouncements(); return; }");
         _ = sb.AppendLine("        string operation = state.ActiveCorrelationId ?? state.LastResultCorrelationId ?? \"initial\";");
@@ -1251,7 +1251,7 @@ public static class RazorEmitter {
             _ = sb.AppendLine("            return;");
             _ = sb.AppendLine("        }");
         }
-        _ = sb.AppendLine("        Dispatcher.Dispatch(new " + model.TypeName + "LoadRequestedAction(UlidFactory.NewUlid(), true) { ScopeTenantId = requestScope.TenantId, ScopeUserId = requestScope.UserId, OriginScopeGeneration = " + model.TypeName + "State.Value.ScopeGeneration });");
+        _ = sb.AppendLine("        Dispatcher.Dispatch(new " + model.ArtifactName + "LoadRequestedAction(UlidFactory.NewUlid(), true) { ScopeTenantId = requestScope.TenantId, ScopeUserId = requestScope.UserId, OriginScopeGeneration = " + model.ArtifactName + "State.Value.ScopeGeneration });");
         _ = sb.AppendLine("        await Task.CompletedTask;");
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
@@ -1350,10 +1350,10 @@ public static class RazorEmitter {
 
             // Story 4-4 T2.3 / D2 / D3 — server-side LoadPageAsync provider callback. Registers
             // a TaskCompletionSource via LoadPageAction; awaits the reducer-resolved result.
-            _ = sb.AppendLine("    private async ValueTask<global::Microsoft.FluentUI.AspNetCore.Components.GridItemsProviderResult<" + model.TypeName + ">> LoadPageAsync(global::Microsoft.FluentUI.AspNetCore.Components.GridItemsProviderRequest<" + model.TypeName + "> request)");
+            _ = sb.AppendLine("    private async ValueTask<global::Microsoft.FluentUI.AspNetCore.Components.GridItemsProviderResult<" + model.TypeReference + ">> LoadPageAsync(global::Microsoft.FluentUI.AspNetCore.Components.GridItemsProviderRequest<" + model.TypeReference + "> request)");
             _ = sb.AppendLine("    {");
             _ = sb.AppendLine("        var requestScope = global::Hexalith.FrontComposer.Shell.Services.ProjectionStateScopeOwnership.ResolveCurrentScope(TenantContextAccessor, RenderContext?.TenantId, \"projection-page\");");
-            _ = sb.AppendLine("        if (requestScope is null || (RenderContext is not null && !string.Equals(requestScope.UserId, RenderContext.UserId, StringComparison.Ordinal))) { return new global::Microsoft.FluentUI.AspNetCore.Components.GridItemsProviderResult<" + model.TypeName + "> { Items = System.Array.Empty<" + model.TypeName + ">(), TotalItemCount = 0 }; }");
+            _ = sb.AppendLine("        if (requestScope is null || (RenderContext is not null && !string.Equals(requestScope.UserId, RenderContext.UserId, StringComparison.Ordinal))) { return new global::Microsoft.FluentUI.AspNetCore.Components.GridItemsProviderResult<" + model.TypeReference + "> { Items = System.Array.Empty<" + model.TypeReference + ">(), TotalItemCount = 0 }; }");
             _ = sb.AppendLine("        var ct = request.CancellationToken;");
             _ = sb.AppendLine("        var completion = new System.Threading.Tasks.TaskCompletionSource<object>(System.Threading.Tasks.TaskCreationOptions.RunContinuationsAsynchronously);");
             _ = sb.AppendLine("        var skip = request.StartIndex;");
@@ -1390,21 +1390,21 @@ public static class RazorEmitter {
             _ = sb.AppendLine("            var resolved = await completion.Task.WaitAsync(ct).ConfigureAwait(true);");
             _ = sb.AppendLine("            var items = resolved as System.Collections.Generic.IReadOnlyList<object>");
             _ = sb.AppendLine("                ?? System.Array.Empty<object>();");
-            _ = sb.AppendLine("            var typed = new System.Collections.Generic.List<" + model.TypeName + ">(items.Count);");
+            _ = sb.AppendLine("            var typed = new System.Collections.Generic.List<" + model.TypeReference + ">(items.Count);");
             _ = sb.AppendLine("            foreach (var item in items)");
             _ = sb.AppendLine("            {");
-            _ = sb.AppendLine("                if (item is " + model.TypeName + " typedItem)");
+            _ = sb.AppendLine("                if (item is " + model.TypeReference + " typedItem)");
             _ = sb.AppendLine("                {");
             _ = sb.AppendLine("                    typed.Add(typedItem);");
             _ = sb.AppendLine("                }");
             _ = sb.AppendLine("            }");
             _ = sb.AppendLine("            DismissMaterializedIndicators(typed);");
             _ = sb.AppendLine("            int totalCount = LoadedPageState.Value.TotalCountByKey.TryGetValue(_viewKey, out var c) ? c : typed.Count;");
-            _ = sb.AppendLine("            return new global::Microsoft.FluentUI.AspNetCore.Components.GridItemsProviderResult<" + model.TypeName + "> { Items = typed, TotalItemCount = totalCount };");
+            _ = sb.AppendLine("            return new global::Microsoft.FluentUI.AspNetCore.Components.GridItemsProviderResult<" + model.TypeReference + "> { Items = typed, TotalItemCount = totalCount };");
             _ = sb.AppendLine("        }");
             _ = sb.AppendLine("        catch (System.OperationCanceledException)");
             _ = sb.AppendLine("        {");
-            _ = sb.AppendLine("            return new global::Microsoft.FluentUI.AspNetCore.Components.GridItemsProviderResult<" + model.TypeName + "> { Items = System.Array.Empty<" + model.TypeName + ">(), TotalItemCount = 0 };");
+            _ = sb.AppendLine("            return new global::Microsoft.FluentUI.AspNetCore.Components.GridItemsProviderResult<" + model.TypeReference + "> { Items = System.Array.Empty<" + model.TypeReference + ">(), TotalItemCount = 0 };");
             _ = sb.AppendLine("        }");
             _ = sb.AppendLine("    }");
             _ = sb.AppendLine();
@@ -1426,7 +1426,7 @@ public static class RazorEmitter {
             _ = sb.AppendLine("        _newItemIndicatorSubscription?.Dispose();");
             _ = sb.AppendLine("        _failedRetryCancellation?.Cancel();");
             _ = sb.AppendLine("        _newItemIndicatorSubscription = null;");
-            _ = sb.AppendLine("        " + model.TypeName + "State.StateChanged -= OnStateChanged;");
+            _ = sb.AppendLine("        " + model.ArtifactName + "State.StateChanged -= OnStateChanged;");
             _ = sb.AppendLine("        LoadedPageState.StateChanged -= OnStateChanged;");
             _ = sb.AppendLine("        GridNavigationState.StateChanged -= OnStateChanged;");
             _ = sb.AppendLine("        ReconciliationSweepState.StateChanged -= OnStateChanged;");
@@ -1465,7 +1465,7 @@ public static class RazorEmitter {
             // dispatch CollapseRowAction before expanding a different row. Only the same-row
             // re-click path emits CollapseRowAction.
             if (EmitsExpandInRowMachinery(model.Strategy)) {
-                _ = sb.AppendLine("    private System.Threading.Tasks.Task HandleRowClickAsync(" + model.TypeName + " row)");
+                _ = sb.AppendLine("    private System.Threading.Tasks.Task HandleRowClickAsync(" + model.TypeReference + " row)");
                 _ = sb.AppendLine("    {");
                 _ = sb.AppendLine("        if (row is null) { return System.Threading.Tasks.Task.CompletedTask; }");
                 _ = sb.AppendLine("        object key = _itemKeyAccessor(row);");
@@ -1485,7 +1485,7 @@ public static class RazorEmitter {
             }
 
             if (model.Strategy == ProjectionRenderStrategy.StatusOverview) {
-                _ = sb.AppendLine("    private System.Threading.Tasks.Task HandleStatusOverviewRowClickAsync(" + model.TypeName + "StatusOverviewRow row)");
+                _ = sb.AppendLine("    private System.Threading.Tasks.Task HandleStatusOverviewRowClickAsync(" + model.ArtifactName + "StatusOverviewRow row)");
                 _ = sb.AppendLine("    {");
                 _ = sb.AppendLine("        if (row is null) { return System.Threading.Tasks.Task.CompletedTask; }");
                 _ = sb.AppendLine("        object key = row.StatusKey;");
@@ -1516,7 +1516,7 @@ public static class RazorEmitter {
             _ = sb.AppendLine("        }");
             _ = sb.AppendLine();
             _ = sb.AppendLine("        CancelOwnedAnnouncements();");
-            _ = sb.AppendLine("        " + model.TypeName + "State.StateChanged -= OnStateChanged;");
+            _ = sb.AppendLine("        " + model.ArtifactName + "State.StateChanged -= OnStateChanged;");
             // Story 11.21 CA1816 — suppress finalization for derived types that add a finalizer.
             _ = sb.AppendLine("        System.GC.SuppressFinalize(this);");
             _ = sb.AppendLine("    }");
@@ -1615,9 +1615,9 @@ public static class RazorEmitter {
             _ = sb.AppendLine("        return slots;");
             _ = sb.AppendLine("    }");
             _ = sb.AppendLine();
-            _ = sb.AppendLine("    private static System.Collections.Generic.IReadOnlyList<" + model.TypeName + "> TemplateItems(System.Collections.Generic.IReadOnlyList<" + model.TypeName + ">? items, global::Hexalith.FrontComposer.Contracts.Rendering.GridViewSnapshot? snapshot)");
+            _ = sb.AppendLine("    private static System.Collections.Generic.IReadOnlyList<" + model.TypeReference + "> TemplateItems(System.Collections.Generic.IReadOnlyList<" + model.TypeReference + ">? items, global::Hexalith.FrontComposer.Contracts.Rendering.GridViewSnapshot? snapshot)");
             _ = sb.AppendLine("    {");
-            _ = sb.AppendLine("        System.Collections.Generic.IReadOnlyList<" + model.TypeName + "> source = items ?? System.Array.Empty<" + model.TypeName + ">();");
+            _ = sb.AppendLine("        System.Collections.Generic.IReadOnlyList<" + model.TypeReference + "> source = items ?? System.Array.Empty<" + model.TypeReference + ">();");
             _ = sb.AppendLine("        var activeSlots = ActiveStatusSlots(snapshot);");
             _ = sb.AppendLine("        if (activeSlots.Count == 0)");
             _ = sb.AppendLine("        {");
@@ -1628,7 +1628,7 @@ public static class RazorEmitter {
             _ = sb.AppendLine("        return source.Where(row => RowMatchesActiveStatus(row, activeSet)).ToList();");
             _ = sb.AppendLine("    }");
             _ = sb.AppendLine();
-            _ = sb.AppendLine("    private static System.Collections.Generic.IEnumerable<" + model.TypeName + "> StatusFilteredItems(System.Collections.Generic.IEnumerable<" + model.TypeName + "> items, global::Hexalith.FrontComposer.Contracts.Rendering.GridViewSnapshot? snapshot)");
+            _ = sb.AppendLine("    private static System.Collections.Generic.IEnumerable<" + model.TypeReference + "> StatusFilteredItems(System.Collections.Generic.IEnumerable<" + model.TypeReference + "> items, global::Hexalith.FrontComposer.Contracts.Rendering.GridViewSnapshot? snapshot)");
             _ = sb.AppendLine("    {");
             _ = sb.AppendLine("        var activeSlots = ActiveStatusSlots(snapshot);");
             _ = sb.AppendLine("        if (activeSlots.Count == 0)");
@@ -1642,7 +1642,7 @@ public static class RazorEmitter {
             _ = sb.AppendLine();
             // Story 11.21 CA1859 — both call sites already materialise a concrete HashSet, so the
             // parameter is declared as the concrete type to avoid the interface dispatch on Contains.
-            _ = sb.AppendLine("    private static bool RowMatchesActiveStatus(" + model.TypeName + " row, System.Collections.Generic.HashSet<global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot> activeSlots)");
+            _ = sb.AppendLine("    private static bool RowMatchesActiveStatus(" + model.TypeReference + " row, System.Collections.Generic.HashSet<global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot> activeSlots)");
             _ = sb.AppendLine("    {");
             foreach (ColumnModel col in model.Columns) {
                 if (col.BadgeMappings.Count == 0) {
@@ -1688,7 +1688,7 @@ public static class RazorEmitter {
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
         bool hasStableRowKey = RoleBodyHelpers.ResolveItemKeyAccessorExpression(model) != "(object)x";
-        _ = sb.AppendLine("    private static string? EntityKeyFromItem(" + model.TypeName + " row)");
+        _ = sb.AppendLine("    private static string? EntityKeyFromItem(" + model.TypeReference + " row)");
         _ = sb.AppendLine("    {");
         if (hasStableRowKey) {
             _ = sb.AppendLine("        object? key = _itemKeyAccessor(row);");
@@ -1708,7 +1708,7 @@ public static class RazorEmitter {
         _ = sb.AppendLine();
         string? statusProperty = RoleBodyHelpers.ResolveStatusEnumProperty(model);
         ColumnModel? statusColumn = RoleBodyHelpers.ResolveStatusEnumColumn(model);
-        _ = sb.AppendLine("    private static string? ExpectedStatusSlotFromItem(" + model.TypeName + " row)");
+        _ = sb.AppendLine("    private static string? ExpectedStatusSlotFromItem(" + model.TypeReference + " row)");
         if (statusProperty is not null && statusColumn is not null) {
             _ = sb.AppendLine("        => " + (statusColumn.IsNullable
                 ? "row." + statusProperty + "?.ToString()"
@@ -1718,7 +1718,7 @@ public static class RazorEmitter {
             _ = sb.AppendLine("        => null;");
         }
         _ = sb.AppendLine();
-        _ = sb.AppendLine("    private static global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRowIdentity? PendingCommandRowIdentityFor(" + model.TypeName + " row)");
+        _ = sb.AppendLine("    private static global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRowIdentity? PendingCommandRowIdentityFor(" + model.TypeReference + " row)");
         _ = sb.AppendLine("    {");
         _ = sb.AppendLine("        string? entityKey = EntityKeyFromItem(row);");
         _ = sb.AppendLine("        if (string.IsNullOrWhiteSpace(entityKey))");
@@ -1733,7 +1733,7 @@ public static class RazorEmitter {
         _ = sb.AppendLine("            ExpectedStatusSlotFromItem(row));");
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
-        _ = sb.AppendLine("    private void DismissMaterializedIndicators(System.Collections.Generic.IEnumerable<" + model.TypeName + ">? items)");
+        _ = sb.AppendLine("    private void DismissMaterializedIndicators(System.Collections.Generic.IEnumerable<" + model.TypeReference + ">? items)");
         _ = sb.AppendLine("    {");
         _ = sb.AppendLine("        if (items is null) { return; }");
         _ = sb.AppendLine("        foreach (var item in items)");
@@ -1771,7 +1771,7 @@ public static class RazorEmitter {
         _ = sb.AppendLine("            _registeredProjectionFallbackLaneKey = null;");
         _ = sb.AppendLine("            return;");
         _ = sb.AppendLine("        }");
-        _ = sb.AppendLine("        var projectionState = " + model.TypeName + "State.Value;");
+        _ = sb.AppendLine("        var projectionState = " + model.ArtifactName + "State.Value;");
         _ = sb.AppendLine("        if (!projectionState.RequiresScopedRequest && !global::Hexalith.FrontComposer.Shell.Services.ProjectionStateScopeOwnership.For(Dispatcher).IsCurrent(AnnouncementSurface, projectionState.ScopeTenantId, projectionState.ScopeUserId, laneScope, LoadedPageState.Value.ScopeGeneration, CanClaimUnstampedInitialState(projectionState)))");
         _ = sb.AppendLine("        {");
         _ = sb.AppendLine("            _projectionFallbackLaneRegistration?.Dispose();");
@@ -2018,7 +2018,7 @@ public static class RazorEmitter {
         _ = sb.AppendLine("        global::Hexalith.FrontComposer.Shell.Infrastructure.Tenancy.TenantContextResult __scope;");
         _ = sb.AppendLine("        try { __scope = TenantContextAccessor.TryGetContext(RenderContext?.TenantId, \"projection-render\"); }");
         _ = sb.AppendLine("        catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException and not System.Threading.ThreadAbortException and not AccessViolationException) { __scope = global::Hexalith.FrontComposer.Shell.Infrastructure.Tenancy.TenantContextResult.Failure(global::Hexalith.FrontComposer.Shell.Infrastructure.Tenancy.TenantContextFailureCategory.TenantMissing, string.Empty); }");
-        _ = sb.AppendLine("        var state = " + model.TypeName + "State.Value;");
+        _ = sb.AppendLine("        var state = " + model.ArtifactName + "State.Value;");
         _ = sb.AppendLine("        if (!__scope.Succeeded || __scope.Context is null || (RenderContext is not null && !string.Equals(__scope.Context.UserId, RenderContext.UserId, StringComparison.Ordinal)) || (__scope.Context is not null && !global::Hexalith.FrontComposer.Shell.Services.ProjectionStateScopeOwnership.For(Dispatcher).IsCurrent(AnnouncementSurface, state.ScopeTenantId, state.ScopeUserId, __scope.Context, " + (isGrid ? "LoadedPageState.Value.ScopeGeneration" : "null") + ", CanClaimUnstampedInitialState(state))))");
         _ = sb.AppendLine("        {");
         _ = sb.AppendLine("            CancelOwnedAnnouncements();");
@@ -2029,7 +2029,7 @@ public static class RazorEmitter {
         if (isGrid) {
             _ = sb.AppendLine("        if (!state.RequiresScopedRequest && state.Error is not null && state.Items is not { Count: > 0 })");
             _ = sb.AppendLine("        {");
-            _ = sb.AppendLine("            state = state with { Items = LoadedPageState.Value.PagesByKey.Where(entry => string.Equals(entry.Key.ViewKey, _viewKey, StringComparison.Ordinal)).OrderBy(entry => entry.Key.Skip).SelectMany(entry => entry.Value).OfType<" + model.TypeName + ">().ToArray() };");
+            _ = sb.AppendLine("            state = state with { Items = LoadedPageState.Value.PagesByKey.Where(entry => string.Equals(entry.Key.ViewKey, _viewKey, StringComparison.Ordinal)).OrderBy(entry => entry.Key.Skip).SelectMany(entry => entry.Value).OfType<" + model.TypeReference + ">().ToArray() };");
             _ = sb.AppendLine("        }");
         }
         _ = sb.AppendLine("        int seq = 0;");
@@ -2043,7 +2043,7 @@ public static class RazorEmitter {
             "seq",
             "        ",
             model,
-            model.TypeName + "-view",
+            model.ArtifactName + "-view",
             model.TypeName + " generated projection view",
             "Generated projection view surface.",
             "Use a Level 2 template for body changes, Level 4 for full replacement.",
@@ -2113,13 +2113,13 @@ public static class RazorEmitter {
 
         string contextItemsExpression = isGrid && HasBadgeMappings(model)
             ? "TemplateItems(state.Items, gridSnapshot)"
-            : "state.Items ?? (System.Collections.Generic.IReadOnlyList<" + model.TypeName + ">)System.Array.Empty<" + model.TypeName + ">()";
+            : "state.Items ?? (System.Collections.Generic.IReadOnlyList<" + model.TypeReference + ">)System.Array.Empty<" + model.TypeReference + ">()";
 
-        _ = sb.AppendLine("        var __viewOverrideDescriptor = ProjectionViewOverrideRegistry.Resolve(typeof(" + model.TypeName + "), " + roleExpr + ");");
+        _ = sb.AppendLine("        var __viewOverrideDescriptor = ProjectionViewOverrideRegistry.Resolve(typeof(" + model.TypeReference + "), " + roleExpr + ");");
         _ = sb.AppendLine("        if (__viewOverrideDescriptor is not null)");
         _ = sb.AppendLine("        {");
-        _ = sb.AppendLine("            var __viewOverrideContext = new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionViewContext<" + model.TypeName + ">(");
-        _ = sb.AppendLine("                projectionType: typeof(" + model.TypeName + "),");
+        _ = sb.AppendLine("            var __viewOverrideContext = new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionViewContext<" + model.TypeReference + ">(");
+        _ = sb.AppendLine("                projectionType: typeof(" + model.TypeReference + "),");
         _ = sb.AppendLine("                boundedContext: " + boundedContextLiteral + ",");
         _ = sb.AppendLine("                role: " + roleExpr + ",");
         _ = sb.AppendLine("                items: " + contextItemsExpression + ",");
@@ -2137,20 +2137,20 @@ public static class RazorEmitter {
         _ = sb.AppendLine("                rowRenderer: RenderTemplateRow,");
         _ = sb.AppendLine("                fieldRenderer: RenderTemplateField);");
         _ = sb.AppendLine();
-        _ = sb.AppendLine("            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionViewOverrideHost<" + model.TypeName + ">>(seq++);");
+        _ = sb.AppendLine("            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionViewOverrideHost<" + model.TypeReference + ">>(seq++);");
         _ = sb.AppendLine("            builder.AddAttribute(seq++, \"Descriptor\", __viewOverrideDescriptor);");
         _ = sb.AppendLine("            builder.AddAttribute(seq++, \"Context\", __viewOverrideContext);");
         _ = sb.AppendLine("            builder.CloseComponent();");
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine("        else");
         _ = sb.AppendLine("        {");
-        _ = sb.AppendLine("        var __templateDescriptor = ProjectionTemplateRegistry.Resolve(typeof(" + model.TypeName + "), " + roleExpr + ");");
+        _ = sb.AppendLine("        var __templateDescriptor = ProjectionTemplateRegistry.Resolve(typeof(" + model.TypeReference + "), " + roleExpr + ");");
         _ = sb.AppendLine("        if (__templateDescriptor is not null)");
         _ = sb.AppendLine("        {");
         // Story 6-2 D15 / AC15 — context constructed per render so tenant/user/culture/item
         // changes flow through fresh; never reuse a cached context across renders.
-        _ = sb.AppendLine("            var __templateContext = new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateContext<" + model.TypeName + ">(");
-        _ = sb.AppendLine("                projectionType: typeof(" + model.TypeName + "),");
+        _ = sb.AppendLine("            var __templateContext = new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateContext<" + model.TypeReference + ">(");
+        _ = sb.AppendLine("                projectionType: typeof(" + model.TypeReference + "),");
         _ = sb.AppendLine("                boundedContext: " + boundedContextLiteral + ",");
         _ = sb.AppendLine("                role: " + roleExpr + ",");
         _ = sb.AppendLine("                renderContext: RenderContext,");
@@ -2162,7 +2162,7 @@ public static class RazorEmitter {
         _ = sb.AppendLine("                rowRenderer: RenderTemplateRow,");
         _ = sb.AppendLine("                fieldRenderer: RenderTemplateField);");
         _ = sb.AppendLine();
-        _ = sb.AppendLine("            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionTemplateHost<" + model.TypeName + ">>(seq++);");
+        _ = sb.AppendLine("            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionTemplateHost<" + model.TypeReference + ">>(seq++);");
         _ = sb.AppendLine("            builder.AddAttribute(seq++, \"Descriptor\", __templateDescriptor);");
         _ = sb.AppendLine("            builder.AddAttribute(seq++, \"Context\", __templateContext);");
         _ = sb.AppendLine("            builder.CloseComponent();");
@@ -2301,7 +2301,7 @@ public static class RazorEmitter {
         string entityPluralLabelLiteral = "\"" + RoleBodyHelpers.EscapeString(ResolveEntityPluralLabel(model)) + "\"";
 
         _ = sb.AppendLine("        builder.OpenComponent<" + ProjectionRoleBodyEmitter.ShellRenderingNamespace + ".FcProjectionSubtitle>(seq++);");
-        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ProjectionType\", typeof(" + model.TypeName + "));");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ProjectionType\", typeof(" + model.TypeReference + "));");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"Role\", " + roleLiteral + ");");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"WhenState\", " + whenStateLiteral + ");");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"FallbackCount\", " + fallbackCountExpression + ");");
@@ -2466,7 +2466,7 @@ public static class RazorEmitter {
         _ = sb.AppendLine("        if (state.Items is null || state.Items.Count == 0)");
         _ = sb.AppendLine("        {");
         _ = sb.AppendLine("            builder.OpenComponent<" + ProjectionRoleBodyEmitter.ShellRenderingNamespace + ".FcProjectionEmptyPlaceholder>(seq++);");
-        _ = sb.AppendLine("            builder.AddAttribute(seq++, \"ProjectionType\", typeof(" + model.TypeName + "));");
+        _ = sb.AppendLine("            builder.AddAttribute(seq++, \"ProjectionType\", typeof(" + model.TypeReference + "));");
         _ = sb.AppendLine("            builder.AddAttribute(seq++, \"Role\", " + roleLiteral + ");");
         string entityPluralLiteral = "\"" + RoleBodyHelpers.EscapeString(ResolveEntityPluralLabel(model)) + "\"";
         _ = sb.AppendLine("            builder.AddAttribute(seq++, \"EntityPluralOverride\", " + entityPluralLiteral + ");");

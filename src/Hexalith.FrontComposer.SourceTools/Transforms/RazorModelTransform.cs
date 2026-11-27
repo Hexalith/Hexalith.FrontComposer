@@ -119,7 +119,8 @@ public static class RazorModelTransform {
             whenStates,
             entityLabel,
             entityPluralLabel,
-            model.EmptyStateCtaCommandTypeName);
+            model.EmptyStateCtaCommandTypeName,
+            model.NestedProjection);
     }
 
     /// <summary>

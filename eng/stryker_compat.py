@@ -18,6 +18,7 @@ import shutil
 import subprocess
 import sys
 import tarfile
+import tempfile
 import time
 import urllib.request
 
@@ -296,10 +297,39 @@ def extract_archive(path: Path, destination: Path, definition: dict) -> None:
 
 
 def prepare(root: Path, definition: dict, inputs: dict, directory: Path) -> dict:
-    if directory.exists():
+    if directory.exists() or directory.is_symlink():
         return verify_build(directory, definition, inputs)
     require(sys.platform == "linux", "Private mutation tool preparation requires Linux")
-    directory.mkdir()
+    # An interrupted attempt can only leave an unselected staging path. A valid
+    # receipt and its runtime become visible at the selected path together.
+    with tempfile.TemporaryDirectory(prefix=f".{directory.name}-", dir=directory.parent) as staging_root:
+        staging = Path(staging_root) / "build"
+        staging.mkdir()
+        receipt = _prepare_build(root, definition, inputs, staging)
+        if _cancel_signal is not None:
+            raise PreparationCancelled(_cancel_signal)
+        try:
+            publish_build(staging, directory)
+        except FileExistsError:
+            # Another preparation published first. Verify the selected winner.
+            return verify_build(directory, definition, inputs)
+        return receipt
+
+
+def publish_build(staging: Path, directory: Path) -> None:
+    # Linux rename ordinarily replaces an empty destination directory. Publish
+    # only if the destination is absent, including when another process races us.
+    libc = ctypes.CDLL(None, use_errno=True)
+    rename_noreplace = getattr(libc, "renameat2", None)
+    require(rename_noreplace is not None, "Atomic no-replace publication requires renameat2")
+    at_fdcwd = -100
+    rename_noreplace_flag = 1
+    if rename_noreplace(at_fdcwd, os.fsencode(staging), at_fdcwd, os.fsencode(directory), rename_noreplace_flag) != 0:
+        error = ctypes.get_errno()
+        raise OSError(error, os.strerror(error), directory)
+
+
+def _prepare_build(root: Path, definition: dict, inputs: dict, directory: Path) -> dict:
     # Local process-only supervision; no host settings or privileges are changed.
     libc = ctypes.CDLL(None, use_errno=True)
     require(libc.prctl(36, 1, 0, 0, 0) == 0, "Preparation child-subreaper setup failed")

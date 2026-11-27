@@ -229,10 +229,7 @@ internal static class RoleBodyHelpers {
         string bc = string.IsNullOrEmpty(model.BoundedContext)
             ? model.Namespace
             : model.BoundedContext!;
-        string typeFqn = string.IsNullOrEmpty(model.Namespace)
-            ? model.TypeName
-            : model.Namespace + "." + model.TypeName;
-        return bc + ":" + typeFqn;
+        return bc + ":" + model.ProjectionTypeName;
     }
 
     /// <summary>

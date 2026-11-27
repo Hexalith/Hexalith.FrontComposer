@@ -20,7 +20,27 @@ public sealed class DomainModel : IEquatable<DomainModel> {
         string? sourceFilePath = null,
         int sourceLine = -1,
         int sourceColumn = -1,
-        string? emptyStateCtaCommandTypeName = null) {
+        string? emptyStateCtaCommandTypeName = null)
+        : this(typeName, @namespace, boundedContext, boundedContextDisplayLabel, projectionRole, properties,
+            projectionRoleWhenState, displayName, displayGroupName, sourceFilePath, sourceLine, sourceColumn,
+            emptyStateCtaCommandTypeName, null) {
+    }
+
+    internal DomainModel(
+        string typeName,
+        string @namespace,
+        string? boundedContext,
+        string? boundedContextDisplayLabel,
+        string? projectionRole,
+        EquatableArray<PropertyModel> properties,
+        string? projectionRoleWhenState,
+        string? displayName,
+        string? displayGroupName,
+        string? sourceFilePath,
+        int sourceLine,
+        int sourceColumn,
+        string? emptyStateCtaCommandTypeName,
+        NestedProjectionIdentity? nestedProjection) {
         TypeName = typeName;
         Namespace = @namespace;
         BoundedContext = boundedContext;
@@ -34,9 +54,16 @@ public sealed class DomainModel : IEquatable<DomainModel> {
         SourceLine = sourceLine;
         SourceColumn = sourceColumn;
         EmptyStateCtaCommandTypeName = emptyStateCtaCommandTypeName;
+        NestedProjection = nestedProjection;
     }
 
     public string TypeName { get; }
+
+    /// <summary>Gets the source and runtime identities specific to a nested projection.</summary>
+    internal NestedProjectionIdentity? NestedProjection { get; }
+
+    /// <summary>Gets the stem used to name emitted types and generated source hints.</summary>
+    internal string ArtifactName => NestedProjection?.ArtifactName ?? TypeName;
 
     public string Namespace { get; }
 
@@ -91,6 +118,7 @@ public sealed class DomainModel : IEquatable<DomainModel> {
             && SourceLine == other.SourceLine
             && SourceColumn == other.SourceColumn
             && EmptyStateCtaCommandTypeName == other.EmptyStateCtaCommandTypeName
+            && NestedProjection == other.NestedProjection
             && ProjectionRole == other.ProjectionRole
             && ProjectionRoleWhenState == other.ProjectionRoleWhenState
             && Properties == other.Properties;
@@ -111,6 +139,7 @@ public sealed class DomainModel : IEquatable<DomainModel> {
             hash = (hash * 31) + SourceLine.GetHashCode();
             hash = (hash * 31) + SourceColumn.GetHashCode();
             hash = (hash * 31) + (EmptyStateCtaCommandTypeName?.GetHashCode() ?? 0);
+            hash = (hash * 31) + (NestedProjection?.GetHashCode() ?? 0);
             hash = (hash * 31) + (ProjectionRole?.GetHashCode() ?? 0);
             hash = (hash * 31) + (ProjectionRoleWhenState?.GetHashCode() ?? 0);
             hash = (hash * 31) + Properties.GetHashCode();

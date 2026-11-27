@@ -1,3 +1,5 @@
+using Hexalith.FrontComposer.SourceTools.Parsing;
+
 namespace Hexalith.FrontComposer.SourceTools.Transforms;
 /// <summary>
 /// Output model for domain registration generation.
@@ -11,7 +13,19 @@ public sealed class RegistrationModel : IEquatable<RegistrationModel> {
         string? displayLabel,
         bool isCommand = false,
         string? authorizationPolicyName = null,
-        bool hasFullPageRoute = false) {
+        bool hasFullPageRoute = false)
+        : this(boundedContext, typeName, @namespace, displayLabel, isCommand, authorizationPolicyName, hasFullPageRoute, null) {
+    }
+
+    internal RegistrationModel(
+        string boundedContext,
+        string typeName,
+        string @namespace,
+        string? displayLabel,
+        bool isCommand,
+        string? authorizationPolicyName,
+        bool hasFullPageRoute,
+        NestedProjectionIdentity? nestedProjection) {
         BoundedContext = boundedContext;
         TypeName = typeName;
         Namespace = @namespace;
@@ -19,13 +33,25 @@ public sealed class RegistrationModel : IEquatable<RegistrationModel> {
         IsCommand = isCommand;
         AuthorizationPolicyName = authorizationPolicyName;
         HasFullPageRoute = hasFullPageRoute;
+        NestedProjection = nestedProjection;
     }
 
     public string BoundedContext { get; }
 
     public string TypeName { get; }
 
+    private NestedProjectionIdentity? NestedProjection { get; }
+
+    /// <summary>Gets the C# reference to the registered type.</summary>
+    internal string TypeReference => NestedProjection?.SourceName ?? TypeName;
+
+    /// <summary>Gets the registration type stem.</summary>
+    internal string ArtifactName => NestedProjection?.ArtifactName ?? TypeName;
+
     public string Namespace { get; }
+
+    /// <summary>Gets the namespace containing the emitted artifacts.</summary>
+    internal string GeneratedNamespace => NestedProjection?.GeneratedNamespace ?? Namespace;
 
     public string? DisplayLabel { get; }
 
@@ -53,6 +79,7 @@ public sealed class RegistrationModel : IEquatable<RegistrationModel> {
 
         return BoundedContext == other.BoundedContext
             && TypeName == other.TypeName
+            && NestedProjection == other.NestedProjection
             && Namespace == other.Namespace
             && DisplayLabel == other.DisplayLabel
             && IsCommand == other.IsCommand
@@ -67,6 +94,7 @@ public sealed class RegistrationModel : IEquatable<RegistrationModel> {
             int hash = 17;
             hash = (hash * 31) + (BoundedContext?.GetHashCode() ?? 0);
             hash = (hash * 31) + (TypeName?.GetHashCode() ?? 0);
+            hash = (hash * 31) + (NestedProjection?.GetHashCode() ?? 0);
             hash = (hash * 31) + (Namespace?.GetHashCode() ?? 0);
             hash = (hash * 31) + (DisplayLabel?.GetHashCode() ?? 0);
             hash = (hash * 31) + IsCommand.GetHashCode();

@@ -1,3 +1,6 @@
+using System.Globalization;
+using System.Text;
+
 using Hexalith.FrontComposer.SourceTools.Tests.Parsing.TestFixtures;
 
 using Microsoft.CodeAnalysis;
@@ -8,6 +11,162 @@ using Shouldly;
 namespace Hexalith.FrontComposer.SourceTools.Tests.Integration;
 
 public partial class GeneratorDriverTests {
+    [Fact]
+    public void NestedProjectionsWithTheSameLeafNameCompileAndRetainTheirTypeIdentities()
+    {
+        const string nestedSource = """
+            using Hexalith.FrontComposer.Contracts.Attributes;
+
+            namespace TestDomain;
+
+            public partial class @event
+            {
+                public partial class Department
+                {
+                    [BoundedContext("Nested")]
+                    [Projection]
+                    public partial class SharedProjection
+                    {
+                        public string Name { get; set; } = string.Empty;
+                    }
+                }
+            }
+
+            public partial class Outer
+            {
+                [BoundedContext("Nested")]
+                [Projection]
+                public partial class SharedProjection
+                {
+                    public int Count { get; set; }
+                }
+            }
+
+            public partial class outer
+            {
+                [BoundedContext("Nested")]
+                [Projection]
+                public partial class SharedProjection { public int Count { get; set; } }
+            }
+
+            public partial class Café
+            {
+                [BoundedContext("Nested")]
+                [Projection]
+                public partial class SharedProjection { public int Count { get; set; } }
+            }
+
+            public partial class Cafè
+            {
+                [BoundedContext("Nested")]
+                [Projection]
+                public partial class SharedProjection { public int Count { get; set; } }
+            }
+            """;
+        const string topLevelSource = """
+            using Hexalith.FrontComposer.Contracts.Attributes;
+
+            namespace TestDomain;
+
+            [BoundedContext("Nested")]
+            [Projection]
+            public partial class SharedProjection
+            {
+                public bool IsEnabled { get; set; }
+            }
+
+            [BoundedContext("Nested")]
+            [Projection]
+            public partial class Outer_1SharedProjection { public int Count { get; set; } }
+            """;
+        const string existingNamespace = "namespace FrontComposerGeneratedNestedProjections; public class Existing {}";
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+        CSharpCompilation compilation = CompilationHelper.CreateCompilation([nestedSource, topLevelSource, existingNamespace]);
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(new FrontComposerGenerator())
+            .RunGeneratorsAndUpdateCompilation(compilation, out Compilation output, out var diagnostics, cancellationToken);
+
+        diagnostics.Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error).ShouldBeEmpty();
+        using MemoryStream assembly = new();
+        var emission = output.Emit(assembly, cancellationToken: cancellationToken);
+        emission.Success.ShouldBeTrue(string.Join(Environment.NewLine, emission.Diagnostics));
+
+        var generated = driver.GetRunResult().Results.Single().GeneratedSources;
+        generated.Select(result => result.HintName).Distinct(StringComparer.OrdinalIgnoreCase)
+            .Count().ShouldBe(generated.Length);
+        generated.Count(result => result.HintName.StartsWith("--nested-projection-", StringComparison.Ordinal))
+            .ShouldBe(5 * 5);
+        generated.ShouldAllBe(result => result.HintName == Path.GetFileName(result.HintName));
+        var topLevelOnly = CSharpGeneratorDriver.Create(new FrontComposerGenerator())
+            .RunGenerators(CompilationHelper.CreateCompilation(topLevelSource), cancellationToken)
+            .GetRunResult().Results.Single().GeneratedSources;
+        foreach (GeneratedSourceResult topLevel in topLevelOnly.Where(result => result.HintName.StartsWith("TestDomain.", StringComparison.Ordinal)))
+        {
+            generated.Single(result => result.HintName == topLevel.HintName)
+                .SourceText.ToString().ShouldBe(topLevel.SourceText.ToString());
+        }
+
+        string view = generated.Single(result => result.HintName.EndsWith(".g.razor.cs", StringComparison.Ordinal)
+            && result.SourceText.ToString().Contains("global::TestDomain.@event.Department.SharedProjection", StringComparison.Ordinal)).SourceText.ToString();
+        view.ShouldContain("namespace FrontComposerGeneratedNestedProjections_.TestDomain;");
+        view.ShouldContain("Nested:TestDomain.event+Department+SharedProjection");
+        view.ShouldContain("typeof(global::TestDomain.@event.Department.SharedProjection)");
+        GeneratedSourceResult manifest = generated.Single(result => result.HintName == "FrontComposerMcpManifest.g.cs");
+        const string nestedUriPrefix = "frontcomposer://Nested/projections/nested/";
+        string[] literals = manifest.SyntaxTree.GetRoot(cancellationToken).DescendantTokens()
+            .Where(token => token.IsKind(SyntaxKind.StringLiteralToken))
+            .Select(token => token.ValueText).ToArray();
+        literals.ShouldContain("frontcomposer://Nested/projections/SharedProjection");
+        literals.ShouldContain("frontcomposer://Nested/projections/Outer_1SharedProjection");
+        string[] nestedUris = literals.Where(literal => literal.StartsWith(nestedUriPrefix, StringComparison.Ordinal)).ToArray();
+        nestedUris.Distinct(StringComparer.OrdinalIgnoreCase).Count().ShouldBe(5);
+        string[] nestedTypeNames = nestedUris.Select(uri => Encoding.UTF8.GetString(Convert.FromHexString(uri[nestedUriPrefix.Length..]))).ToArray();
+        nestedTypeNames.ShouldBe([
+            "TestDomain.event+Department+SharedProjection", "TestDomain.Outer+SharedProjection", "TestDomain.outer+SharedProjection",
+            "TestDomain.Café+SharedProjection", "TestDomain.Cafè+SharedProjection",
+        ], ignoreOrder: true);
+        foreach (string typeName in nestedTypeNames)
+        {
+            literals.ShouldContain(typeName);
+        }
+    }
+
+    [Theory]
+    [InlineData("public", "private", "HiddenProjection")]
+    [InlineData("internal", "public", "Container")]
+    public void NonPublicNestedProjectionReportsAnActionableDiagnosticAndSkipsEmission(
+        string containerAccessibility,
+        string projectionAccessibility,
+        string nonPublicType)
+    {
+        string source = $$"""
+            using Hexalith.FrontComposer.Contracts.Attributes;
+
+            namespace TestDomain;
+
+            {{containerAccessibility}} partial class Container
+            {
+                [Projection]
+                {{projectionAccessibility}} partial class HiddenProjection { public int Count { get; set; } }
+            }
+
+            [Projection]
+            public partial class PublicProjection { public int Count { get; set; } }
+            """;
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(new FrontComposerGenerator())
+            .RunGeneratorsAndUpdateCompilation(CompilationHelper.CreateCompilation(source), out Compilation output, out var diagnostics, cancellationToken);
+
+        Diagnostic warning = diagnostics.Single(diagnostic => diagnostic.Id == "HFC1004");
+        string message = warning.GetMessage(CultureInfo.InvariantCulture);
+        message.ShouldContain("non-public declaration '" + nonPublicType + "'");
+        message.ShouldContain("Make the nested projection and every containing type public");
+        warning.Location.GetLineSpan().Path.ShouldBe("Test0.cs");
+        output.GetDiagnostics(cancellationToken).Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error).ShouldBeEmpty();
+        var generated = driver.GetRunResult().Results.Single().GeneratedSources;
+        generated.ShouldContain(result => result.HintName == "TestDomain.PublicProjection.g.razor.cs");
+        generated.ShouldNotContain(result => result.SourceText.ToString().Contains("HiddenProjection", StringComparison.Ordinal));
+    }
+
     [Fact]
     public void KeywordNamespaceUsesValidHintsAndCompilableSource() {
         const string source = """

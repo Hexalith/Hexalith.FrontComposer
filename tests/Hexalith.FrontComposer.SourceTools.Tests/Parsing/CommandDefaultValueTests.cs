@@ -1,10 +1,52 @@
 using Hexalith.FrontComposer.SourceTools.Parsing;
 
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+
 using Shouldly;
 
 namespace Hexalith.FrontComposer.SourceTools.Tests.Parsing;
 
 public class CommandDefaultValueTests {
+    [Fact]
+    public void Hfc1012PointsToTheAttributeInTheOtherPartialDeclaration()
+    {
+        const string command = """
+            using Hexalith.FrontComposer.Contracts.Attributes;
+
+            namespace TestDomain;
+
+            [Command]
+            public partial class UpdateCommand
+            {
+                public string MessageId { get; set; } = string.Empty;
+            }
+            """;
+        const string property = """
+            using System.ComponentModel;
+
+            namespace TestDomain;
+
+            public partial class UpdateCommand
+            {
+                [DefaultValue("invalid")]
+                public int Count { get; set; }
+            }
+            """;
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+        CSharpCompilation compilation = CompilationHelper.CreateCompilation([command, property]);
+        FileLinePositionSpan attribute = compilation.SyntaxTrees.Last().GetRoot(cancellationToken)
+            .DescendantNodes().OfType<AttributeSyntax>().Single().GetLocation().GetLineSpan();
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(new FrontComposerGenerator())
+            .RunGenerators(compilation, cancellationToken);
+
+        Diagnostic diagnostic = driver.GetRunResult().Diagnostics.Single(d => d.Id == "HFC1012");
+        diagnostic.Severity.ShouldBe(DiagnosticSeverity.Error);
+        diagnostic.Location.GetLineSpan().Path.ShouldBe(attribute.Path);
+        diagnostic.Location.GetLineSpan().StartLinePosition.ShouldBe(attribute.StartLinePosition);
+    }
+
     [Fact]
     public void HFC1012_Allows_DefaultValue_TypeString_Overload_ForMatchingType() {
         string source = """

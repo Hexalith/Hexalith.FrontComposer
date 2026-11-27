@@ -24,17 +24,17 @@ public static class FluxorFeatureEmitter {
         _ = sb.AppendLine("using System.Collections.Generic;");
         _ = sb.AppendLine();
 
-        bool hasNamespace = !string.IsNullOrEmpty(model.Namespace);
+        bool hasNamespace = !string.IsNullOrEmpty(model.GeneratedNamespace);
         if (hasNamespace) {
-            _ = sb.AppendLine("namespace " + model.Namespace + ";");
+            _ = sb.AppendLine("namespace " + model.GeneratedNamespace + ";");
             _ = sb.AppendLine();
         }
 
         // State record
         _ = sb.AppendLine("/// <summary>");
-        _ = sb.AppendLine("/// Fluxor state for <see cref=\"" + model.TypeName + "\"/> projection list view.");
+        _ = sb.AppendLine("/// Fluxor state for <see cref=\"" + model.TypeReference + "\"/> projection list view.");
         _ = sb.AppendLine("/// </summary>");
-        _ = sb.AppendLine("public record " + model.StateName + "(bool IsLoading, IReadOnlyList<" + model.TypeName + ">? Items, string? Error)");
+        _ = sb.AppendLine("public record " + model.StateName + "(bool IsLoading, IReadOnlyList<" + model.TypeReference + ">? Items, string? Error)");
         _ = sb.AppendLine("{");
         _ = sb.AppendLine("    internal bool RequiresScopedRequest { get; init; }");
         _ = sb.AppendLine("    internal bool HasChangedScope { get; init; }");
@@ -51,7 +51,7 @@ public static class FluxorFeatureEmitter {
 
         // Feature class
         _ = sb.AppendLine("/// <summary>");
-        _ = sb.AppendLine("/// Fluxor feature for <see cref=\"" + model.TypeName + "\"/> state management.");
+        _ = sb.AppendLine("/// Fluxor feature for <see cref=\"" + model.TypeReference + "\"/> state management.");
         _ = sb.AppendLine("/// </summary>");
         _ = sb.AppendLine("public class " + model.FeatureName + " : Fluxor.Feature<" + model.StateName + ">");
         _ = sb.AppendLine("{");

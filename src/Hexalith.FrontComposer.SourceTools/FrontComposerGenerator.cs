@@ -210,7 +210,11 @@ public sealed class FrontComposerGenerator : IIncrementalGenerator {
                 FluxorModel fluxorModel = FluxorModelTransform.Transform(result.Model);
                 RegistrationModel registrationModel = RegistrationModelTransform.Transform(result.Model);
 
-                string hintPrefix = GetQualifiedHintPrefix(result.Model.Namespace, result.Model.TypeName);
+                // Keep these hints flat for generated-output inspection. Top-level
+                // hints cannot start with two hyphens, including escaped namespaces.
+                string hintPrefix = result.Model.NestedProjection is { } nested
+                    ? "--nested-projection-" + nested.EncodedName
+                    : GetQualifiedHintPrefix(result.Model.Namespace, result.Model.TypeName);
                 spc.AddSource(hintPrefix + ".g.razor.cs", RazorEmitter.Emit(razorModel));
                 spc.AddSource(hintPrefix + "Feature.g.cs", FluxorFeatureEmitter.Emit(fluxorModel));
                 spc.AddSource(hintPrefix + "Actions.g.cs", FluxorActionsEmitter.EmitActions(fluxorModel));

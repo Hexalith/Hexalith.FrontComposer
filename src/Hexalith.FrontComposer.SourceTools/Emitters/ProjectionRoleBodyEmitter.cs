@@ -95,7 +95,7 @@ public static class ProjectionRoleBodyEmitter {
         }
 
         string bcRoute = "/" + (model.BoundedContext ?? model.Namespace.Replace('.', '/'));
-        string recordTypeName = model.TypeName + "StatusOverviewRow";
+        string recordTypeName = model.ArtifactName + "StatusOverviewRow";
         string statusProperty = statusColumn.PropertyName;
 
         _ = sb.AppendLine("        var unfilteredGroupedItems = state.Items");
@@ -474,7 +474,7 @@ public static class ProjectionRoleBodyEmitter {
             _ = sb.AppendLine("        // Story 4-5 — resolve expanded-row state for this render pass.");
             _ = sb.AppendLine("        global::Hexalith.FrontComposer.Shell.State.ExpandedRow.ExpandedRowEntry? _expandedEntry = ExpandedRowState.Value.GetEntry(_ephemeralViewKey);");
             _ = sb.AppendLine("        object? _expandedItemKey = _expandedEntry?.ItemKey;");
-            _ = sb.AppendLine("        " + model.TypeName + "? _expandedItem = null;");
+            _ = sb.AppendLine("        " + model.TypeReference + "? _expandedItem = null;");
             _ = sb.AppendLine("        if (_expandedItemKey is not null)");
             _ = sb.AppendLine("        {");
             _ = sb.AppendLine("            foreach (var __candidate in " + expansionItemsExpression + ")");
@@ -511,13 +511,13 @@ public static class ProjectionRoleBodyEmitter {
             _ = sb.AppendLine();
         }
 
-        _ = sb.AppendLine("        builder.OpenComponent<FluentDataGrid<" + model.TypeName + ">>(seq++);");
+        _ = sb.AppendLine("        builder.OpenComponent<FluentDataGrid<" + model.TypeReference + ">>(seq++);");
         // Story 4-4 T2.1 / D1 / D20 — Virtualize default ON. @key on density forces a Virtualize remount
         // when the user toggles density (Fluent v5 reads ItemSize at initialisation).
         _ = sb.AppendLine("        builder.SetKey((_density, GridRowHeight));");
         _ = sb.AppendLine("        if (state.Items.Count >= ShellOptions.Value.VirtualizationServerSideThreshold)");
         _ = sb.AppendLine("        {");
-        _ = sb.AppendLine("            builder.AddAttribute(seq++, \"ItemsProvider\", (global::Microsoft.FluentUI.AspNetCore.Components.GridItemsProvider<" + model.TypeName + ">)LoadPageAsync);");
+        _ = sb.AppendLine("            builder.AddAttribute(seq++, \"ItemsProvider\", (global::Microsoft.FluentUI.AspNetCore.Components.GridItemsProvider<" + model.TypeReference + ">)LoadPageAsync);");
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine("        else");
         _ = sb.AppendLine("        {");
@@ -530,12 +530,12 @@ public static class ProjectionRoleBodyEmitter {
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ItemSize\", GridRowHeight);");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"data-fc-grid-item-size\", GridRowHeight.ToString(System.Globalization.CultureInfo.InvariantCulture));");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"OverscanCount\", 3);");
-        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ItemKey\", (System.Func<" + model.TypeName + ", object>)_itemKeyAccessor);");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ItemKey\", (System.Func<" + model.TypeReference + ", object>)_itemKeyAccessor);");
 
         // Story 4-5 D14 / AC1 / AC2 — RowClass highlights the expanded row; OnRowClick toggles.
         if (emitExpandableRows) {
-            _ = sb.AppendLine("        builder.AddAttribute(seq++, \"RowClass\", (System.Func<" + model.TypeName + ", string?>)(row => _expandedItemKey is not null && _itemKeyAccessor(row).Equals(_expandedItemKey) ? \"fc-row-expanded\" : null));");
-            _ = sb.AppendLine("        builder.AddAttribute(seq++, \"OnRowClick\", global::Microsoft.AspNetCore.Components.EventCallback.Factory.Create<FluentDataGridRow<" + model.TypeName + ">>(this, row => row?.Item is null ? System.Threading.Tasks.Task.CompletedTask : HandleRowClickAsync(row.Item)));");
+            _ = sb.AppendLine("        builder.AddAttribute(seq++, \"RowClass\", (System.Func<" + model.TypeReference + ", string?>)(row => _expandedItemKey is not null && _itemKeyAccessor(row).Equals(_expandedItemKey) ? \"fc-row-expanded\" : null));");
+            _ = sb.AppendLine("        builder.AddAttribute(seq++, \"OnRowClick\", global::Microsoft.AspNetCore.Components.EventCallback.Factory.Create<FluentDataGridRow<" + model.TypeReference + ">>(this, row => row?.Item is null ? System.Threading.Tasks.Task.CompletedTask : HandleRowClickAsync(row.Item)));");
         }
 
         _ = sb.AppendLine();
@@ -548,11 +548,11 @@ public static class ProjectionRoleBodyEmitter {
             if (model.Columns.Count > 15) {
                 _ = sb.AppendLine("            if (!hiddenColumnSet.Contains(\"" + RoleBodyHelpers.EscapeString(col.PropertyName) + "\"))");
                 _ = sb.AppendLine("            {");
-                ColumnEmitter.EmitColumn(sb, col, model.TypeName, col.PropertyName == defaultSortPropertyName);
+                ColumnEmitter.EmitColumn(sb, col, model.TypeReference, col.PropertyName == defaultSortPropertyName);
                 _ = sb.AppendLine("            }");
             }
             else {
-                ColumnEmitter.EmitColumn(sb, col, model.TypeName, col.PropertyName == defaultSortPropertyName);
+                ColumnEmitter.EmitColumn(sb, col, model.TypeReference, col.PropertyName == defaultSortPropertyName);
             }
         }
 
@@ -600,11 +600,11 @@ public static class ProjectionRoleBodyEmitter {
     /// </summary>
     internal static void EmitExpandTriggerColumn(StringBuilder sb, RazorModel model) {
         _ = sb.AppendLine("            // Story 4-5 — trailing row-action column hosting the expand chevron.");
-        _ = sb.AppendLine("            b.OpenComponent<TemplateColumn<" + model.TypeName + ">>(colSeq++);");
+        _ = sb.AppendLine("            b.OpenComponent<TemplateColumn<" + model.TypeReference + ">>(colSeq++);");
         _ = sb.AppendLine("            b.AddAttribute(colSeq++, \"Title\", \"\");");
         _ = sb.AppendLine("            b.AddAttribute(colSeq++, \"Class\", \"fc-row-action-column\");");
         _ = sb.AppendLine("            b.AddAttribute(colSeq++, \"Width\", \"40px\");");
-        _ = sb.AppendLine("            b.AddAttribute(colSeq++, \"ChildContent\", (RenderFragment<" + model.TypeName + ">)(item => (RenderTreeBuilder rb) =>");
+        _ = sb.AppendLine("            b.AddAttribute(colSeq++, \"ChildContent\", (RenderFragment<" + model.TypeReference + ">)(item => (RenderTreeBuilder rb) =>");
         _ = sb.AppendLine("            {");
         _ = sb.AppendLine("                bool _isThisRowExpanded = _expandedItemKey is not null && _itemKeyAccessor(item).Equals(_expandedItemKey) && _expandedItem is not null;");
         _ = sb.AppendLine("                string _buttonClass = _isThisRowExpanded ? \"fc-expand-button fc-expand-button--open\" : \"fc-expand-button\";");
@@ -712,11 +712,11 @@ public static class ProjectionRoleBodyEmitter {
         _ = sb.AppendLine("            if (_expandedStatusOverviewItem is null) { return; }");
         _ = sb.AppendLine("            int seq = 800;");
         EmitRowDetailRegionStart(sb, "_expandedStatusOverviewItem.StatusKey");
-        _ = sb.AppendLine("            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcStatusOverviewDetails<" + model.TypeName + ">>(seq++);");
+        _ = sb.AppendLine("            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcStatusOverviewDetails<" + model.TypeReference + ">>(seq++);");
         _ = sb.AppendLine("            builder.AddAttribute(seq++, \"Items\", _expandedStatusOverviewItem.Items);");
         _ = sb.AppendLine("            builder.AddAttribute(seq++, \"ItemCount\", _expandedStatusOverviewItem.Count);");
         _ = sb.AppendLine("            builder.AddAttribute(seq++, \"ItemKey\", _itemKeyAccessor);");
-        _ = sb.AppendLine("            builder.AddAttribute(seq++, \"ItemContent\", (RenderFragment<" + model.TypeName + ">)(item => builder =>");
+        _ = sb.AppendLine("            builder.AddAttribute(seq++, \"ItemContent\", (RenderFragment<" + model.TypeReference + ">)(item => builder =>");
         _ = sb.AppendLine("            {");
         _ = sb.AppendLine("                int seq = 800;");
 
@@ -748,21 +748,18 @@ public static class ProjectionRoleBodyEmitter {
     internal static void EmitRowContextActionColumn(StringBuilder sb, RazorModel model) {
         string? aggregateIdProperty = RoleBodyHelpers.ResolveAggregateIdProperty(model);
         string aggregateIdExpression = ResolveAggregateIdExpression(model, aggregateIdProperty);
-        string projectionFqn = string.IsNullOrEmpty(model.Namespace)
-            ? model.TypeName
-            : model.Namespace + "." + model.TypeName;
         string boundedContext = string.IsNullOrEmpty(model.BoundedContext)
             ? model.Namespace
             : model.BoundedContext!;
 
         _ = sb.AppendLine("            // Story 4-1 D14 / G12 — per-row ProjectionContext cascade for Story 2-2 inline-command renderers");
-        _ = sb.AppendLine("            b.OpenComponent<TemplateColumn<" + model.TypeName + ">>(colSeq++);");
+        _ = sb.AppendLine("            b.OpenComponent<TemplateColumn<" + model.TypeReference + ">>(colSeq++);");
         _ = sb.AppendLine("            b.AddAttribute(colSeq++, \"Title\", \"\");");
         _ = sb.AppendLine("            b.AddAttribute(colSeq++, \"Class\", \"fc-row-context-actions\");");
-        _ = sb.AppendLine("            b.AddAttribute(colSeq++, \"ChildContent\", (RenderFragment<" + model.TypeName + ">)(item => (RenderTreeBuilder rb) =>");
+        _ = sb.AppendLine("            b.AddAttribute(colSeq++, \"ChildContent\", (RenderFragment<" + model.TypeReference + ">)(item => (RenderTreeBuilder rb) =>");
         _ = sb.AppendLine("            {");
         _ = sb.AppendLine("                var _rowContext = new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionContext(");
-        _ = sb.AppendLine("                    projectionTypeFqn: \"" + RoleBodyHelpers.EscapeString(projectionFqn) + "\",");
+        _ = sb.AppendLine("                    projectionTypeFqn: \"" + RoleBodyHelpers.EscapeString(model.ProjectionTypeName) + "\",");
         _ = sb.AppendLine("                    boundedContext: \"" + RoleBodyHelpers.EscapeString(boundedContext) + "\",");
         _ = sb.AppendLine("                    aggregateId: " + aggregateIdExpression + ",");
         _ = sb.AppendLine("                    fields: global::System.Collections.Immutable.ImmutableDictionary.CreateRange<string, object?>(new[]");

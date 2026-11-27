@@ -14,7 +14,22 @@ public sealed class RazorModel : IEquatable<RazorModel> {
         EquatableArray<string> whenStates = default,
         string? entityLabel = null,
         string? entityPluralLabel = null,
-        string? emptyStateCtaCommandName = null) {
+        string? emptyStateCtaCommandName = null)
+        : this(typeName, @namespace, boundedContext, columns, strategy, whenStates, entityLabel, entityPluralLabel,
+            emptyStateCtaCommandName, null) {
+    }
+
+    internal RazorModel(
+        string typeName,
+        string @namespace,
+        string? boundedContext,
+        EquatableArray<ColumnModel> columns,
+        ProjectionRenderStrategy strategy,
+        EquatableArray<string> whenStates,
+        string? entityLabel,
+        string? entityPluralLabel,
+        string? emptyStateCtaCommandName,
+        NestedProjectionIdentity? nestedProjection) {
         TypeName = typeName;
         Namespace = @namespace;
         BoundedContext = boundedContext;
@@ -24,11 +39,27 @@ public sealed class RazorModel : IEquatable<RazorModel> {
         EntityLabel = entityLabel;
         EntityPluralLabel = entityPluralLabel;
         EmptyStateCtaCommandName = emptyStateCtaCommandName;
+        NestedProjection = nestedProjection;
     }
 
     public string TypeName { get; }
 
+    private NestedProjectionIdentity? NestedProjection { get; }
+
+    /// <summary>Gets the C# reference to the projection.</summary>
+    internal string TypeReference => NestedProjection?.SourceName ?? TypeName;
+
+    /// <summary>Gets the CLR identity used by runtime projection APIs.</summary>
+    internal string ProjectionTypeName => NestedProjection?.MetadataName
+        ?? (string.IsNullOrEmpty(Namespace) ? TypeName : Namespace + "." + TypeName);
+
+    /// <summary>Gets the generated view and state type stem.</summary>
+    internal string ArtifactName => NestedProjection?.ArtifactName ?? TypeName;
+
     public string Namespace { get; }
+
+    /// <summary>Gets the namespace containing the emitted artifacts.</summary>
+    internal string GeneratedNamespace => NestedProjection?.GeneratedNamespace ?? Namespace;
 
     public string? BoundedContext { get; }
 
@@ -62,6 +93,7 @@ public sealed class RazorModel : IEquatable<RazorModel> {
         }
 
         return TypeName == other.TypeName
+            && NestedProjection == other.NestedProjection
             && Namespace == other.Namespace
             && BoundedContext == other.BoundedContext
             && Strategy == other.Strategy
@@ -78,6 +110,7 @@ public sealed class RazorModel : IEquatable<RazorModel> {
         unchecked {
             int hash = 17;
             hash = (hash * 31) + (TypeName?.GetHashCode() ?? 0);
+            hash = (hash * 31) + (NestedProjection?.GetHashCode() ?? 0);
             hash = (hash * 31) + (Namespace?.GetHashCode() ?? 0);
             hash = (hash * 31) + (BoundedContext?.GetHashCode() ?? 0);
             hash = (hash * 31) + Strategy.GetHashCode();

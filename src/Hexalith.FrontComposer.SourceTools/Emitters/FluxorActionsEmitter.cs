@@ -24,49 +24,49 @@ public static class FluxorActionsEmitter {
         _ = sb.AppendLine("using System.Collections.Generic;");
         _ = sb.AppendLine();
 
-        bool hasNamespace = !string.IsNullOrEmpty(model.Namespace);
+        bool hasNamespace = !string.IsNullOrEmpty(model.GeneratedNamespace);
         if (hasNamespace) {
-            _ = sb.AppendLine("namespace " + model.Namespace + ";");
+            _ = sb.AppendLine("namespace " + model.GeneratedNamespace + ";");
             _ = sb.AppendLine();
         }
 
         // Actions (past-tense naming convention, CorrelationId carries the per-dispatch trace id -- ADR-008)
         _ = sb.AppendLine("/// <summary>");
-        _ = sb.AppendLine("/// Starts a load cycle for <see cref=\"" + model.TypeName + "\"/>. No framework effect fetches on this action.");
+        _ = sb.AppendLine("/// Starts a load cycle for <see cref=\"" + model.TypeReference + "\"/>. No framework effect fetches on this action.");
         _ = sb.AppendLine("/// An adopter whose projection can fail must answer an operator-initiated request by reloading, then dispatching");
-        _ = sb.AppendLine("/// <see cref=\"" + model.TypeName + "LoadedAction\"/> or <see cref=\"" + model.TypeName + "LoadFailedAction\"/> with this correlation and the scope stamp below.");
+        _ = sb.AppendLine("/// <see cref=\"" + model.ArtifactName + "LoadedAction\"/> or <see cref=\"" + model.ArtifactName + "LoadFailedAction\"/> with this correlation and the scope stamp below.");
         _ = sb.AppendLine("/// After <c>ScopeChangedAction</c>, stamp <c>OriginScopeGeneration</c> from <c>state.ScopeGeneration</c>.");
         _ = sb.AppendLine("/// Stamp <c>ScopeTenantId</c> and <c>ScopeUserId</c> from the resolved tenant context, as generated Retry does. A scope change clears those fields on projection state.");
         _ = sb.AppendLine("/// </summary>");
-        _ = sb.AppendLine("/// <param name=\"CorrelationId\">Trace identifier shared by this request and its <see cref=\"" + model.TypeName + "LoadedAction\"/> or <see cref=\"" + model.TypeName + "LoadFailedAction\"/>.</param>");
+        _ = sb.AppendLine("/// <param name=\"CorrelationId\">Trace identifier shared by this request and its <see cref=\"" + model.ArtifactName + "LoadedAction\"/> or <see cref=\"" + model.ArtifactName + "LoadFailedAction\"/>.</param>");
         _ = sb.AppendLine("/// <param name=\"OperatorInitiated\">True when the operator retried a failed projection. The adopter must answer that request.</param>");
-        _ = sb.AppendLine("public record " + model.TypeName + "LoadRequestedAction(string CorrelationId, bool OperatorInitiated = false)");
+        _ = sb.AppendLine("public record " + model.ArtifactName + "LoadRequestedAction(string CorrelationId, bool OperatorInitiated = false)");
         _ = sb.AppendLine("{ public string? ScopeTenantId { get; init; } public string? ScopeUserId { get; init; } public long? OriginScopeGeneration { get; init; } }");
         _ = sb.AppendLine();
 
         _ = sb.AppendLine("/// <summary>");
-        _ = sb.AppendLine("/// Data arrived for <see cref=\"" + model.TypeName + "\"/>. Every result must carry its request's correlation.");
+        _ = sb.AppendLine("/// Data arrived for <see cref=\"" + model.TypeReference + "\"/>. Every result must carry its request's correlation.");
         _ = sb.AppendLine("/// Direct results are accepted only before any request has been dispatched.");
-        _ = sb.AppendLine("/// Breaking change: push-style direct <see cref=\"" + model.TypeName + "LoadedAction\"/> values are dropped once a request exists.");
+        _ = sb.AppendLine("/// Breaking change: push-style direct <see cref=\"" + model.ArtifactName + "LoadedAction\"/> values are dropped once a request exists.");
         _ = sb.AppendLine("/// After <c>ScopeChangedAction</c>, stamp <c>OriginScopeGeneration</c> from <c>state.ScopeGeneration</c>.");
         _ = sb.AppendLine("/// Stamp <c>ScopeTenantId</c> and <c>ScopeUserId</c> from the resolved tenant context, as generated Retry does. A scope change clears those fields on projection state.");
         _ = sb.AppendLine("/// </summary>");
-        _ = sb.AppendLine("/// <param name=\"CorrelationId\">Trace identifier shared with the originating <see cref=\"" + model.TypeName + "LoadRequestedAction\"/>.</param>");
+        _ = sb.AppendLine("/// <param name=\"CorrelationId\">Trace identifier shared with the originating <see cref=\"" + model.ArtifactName + "LoadRequestedAction\"/>.</param>");
         _ = sb.AppendLine("/// <param name=\"Items\">The loaded projection items.</param>");
-        _ = sb.AppendLine("public record " + model.TypeName + "LoadedAction(string CorrelationId, IReadOnlyList<" + model.TypeName + "> Items)");
+        _ = sb.AppendLine("public record " + model.ArtifactName + "LoadedAction(string CorrelationId, IReadOnlyList<" + model.TypeReference + "> Items)");
         _ = sb.AppendLine("{ public string? ScopeTenantId { get; init; } public string? ScopeUserId { get; init; } public long? OriginScopeGeneration { get; init; } }");
         _ = sb.AppendLine();
 
         _ = sb.AppendLine("/// <summary>");
-        _ = sb.AppendLine("/// Data fetch failed for <see cref=\"" + model.TypeName + "\"/>. Every result must carry its request's correlation.");
+        _ = sb.AppendLine("/// Data fetch failed for <see cref=\"" + model.TypeReference + "\"/>. Every result must carry its request's correlation.");
         _ = sb.AppendLine("/// Direct results are accepted only before any request has been dispatched.");
-        _ = sb.AppendLine("/// Breaking change: push-style direct <see cref=\"" + model.TypeName + "LoadFailedAction\"/> values are dropped once a request exists.");
+        _ = sb.AppendLine("/// Breaking change: push-style direct <see cref=\"" + model.ArtifactName + "LoadFailedAction\"/> values are dropped once a request exists.");
         _ = sb.AppendLine("/// After <c>ScopeChangedAction</c>, stamp <c>OriginScopeGeneration</c> from <c>state.ScopeGeneration</c>.");
         _ = sb.AppendLine("/// Stamp <c>ScopeTenantId</c> and <c>ScopeUserId</c> from the resolved tenant context, as generated Retry does. A scope change clears those fields on projection state.");
         _ = sb.AppendLine("/// </summary>");
-        _ = sb.AppendLine("/// <param name=\"CorrelationId\">Trace identifier shared with the originating <see cref=\"" + model.TypeName + "LoadRequestedAction\"/>.</param>");
+        _ = sb.AppendLine("/// <param name=\"CorrelationId\">Trace identifier shared with the originating <see cref=\"" + model.ArtifactName + "LoadRequestedAction\"/>.</param>");
         _ = sb.AppendLine("/// <param name=\"Error\">The failure reason.</param>");
-        _ = sb.AppendLine("public record " + model.TypeName + "LoadFailedAction(string CorrelationId, string Error)");
+        _ = sb.AppendLine("public record " + model.ArtifactName + "LoadFailedAction(string CorrelationId, string Error)");
         _ = sb.AppendLine("{ public string? ScopeTenantId { get; init; } public string? ScopeUserId { get; init; } public long? OriginScopeGeneration { get; init; } }");
 
         return sb.ToString();
@@ -86,34 +86,34 @@ public static class FluxorActionsEmitter {
         _ = sb.AppendLine("#nullable enable");
         _ = sb.AppendLine();
 
-        bool hasNamespace = !string.IsNullOrEmpty(model.Namespace);
+        bool hasNamespace = !string.IsNullOrEmpty(model.GeneratedNamespace);
         if (hasNamespace) {
-            _ = sb.AppendLine("namespace " + model.Namespace + ";");
+            _ = sb.AppendLine("namespace " + model.GeneratedNamespace + ";");
             _ = sb.AppendLine();
         }
 
         _ = sb.AppendLine("/// <summary>");
-        _ = sb.AppendLine("/// Fluxor reducers for <see cref=\"" + model.TypeName + "\"/> state transitions.");
+        _ = sb.AppendLine("/// Fluxor reducers for <see cref=\"" + model.TypeReference + "\"/> state transitions.");
         _ = sb.AppendLine("/// </summary>");
-        _ = sb.AppendLine("public static class " + model.TypeName + "Reducers");
+        _ = sb.AppendLine("public static class " + model.ArtifactName + "Reducers");
         _ = sb.AppendLine("{");
 
         // LoadRequested reducer
         _ = sb.AppendLine("    /// <summary>");
-        _ = sb.AppendLine("    /// Handles <see cref=\"" + model.TypeName + "LoadRequestedAction\"/>. Post-transition results require this request's correlation.");
+        _ = sb.AppendLine("    /// Handles <see cref=\"" + model.ArtifactName + "LoadRequestedAction\"/>. Post-transition results require this request's correlation.");
         _ = sb.AppendLine("    /// </summary>");
         _ = sb.AppendLine("    [Fluxor.ReducerMethod]");
-        _ = sb.AppendLine("    public static " + model.StateName + " On" + model.TypeName + "LoadRequested(" + model.StateName + " state, " + model.TypeName + "LoadRequestedAction action)");
+        _ = sb.AppendLine("    public static " + model.StateName + " On" + model.ArtifactName + "LoadRequested(" + model.StateName + " state, " + model.ArtifactName + "LoadRequestedAction action)");
         _ = sb.AppendLine("        => action.OriginScopeGeneration != state.ScopeGeneration && (action.OriginScopeGeneration.HasValue || state.HasChangedScope)");
         _ = sb.AppendLine("            ? state : state with { IsLoading = true, Error = null, RequiresScopedRequest = false, ActiveCorrelationId = action.CorrelationId, ActiveOperatorInitiated = action.OperatorInitiated, ScopeTenantId = action.ScopeTenantId ?? state.ScopeTenantId, ScopeUserId = action.ScopeUserId ?? state.ScopeUserId };");
         _ = sb.AppendLine();
 
         // Loaded reducer
         _ = sb.AppendLine("    /// <summary>");
-        _ = sb.AppendLine("    /// Handles <see cref=\"" + model.TypeName + "LoadedAction\"/>. Once a request exists, a mismatched correlation is dropped. Direct initial results are accepted only before any request has been dispatched.");
+        _ = sb.AppendLine("    /// Handles <see cref=\"" + model.ArtifactName + "LoadedAction\"/>. Once a request exists, a mismatched correlation is dropped. Direct initial results are accepted only before any request has been dispatched.");
         _ = sb.AppendLine("    /// </summary>");
         _ = sb.AppendLine("    [Fluxor.ReducerMethod]");
-        _ = sb.AppendLine("    public static " + model.StateName + " On" + model.TypeName + "Loaded(" + model.StateName + " state, " + model.TypeName + "LoadedAction action)");
+        _ = sb.AppendLine("    public static " + model.StateName + " On" + model.ArtifactName + "Loaded(" + model.StateName + " state, " + model.ArtifactName + "LoadedAction action)");
         _ = sb.AppendLine("        => state.RequiresScopedRequest || (state.ActiveCorrelationId is not null && state.ActiveCorrelationId != action.CorrelationId)");
         _ = sb.AppendLine("            || action.OriginScopeGeneration != state.ScopeGeneration && (action.OriginScopeGeneration.HasValue || state.HasChangedScope)");
         _ = sb.AppendLine("            ? state : state with { IsLoading = false, Items = action.Items, Error = null, LastResultCorrelationId = action.CorrelationId, LastResultOperatorInitiated = state.ActiveOperatorInitiated, ScopeTenantId = action.ScopeTenantId ?? state.ScopeTenantId, ScopeUserId = action.ScopeUserId ?? state.ScopeUserId };");
@@ -121,10 +121,10 @@ public static class FluxorActionsEmitter {
 
         // LoadFailed reducer
         _ = sb.AppendLine("    /// <summary>");
-        _ = sb.AppendLine("    /// Handles <see cref=\"" + model.TypeName + "LoadFailedAction\"/>. Once a request exists, a mismatched correlation is dropped. Direct initial failures are accepted only before any request has been dispatched.");
+        _ = sb.AppendLine("    /// Handles <see cref=\"" + model.ArtifactName + "LoadFailedAction\"/>. Once a request exists, a mismatched correlation is dropped. Direct initial failures are accepted only before any request has been dispatched.");
         _ = sb.AppendLine("    /// </summary>");
         _ = sb.AppendLine("    [Fluxor.ReducerMethod]");
-        _ = sb.AppendLine("    public static " + model.StateName + " On" + model.TypeName + "LoadFailed(" + model.StateName + " state, " + model.TypeName + "LoadFailedAction action)");
+        _ = sb.AppendLine("    public static " + model.StateName + " On" + model.ArtifactName + "LoadFailed(" + model.StateName + " state, " + model.ArtifactName + "LoadFailedAction action)");
         _ = sb.AppendLine("        => state.RequiresScopedRequest || (state.ActiveCorrelationId is not null && state.ActiveCorrelationId != action.CorrelationId)");
         _ = sb.AppendLine("            || action.OriginScopeGeneration != state.ScopeGeneration && (action.OriginScopeGeneration.HasValue || state.HasChangedScope)");
         _ = sb.AppendLine("            ? state : state with { IsLoading = false, Error = action.Error, LastResultCorrelationId = action.CorrelationId, LastResultOperatorInitiated = state.ActiveOperatorInitiated, ScopeTenantId = action.ScopeTenantId ?? state.ScopeTenantId, ScopeUserId = action.ScopeUserId ?? state.ScopeUserId };");
@@ -132,7 +132,7 @@ public static class FluxorActionsEmitter {
         _ = sb.AppendLine();
         _ = sb.AppendLine("    /// <summary>Clears prior-scope projection rows and load provenance.</summary>");
         _ = sb.AppendLine("    [Fluxor.ReducerMethod]");
-        _ = sb.AppendLine("    public static " + model.StateName + " On" + model.TypeName + "ScopeChanged(" + model.StateName + " state, global::Hexalith.FrontComposer.Shell.State.Navigation.ScopeChangedAction action)");
+        _ = sb.AppendLine("    public static " + model.StateName + " On" + model.ArtifactName + "ScopeChanged(" + model.StateName + " state, global::Hexalith.FrontComposer.Shell.State.Navigation.ScopeChangedAction action)");
         _ = sb.AppendLine("        => new(IsLoading: false, Items: null, Error: null) { RequiresScopedRequest = true, HasChangedScope = true, ScopeGeneration = state.ScopeGeneration + 1 };");
 
         _ = sb.AppendLine("}");

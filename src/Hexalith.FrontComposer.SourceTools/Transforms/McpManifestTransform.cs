@@ -61,9 +61,9 @@ public static class McpManifestTransform {
 
         // Same Known Gap KG-8-1-1 applies — projection [Description] propagation is deferred.
         return new McpResourceDescriptorModel(
-            BuildProjectionUri(boundedContext, model.Namespace, model.TypeName, disambiguateProtocolUri),
+            BuildProjectionUri(boundedContext, model, disambiguateProtocolUri),
             SanitizeProtocolSegment(model.TypeName),
-            Fqn(model.Namespace, model.TypeName),
+            model.NestedProjection?.MetadataName ?? Fqn(model.Namespace, model.TypeName),
             boundedContext,
             razor.EntityLabel ?? model.TypeName,
             description: null,
@@ -82,6 +82,12 @@ public static class McpManifestTransform {
         => disambiguate && !string.IsNullOrWhiteSpace(@namespace)
             ? "frontcomposer://" + SanitizeProtocolSegment(boundedContext) + "/projections/" + SanitizeProtocolSegment(@namespace) + "." + SanitizeProtocolSegment(typeName)
             : "frontcomposer://" + SanitizeProtocolSegment(boundedContext) + "/projections/" + SanitizeProtocolSegment(typeName);
+
+    /// <summary>Builds the resource URI from the projection's full identity when nested.</summary>
+    internal static string BuildProjectionUri(string boundedContext, DomainModel model, bool disambiguate)
+        => model.NestedProjection is { } nested
+            ? "frontcomposer://" + SanitizeProtocolSegment(boundedContext) + "/projections/nested/" + nested.EncodedName
+            : BuildProjectionUri(boundedContext, model.Namespace, model.TypeName, disambiguate);
 
     private static McpParameterDescriptorModel MapParameter(PropertyModel property)
         => new(

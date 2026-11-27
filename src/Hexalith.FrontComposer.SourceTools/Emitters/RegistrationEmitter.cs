@@ -27,17 +27,17 @@ public static class RegistrationEmitter {
         _ = sb.AppendLine("using Hexalith.FrontComposer.Contracts.Registration;");
         _ = sb.AppendLine();
 
-        bool hasNamespace = !string.IsNullOrEmpty(model.Namespace);
+        bool hasNamespace = !string.IsNullOrEmpty(model.GeneratedNamespace);
         if (hasNamespace) {
-            _ = sb.AppendLine("namespace " + model.Namespace + ";");
+            _ = sb.AppendLine("namespace " + model.GeneratedNamespace + ";");
             _ = sb.AppendLine();
         }
 
-        string className = model.TypeName + "Registration";
+        string className = model.ArtifactName + "Registration";
         string displayName = model.DisplayLabel ?? model.BoundedContext;
 
         _ = sb.AppendLine("/// <summary>");
-        _ = sb.AppendLine("/// Domain registration for <see cref=\"" + XmlEscape(model.TypeName) + "\"/> in the \"" + XmlEscape(model.BoundedContext) + "\" bounded context.");
+        _ = sb.AppendLine("/// Domain registration for <see cref=\"" + XmlEscape(model.TypeReference) + "\"/> in the \"" + XmlEscape(model.BoundedContext) + "\" bounded context.");
         _ = sb.AppendLine("/// </summary>");
         _ = sb.AppendLine("public static class " + className);
         _ = sb.AppendLine("{");
@@ -48,16 +48,16 @@ public static class RegistrationEmitter {
         _ = sb.AppendLine("    /// </summary>");
         string projectionsList = model.IsCommand
             ? "new List<string>()"
-            : "new List<string> { typeof(" + model.TypeName + ").FullName! }";
+            : "new List<string> { typeof(" + model.TypeReference + ").FullName! }";
         string commandsList = model.IsCommand
-            ? "new List<string> { typeof(" + model.TypeName + ").FullName! }"
+            ? "new List<string> { typeof(" + model.TypeReference + ").FullName! }"
             : "new List<string>()";
         bool hasPolicyMap = model.IsCommand && !string.IsNullOrWhiteSpace(model.AuthorizationPolicyName);
         string policyMap = hasPolicyMap
-            ? "new Dictionary<string, string> { [typeof(" + model.TypeName + ").FullName!] = \"" + EscapeString(model.AuthorizationPolicyName!) + "\" }"
+            ? "new Dictionary<string, string> { [typeof(" + model.TypeReference + ").FullName!] = \"" + EscapeString(model.AuthorizationPolicyName!) + "\" }"
             : string.Empty;
         string fullPageCommandsList = model.IsCommand && model.HasFullPageRoute
-            ? "new List<string> { typeof(" + model.TypeName + ").FullName! }"
+            ? "new List<string> { typeof(" + model.TypeReference + ").FullName! }"
             : "new List<string>()";
 
         _ = sb.AppendLine("    public static DomainManifest Manifest { get; } = new DomainManifest(");

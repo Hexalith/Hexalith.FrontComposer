@@ -14,6 +14,7 @@ public static class FluxorModelTransform {
     public static FluxorModel Transform(DomainModel model) => new(
             model.TypeName,
             model.Namespace,
-            model.TypeName + "State",
-            model.TypeName + "Feature");
+            model.ArtifactName + "State",
+            model.ArtifactName + "Feature",
+            model.NestedProjection);
 }

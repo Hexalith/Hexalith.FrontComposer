@@ -7,6 +7,25 @@ namespace Hexalith.FrontComposer.SourceTools.Tests.Transforms;
 
 [Trait("Category", "MutationErrorHandling")]
 public sealed class SchemaFingerprintTransformTests {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void SkillFingerprintDistinguishesElementBoundariesAndPreservesOrdinalOrdering(bool samplePaths)
+    {
+        GeneratedSchemaPayload Payload(params string[] values) => SchemaFingerprintTransform.CreateSkillCorpusResourcePayload(
+            "skill", "1.0", "frontcomposer://skill", "Skill", "text/markdown", 1,
+            samplePaths ? [] : values, samplePaths ? values : []);
+
+        GeneratedSchemaPayload first = Payload("A|B", "C");
+        first.Json.ShouldContain("schemaVersion=frontcomposer.skill-corpus.v2\n");
+        first.Fingerprint.Value.ShouldBe(Payload("C", "A|B").Fingerprint.Value);
+        first.Fingerprint.Value.ShouldNotBe(Payload("A", "B|C").Fingerprint.Value);
+        first.Fingerprint.Value.ShouldNotBe(Payload("A", "B", "C").Fingerprint.Value);
+        Payload("").Fingerprint.Value.ShouldNotBe(Payload().Fingerprint.Value);
+        Payload(" ").Fingerprint.Value.ShouldNotBe(Payload().Fingerprint.Value);
+        Payload("A", "B", "C").Json.ShouldContain("schemaVersion=frontcomposer.skill-corpus.v1\n");
+    }
+
     [Fact]
     public void CommandFingerprint_ChangesWhenStructuralFieldChanges_AndIgnoresRuntimeNames() {
         const string Source = """

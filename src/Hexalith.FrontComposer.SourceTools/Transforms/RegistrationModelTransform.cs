@@ -20,7 +20,11 @@ public static class RegistrationModelTransform {
             boundedContext,
             model.TypeName,
             model.Namespace,
-            model.BoundedContextDisplayLabel);
+            model.BoundedContextDisplayLabel,
+            isCommand: false,
+            authorizationPolicyName: null,
+            hasFullPageRoute: false,
+            nestedProjection: model.NestedProjection);
     }
 
     /// <summary>

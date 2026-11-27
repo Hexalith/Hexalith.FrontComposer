@@ -37,10 +37,10 @@ public static class McpManifestEmitter {
 
         foreach (DomainModel projection in projections) {
             string boundedContext = string.IsNullOrWhiteSpace(projection.BoundedContext) ? "Default" : projection.BoundedContext!;
-            string baseUri = McpManifestTransform.BuildProjectionUri(boundedContext, projection.Namespace, projection.TypeName, false);
+            string baseUri = McpManifestTransform.BuildProjectionUri(boundedContext, projection, false);
             bool disambiguate = resourceBaseCounts.TryGetValue(baseUri, out int resourceCount) && resourceCount > 1;
             McpResourceDescriptorModel descriptor = McpManifestTransform.TransformProjection(projection, disambiguate);
-            if (projection.Namespace.IndexOf('@') >= 0) {
+            if (projection.NestedProjection is null && projection.Namespace.IndexOf('@') >= 0) {
                 string metadataNamespace = projection.Namespace.Replace("@", string.Empty);
                 descriptor = new McpResourceDescriptorModel(
                     descriptor.ProtocolUri,
@@ -116,7 +116,7 @@ public static class McpManifestEmitter {
         Dictionary<string, int> counts = new(StringComparer.OrdinalIgnoreCase);
         foreach (DomainModel projection in projections) {
             string boundedContext = string.IsNullOrWhiteSpace(projection.BoundedContext) ? "Default" : projection.BoundedContext!;
-            string key = McpManifestTransform.BuildProjectionUri(boundedContext, projection.Namespace, projection.TypeName, false);
+            string key = McpManifestTransform.BuildProjectionUri(boundedContext, projection, false);
             counts[key] = counts.TryGetValue(key, out int count) ? count + 1 : 1;
         }
 

@@ -47,6 +47,7 @@ public static class SchemaFingerprintTransform {
     public const string LifecycleResultSchemaVersion = "frontcomposer.lifecycle-result.v1";
     public const string MarkdownRendererSchemaVersion = "frontcomposer.renderer.markdown.v1";
     public const string SkillCorpusSchemaVersion = "frontcomposer.skill-corpus.v1";
+    private const string FramedSkillCorpusSchemaVersion = "frontcomposer.skill-corpus.v2";
     public const string AggregateManifestSchemaVersion = "frontcomposer.mcp-manifest.aggregate.v1";
 
     /// <summary>
@@ -175,11 +176,14 @@ public static class SchemaFingerprintTransform {
         string contentType,
         int order,
         IReadOnlyList<string> publicApiReferences,
-        IReadOnlyList<string> samplePaths)
-        => Payload(
+        IReadOnlyList<string> samplePaths) {
+        // Keep v1 fingerprints for lists whose boundaries are recoverable from the
+        // original encoding. Version the framed representation of ambiguous lists.
+        bool requiresFraming = HasAmbiguousBoundaries(publicApiReferences) || HasAmbiguousBoundaries(samplePaths);
+        return Payload(
             "SkillCorpusResource",
             id,
-            SkillCorpusSchemaVersion,
+            requiresFraming ? FramedSkillCorpusSchemaVersion : SkillCorpusSchemaVersion,
             "",
             "",
             resourceUri,
@@ -187,11 +191,25 @@ public static class SchemaFingerprintTransform {
             new Dictionary<string, string>(StringComparer.Ordinal) {
                 ["contentType"] = contentType,
                 ["order"] = order.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                ["publicApiReferences"] = string.Join("|", publicApiReferences.OrderBy(v => v, StringComparer.Ordinal)),
-                ["samplePaths"] = string.Join("|", samplePaths.OrderBy(v => v, StringComparer.Ordinal)),
+                ["publicApiReferences"] = EncodeSkillCollection(publicApiReferences, requiresFraming),
+                ["samplePaths"] = EncodeSkillCollection(samplePaths, requiresFraming),
                 ["title"] = title,
                 ["version"] = version,
             });
+    }
+
+    private static bool HasAmbiguousBoundaries(IReadOnlyList<string> values)
+        => (values.Count == 1 && string.IsNullOrWhiteSpace(values[0])) || values.Any(value => value?.IndexOf('|') >= 0);
+
+    private static string EncodeSkillCollection(IReadOnlyList<string> values, bool requiresFraming) {
+        if (!requiresFraming) {
+            return string.Join("|", values.OrderBy(value => value, StringComparer.Ordinal));
+        }
+
+        return string.Concat(values.Select(value => Normalize(value ?? string.Empty))
+            .OrderBy(value => value, StringComparer.Ordinal)
+            .Select(value => value.Length.ToString(System.Globalization.CultureInfo.InvariantCulture) + ":" + value));
+    }
 
     public static GeneratedSchemaPayload CreateAggregateManifestPayload(
         IReadOnlyList<GeneratedSchemaFingerprint> commandFingerprints,

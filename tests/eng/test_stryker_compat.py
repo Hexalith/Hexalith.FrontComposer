@@ -3,9 +3,13 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import shutil
+import signal
+import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE_REPOSITORY = ROOT
@@ -49,6 +53,70 @@ class ContractTests(unittest.TestCase):
 
     def testMatchingContract(self):
         self.assertEqual(self.verify(), self.receipt)
+
+    def testPreparationRetriesAfterDownloadBuildFailureAndCancellation(self):
+        cache = self.directory / 'cache'
+        cache.mkdir()
+        selected = cache / 'hfcst-selected'
+
+        def fixture_build(_root, definition, inputs, staging):
+            self.assertFalse(selected.exists())
+            shutil.copytree(self.runtime, staging / 'runtime')
+            shutil.copyfile(self.directory / 'build-provenance.json', staging / 'build-provenance.json')
+            return compat.verify_build(staging, definition, inputs)
+
+        for failure in (OSError('download error'), subprocess.CalledProcessError(1, ['dotnet', 'build']),
+                        compat.PreparationCancelled(signal.SIGTERM)):
+            with self.subTest(failure=type(failure).__name__):
+                def interrupted_build(_root, _definition, _inputs, staging):
+                    (staging / 'partial-output').write_text('unfinished')
+                    raise failure
+
+                with patch.object(compat, '_prepare_build', side_effect=interrupted_build):
+                    with self.assertRaises(type(failure)):
+                        compat.prepare(ROOT, DEFINITION, self.inputs, selected)
+                self.assertEqual(list(cache.iterdir()), [])
+
+        with patch.object(compat, '_prepare_build', side_effect=fixture_build) as build:
+            self.assertEqual(compat.prepare(ROOT, DEFINITION, self.inputs, selected), self.receipt)
+            self.assertEqual(compat.prepare(ROOT, DEFINITION, self.inputs, selected), self.receipt)
+            build.assert_called_once()
+        self.assertEqual(list(cache.iterdir()), [selected])
+
+    def testPreparationVerifiesConcurrentCacheWinner(self):
+        selected = self.directory / 'selected'
+
+        def competing_build(_root, _definition, _inputs, staging):
+            for path in (staging, selected):
+                path.mkdir(exist_ok=True)
+                shutil.copytree(self.runtime, path / 'runtime')
+                shutil.copyfile(self.directory / 'build-provenance.json', path / 'build-provenance.json')
+            (selected / 'runtime' / compat.ASSEMBLIES[0]).write_bytes(b'tampered winner')
+
+        with patch.object(compat, '_prepare_build', side_effect=competing_build):
+            with self.assertRaisesRegex(compat.CompatibilityError, 'checksum/inventory'):
+                compat.prepare(ROOT, DEFINITION, self.inputs, selected)
+        self.assertEqual((selected / 'runtime' / compat.ASSEMBLIES[0]).read_bytes(), b'tampered winner')
+        self.assertEqual(list(self.directory.glob('.selected-*')), [])
+
+    def testPreparationPreservesAnEmptyCompetingDestination(self):
+        selected = self.directory / 'selected'
+
+        def competing_build(_root, definition, inputs, staging):
+            shutil.copytree(self.runtime, staging / 'runtime')
+            shutil.copyfile(self.directory / 'build-provenance.json', staging / 'build-provenance.json')
+            selected.mkdir()
+            return compat.verify_build(staging, definition, inputs)
+
+        with patch.object(compat, '_prepare_build', side_effect=competing_build) as build:
+            with self.assertRaisesRegex(compat.CompatibilityError, 'Missing or symlinked JSON input'):
+                compat.prepare(ROOT, DEFINITION, self.inputs, selected)
+            with self.assertRaisesRegex(compat.CompatibilityError, 'Missing or symlinked JSON input'):
+                compat.prepare(ROOT, DEFINITION, self.inputs, selected)
+            build.assert_called_once()
+        self.assertTrue(selected.is_dir())
+        self.assertEqual(list(selected.iterdir()), [])
+        self.assertEqual(list(self.directory.glob('.selected-*')), [])
 
     def testChangedRuntimeBytes(self):
         (self.runtime / 'Stryker.CLI.dll').write_bytes(b'changed')

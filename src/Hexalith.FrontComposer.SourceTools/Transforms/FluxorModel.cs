@@ -1,3 +1,5 @@
+using Hexalith.FrontComposer.SourceTools.Parsing;
+
 namespace Hexalith.FrontComposer.SourceTools.Transforms;
 /// <summary>
 /// Output model for Fluxor feature/actions/reducers generation.
@@ -7,16 +9,37 @@ public sealed class FluxorModel : IEquatable<FluxorModel> {
         string typeName,
         string @namespace,
         string stateName,
-        string featureName) {
+        string featureName)
+        : this(typeName, @namespace, stateName, featureName, null) {
+    }
+
+    internal FluxorModel(
+        string typeName,
+        string @namespace,
+        string stateName,
+        string featureName,
+        NestedProjectionIdentity? nestedProjection) {
         TypeName = typeName;
         Namespace = @namespace;
         StateName = stateName;
         FeatureName = featureName;
+        NestedProjection = nestedProjection;
     }
 
     public string TypeName { get; }
 
+    private NestedProjectionIdentity? NestedProjection { get; }
+
+    /// <summary>Gets the C# reference to the projection.</summary>
+    internal string TypeReference => NestedProjection?.SourceName ?? TypeName;
+
+    /// <summary>Gets the generated action and reducer type stem.</summary>
+    internal string ArtifactName => NestedProjection?.ArtifactName ?? TypeName;
+
     public string Namespace { get; }
+
+    /// <summary>Gets the namespace containing the emitted artifacts.</summary>
+    internal string GeneratedNamespace => NestedProjection?.GeneratedNamespace ?? Namespace;
 
     public string StateName { get; }
 
@@ -32,6 +55,7 @@ public sealed class FluxorModel : IEquatable<FluxorModel> {
         }
 
         return TypeName == other.TypeName
+            && NestedProjection == other.NestedProjection
             && Namespace == other.Namespace
             && StateName == other.StateName
             && FeatureName == other.FeatureName;
@@ -43,6 +67,7 @@ public sealed class FluxorModel : IEquatable<FluxorModel> {
         unchecked {
             int hash = 17;
             hash = (hash * 31) + (TypeName?.GetHashCode() ?? 0);
+            hash = (hash * 31) + (NestedProjection?.GetHashCode() ?? 0);
             hash = (hash * 31) + (Namespace?.GetHashCode() ?? 0);
             hash = (hash * 31) + (StateName?.GetHashCode() ?? 0);
             hash = (hash * 31) + (FeatureName?.GetHashCode() ?? 0);

@@ -79,6 +79,26 @@ public static class AttributeParser {
         string ns = typeSymbol.ContainingNamespace?.IsGlobalNamespace == true
             ? string.Empty
             : typeSymbol.ContainingNamespace?.ToDisplayString() ?? string.Empty;
+        NestedProjectionIdentity? nestedProjection = null;
+        if (typeSymbol.ContainingType is not null)
+        {
+            for (INamedTypeSymbol? current = typeSymbol; current is not null; current = current.ContainingType)
+            {
+                if (current.DeclaredAccessibility != Accessibility.Public)
+                {
+                    diagnostics.Add(new DiagnosticInfo(
+                        "HFC1004",
+                        string.Format("[Projection] type '{0}' has non-public declaration '{1}'. Make the nested projection and every containing type public to generate its view and state.", typeSymbol.Name, current.Name),
+                        "Warning",
+                        filePath,
+                        linePos.Line,
+                        linePos.Character));
+                    return new ParseResult(null, new EquatableArray<DiagnosticInfo>(diagnostics.ToImmutableArray()));
+                }
+            }
+
+            nestedProjection = new NestedProjectionIdentity(typeSymbol, compilation, ns);
+        }
 
         // Parse attributes on the type
         string? boundedContext = ParseBoundedContext(typeSymbol, diagnostics, filePath, linePos, out string? boundedContextDisplayLabel);
@@ -152,7 +172,8 @@ public static class AttributeParser {
             filePath,
             linePos.Line,
             linePos.Character,
-            emptyStateCtaCommandTypeName);
+            emptyStateCtaCommandTypeName,
+            nestedProjection);
 
         return new ParseResult(
             model,
