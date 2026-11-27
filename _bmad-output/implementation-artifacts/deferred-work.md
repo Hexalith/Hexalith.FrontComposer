@@ -3553,6 +3553,7 @@ origin: migrated from legacy ledger ("Deferred from: story 3-1-shell-layout-them
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 reason: **`PersistencePrecedenceTests` deterministic channel-level hook (Task 10.13)** — needed `InternalsVisibleTo` + a test-only `ManualResetEventSlim` exposed by `LocalStorageService`. The spec design (Challenge-from-Critical-Perspective rewrite) is sound but the instrumentation has non-trivial footprint on the production type. **Defer target:** add the hook alongside the SignalR reconciliation work in Epic 5-4 where the same channel-test-harness pattern is needed. Reconciliation: Row: DW-0427; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.4; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.4.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Related: Story 11.4, Story 11.7; Evidence: section: story 3-1-shell-layout-theme-and-typography (2026-04-18).
 status: open
+decision: 2026-11-27 Skipped. The proposed test and production hook are obsolete. LocalStorageServiceTests controls the real drain through JS completion gates and FlushAsync, covering write/remove ordering and persisted state.
 
 ### DW-1159: `FrontComposerShellParameterSurfaceTests` snapshot + full bUnit render tests (Task 10.1)
 
@@ -3565,7 +3566,8 @@ archived: 2026-09-18
 origin: migrated from legacy ledger ("Deferred from: story 3-1-shell-layout-theme-and-typography (2026-04-18)"), 2026-08-27
 location: FcShellResources.fr.resx
 reason: **`FcLifecycleWrapper` inline-copy → `IStringLocalizer<FcShellResources>` migration** — 3-1 seeded the FR lifecycle labels in `FcShellResources.fr.resx` (closing Story 2-4 Known Gap G2). The wrapper itself still uses inline strings. Non-blocking follow-up PR. **Defer target:** Story 3-2 or dedicated follow-up PR. Reconciliation: Row: DW-0429; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: story 3-1-shell-layout-theme-and-typography (2026-04-18).
-status: open
+status: done 2026-11-27
+resolution: Command lifecycle badges, message bars, prompt and recovery copy now resolve from the English and French shell resources. Adopter-provided rejection text retains precedence.
 
 ### DW-1161: Palette bUnit test matrix short (5 of 9)
 

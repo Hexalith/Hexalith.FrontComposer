@@ -4,9 +4,11 @@ using Bunit;
 
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Shell.Components.Lifecycle;
+using Hexalith.FrontComposer.Shell.Resources;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Time.Testing;
 
 using NSubstitute;
@@ -52,6 +54,68 @@ public sealed class FcLifecycleWrapperTests : LifecycleWrapperTestBase {
         push(Transition(CommandLifecycleState.Idle, CommandLifecycleState.Submitting));
 
         cut.Find(".fc-lifecycle-wrapper").GetAttribute("class")!.ShouldNotContain("fc-lifecycle-pulse");
+    }
+
+    [Theory]
+    [InlineData(CommandLifecycleState.Acknowledged, "fc-acknowledged", "Réception de la commande confirmée")]
+    [InlineData(CommandLifecycleState.Confirmed, "fc-confirmed", "Commande confirmée")]
+    [InlineData(CommandLifecycleState.IdempotentConfirmed, "fc-idempotent", "Commande déjà confirmée")]
+    [InlineData(CommandLifecycleState.Rejected, "fc-rejected", "Commande rejetée")]
+    public void DefaultMessageBarTitlesUseTheActiveCulture(CommandLifecycleState state, string testId, string title) {
+        using CultureScope culture = new("fr-CA");
+        (IRenderedComponent<FcLifecycleWrapper> cut, Action<CommandLifecycleTransition> push, FakeTimeProvider time) =
+            RenderWrapperWithFakeTime();
+
+        push(TransitionAt(CommandLifecycleState.Syncing, state, time.GetUtcNow()));
+
+        cut.WaitForAssertion(() => {
+            string message = cut.Find($"[data-testid='{testId}']").TextContent;
+            message.ShouldContain(title);
+            if (state == CommandLifecycleState.Rejected) {
+                message.ShouldContain("La commande a été rejetée. Vérifiez votre saisie et réessayez.");
+            }
+        });
+    }
+
+    [Fact]
+    public void CustomLocalizerRetainsOverridesAndFallsBackToEmbeddedLifecycleCopy() {
+        using CultureScope culture = new("fr");
+        IStringLocalizer<FcShellResources> localizer = Substitute.For<IStringLocalizer<FcShellResources>>();
+        localizer[Arg.Any<string>()].Returns(call => new LocalizedString(
+            call.Arg<string>(), call.Arg<string>(), resourceNotFound: true));
+        localizer["LifecycleAcknowledgedTitle"].Returns(new LocalizedString(
+            "LifecycleAcknowledgedTitle", "Réception confirmée par le service"));
+        Services.AddSingleton(localizer);
+        (IRenderedComponent<FcLifecycleWrapper> cut, Action<CommandLifecycleTransition> push) = RenderWrapperWithLiveService();
+
+        push(Transition(CommandLifecycleState.Submitting, CommandLifecycleState.Acknowledged));
+
+        cut.WaitForAssertion(() => {
+            string message = cut.Find("[data-testid='fc-acknowledged']").TextContent;
+            message.ShouldContain("Réception confirmée par le service");
+            message.ShouldContain("La commande a été acceptée et attend une confirmation.");
+            cut.Find("[data-testid='fc-acknowledged-badge']").TextContent.ShouldBe("Accusé de réception");
+        });
+    }
+
+    [Fact]
+    public void SyncingRecoveryUsesTheActiveCulture() {
+        using CultureScope culture = new("fr");
+        (IRenderedComponent<FcLifecycleWrapper> cut, Action<CommandLifecycleTransition> push, FakeTimeProvider time) =
+            RenderWrapperWithFakeTime();
+        push(TransitionAt(CommandLifecycleState.Acknowledged, CommandLifecycleState.Syncing, time.GetUtcNow()));
+
+        time.Advance(TimeSpan.FromMilliseconds(2_100));
+        cut.WaitForAssertion(() => cut.Find(".fc-lifecycle-still-syncing").TextContent
+            .ShouldBe("Synchronisation toujours en cours…"));
+
+        time.Advance(TimeSpan.FromSeconds(8));
+        cut.WaitForAssertion(() => {
+            string prompt = cut.Find("[data-testid='fc-action-prompt']").TextContent;
+            prompt.ShouldContain("Action requise");
+            prompt.ShouldContain("Vous pouvez attendre ou recommencer sur une nouvelle page.");
+            cut.Find("[data-testid='fc-refresh-action']").TextContent.Trim().ShouldBe("Recommencer");
+        });
     }
 
     [Fact]

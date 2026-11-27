@@ -26,6 +26,19 @@ public sealed class FcLifecycleWrapperDisconnectedTests : LifecycleWrapperTestBa
     }
 
     [Fact]
+    public void DisconnectedPromptUsesTheActiveCulture() {
+        using CultureScope culture = new("fr");
+        (IRenderedComponent<FcLifecycleWrapper> cut, Action<CommandLifecycleTransition> push, _) = RenderWrapperWithFakeTime();
+        IProjectionConnectionState state = Services.GetRequiredService<IProjectionConnectionState>();
+
+        push(TransitionAt(CommandLifecycleState.Acknowledged, CommandLifecycleState.Syncing, FakeTime.GetUtcNow()));
+        state.Apply(new ProjectionConnectionTransition(ProjectionConnectionStatus.Disconnected, "Closed"));
+
+        cut.WaitForAssertion(() => cut.Find("[data-testid='fc-action-prompt']").TextContent
+            .ShouldContain("Connexion perdue. Impossible de confirmer la synchronisation."));
+    }
+
+    [Fact]
     public void TerminalConfirmed_IgnoresLaterProjectionConnectionLoss() {
         (IRenderedComponent<FcLifecycleWrapper> cut, Action<CommandLifecycleTransition> push, _) = RenderWrapperWithFakeTime();
         IProjectionConnectionState state = Services.GetRequiredService<IProjectionConnectionState>();

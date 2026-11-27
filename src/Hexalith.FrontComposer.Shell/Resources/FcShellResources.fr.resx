@@ -90,6 +90,36 @@
   <data name="LifecycleTimeoutLabel" xml:space="preserve">
     <value>La requête prend plus de temps que prévu</value>
   </data>
+  <data name="LifecycleAcknowledgedTitle" xml:space="preserve">
+    <value>Réception de la commande confirmée</value>
+  </data>
+  <data name="LifecycleAcknowledgedMessage" xml:space="preserve">
+    <value>La commande a été acceptée et attend une confirmation.</value>
+  </data>
+  <data name="LifecycleActionPromptMessage" xml:space="preserve">
+    <value>Vous pouvez attendre ou recommencer sur une nouvelle page.</value>
+  </data>
+  <data name="LifecycleStartOverLabel" xml:space="preserve">
+    <value>Recommencer</value>
+  </data>
+  <data name="LifecycleConfirmedTitle" xml:space="preserve">
+    <value>Commande confirmée</value>
+  </data>
+  <data name="LifecycleIdempotentTitle" xml:space="preserve">
+    <value>Commande déjà confirmée</value>
+  </data>
+  <data name="LifecycleRejectedTitle" xml:space="preserve">
+    <value>Commande rejetée</value>
+  </data>
+  <data name="LifecycleRejectedMessage" xml:space="preserve">
+    <value>La commande a été rejetée. Vérifiez votre saisie et réessayez.</value>
+  </data>
+  <data name="LifecycleDisconnectedPromptTitle" xml:space="preserve">
+    <value>Connexion perdue. Impossible de confirmer la synchronisation.</value>
+  </data>
+  <data name="LifecycleActionPromptTitle" xml:space="preserve">
+    <value>Action requise : le système n’a pas confirmé votre commande</value>
+  </data>
 
   <!-- Story 3-2 Task 8.6 (D19) — clés ARIA de navigation + lien d'évitement. -->
   <data name="NavMenuAriaLabel" xml:space="preserve">

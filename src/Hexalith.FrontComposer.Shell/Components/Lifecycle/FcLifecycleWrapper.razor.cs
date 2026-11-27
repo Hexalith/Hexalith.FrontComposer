@@ -1,3 +1,6 @@
+using System.Globalization;
+using System.Resources;
+
 using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Diagnostics;
@@ -28,6 +31,8 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
 
     // Story 13.3 VR-03 — the Shell's never-throwing clipboard helper; it returns a structured outcome string.
     private const string ClipboardModulePath = "./_content/Hexalith.FrontComposer.Shell/js/fc-devmode-clipboard.js";
+    private static readonly ResourceManager EmbeddedResources = new(typeof(FcShellResources));
+
     private string _boundCorrelationId = string.Empty;
     private string _boundAnnouncementSurface = string.Empty;
     private string _boundAnnouncementGroup = string.Empty;
@@ -153,6 +158,11 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
 
     [Inject]
     private IServiceProvider Services { get; set; } = default!;
+
+    private string LocalizedLifecycleText(string key) {
+        LocalizedString localized = Localizer[key];
+        return localized.ResourceNotFound ? EmbeddedResources.GetString(key, CultureInfo.CurrentUICulture) ?? localized.Value : localized.Value;
+    }
 
     /// <inheritdoc />
     protected override void OnInitialized() {
