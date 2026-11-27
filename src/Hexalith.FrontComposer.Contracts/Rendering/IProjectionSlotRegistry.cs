@@ -19,7 +19,7 @@ public interface IProjectionSlotRegistry {
     /// </summary>
     /// <param name="projectionType">Projection CLR type.</param>
     /// <param name="role">Optional projection role.</param>
-    /// <param name="fieldName">Canonical projection property name.</param>
+    /// <param name="fieldName">Canonical projection property name, compared using ordinal case-sensitive matching.</param>
     /// <returns>The selected descriptor, or <see langword="null"/> when no valid slot exists
     /// or when ambiguous/incompatible registrations have been suppressed (the Shell
     /// implementation logs HFC1040/HFC1041 in that case).</returns>

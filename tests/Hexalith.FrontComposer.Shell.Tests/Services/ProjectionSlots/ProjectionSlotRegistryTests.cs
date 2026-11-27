@@ -46,6 +46,20 @@ public sealed class ProjectionSlotRegistryTests {
     }
 
     [Fact]
+    public void Resolve_FieldNamesUseOrdinalCaseSensitiveMatching()
+    {
+        ProjectionSlotDescriptor canonical = Descriptor(
+            nameof(SlotProjection.Priority), typeof(int), null, typeof(AnyPrioritySlot));
+        ProjectionSlotDescriptor lowercase = Descriptor(
+            "priority", typeof(int), null, typeof(SecondPrioritySlot));
+        ProjectionSlotRegistry registry = NewRegistry(canonical, lowercase);
+
+        registry.Resolve(typeof(SlotProjection), null, nameof(SlotProjection.Priority)).ShouldBe(canonical);
+        registry.Resolve(typeof(SlotProjection), null, "priority").ShouldBe(lowercase);
+        registry.Resolve(typeof(SlotProjection), null, "PRIORITY").ShouldBeNull();
+    }
+
+    [Fact]
     public void Resolve_DuplicateExactSlot_FailsClosed() {
         ProjectionSlotRegistry registry = NewRegistry(
             Descriptor("Priority", typeof(int), null, typeof(AnyPrioritySlot)),

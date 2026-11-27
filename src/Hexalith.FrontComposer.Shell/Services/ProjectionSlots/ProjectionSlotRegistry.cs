@@ -246,7 +246,24 @@ public sealed class ProjectionSlotRegistry : IProjectionSlotRegistry {
         return true;
     }
 
-    private readonly record struct RegistryKey(Type ProjectionType, ProjectionRole? Role, string FieldName);
+    private readonly record struct RegistryKey(Type ProjectionType, ProjectionRole? Role, string FieldName)
+    {
+        /// <inheritdoc />
+        public bool Equals(RegistryKey other)
+            => EqualityComparer<Type>.Default.Equals(ProjectionType, other.ProjectionType)
+                && Role == other.Role
+                && StringComparer.Ordinal.Equals(FieldName, other.FieldName);
+
+        /// <inheritdoc />
+        public override int GetHashCode()
+        {
+            HashCode hash = new();
+            hash.Add(ProjectionType);
+            hash.Add(Role);
+            hash.Add(FieldName, StringComparer.Ordinal);
+            return hash.ToHashCode();
+        }
+    }
 
     private readonly record struct RegistryEntry(ProjectionSlotDescriptor Descriptor, bool Ambiguous);
 }
