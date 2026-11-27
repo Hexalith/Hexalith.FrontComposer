@@ -90,6 +90,29 @@ public sealed class FcFieldSlotHostTests : BunitContext {
     }
 
     [Fact]
+    public void Render_DefaultRendererReturnsNull_RendersNothing()
+    {
+        Services.Replace(ServiceDescriptor.Singleton<IProjectionSlotRegistry>(EmptyRegistry()));
+
+        int renderCount = 0;
+        RenderFragment DefaultFragment(FieldSlotContext<SlotProjection, int> _)
+        {
+            renderCount++;
+            return null!;
+        }
+
+        IRenderedComponent<FcFieldSlotHost<SlotProjection, int>> cut = Render<FcFieldSlotHost<SlotProjection, int>>(parameters => parameters
+            .Add(p => p.Parent, new SlotProjection(3, "Sue"))
+            .Add(p => p.Value, 3)
+            .Add(p => p.Field, NewField("Priority"))
+            .Add(p => p.RenderContext, NewRenderContext())
+            .Add(p => p.RenderDefault, DefaultFragment));
+
+        renderCount.ShouldBe(1);
+        cut.Markup.ShouldBeEmpty();
+    }
+
+    [Fact]
     public void Render_NullParent_LogsHfc2120_And_RendersNothing() {
         Services.Replace(ServiceDescriptor.Singleton<IProjectionSlotRegistry>(EmptyRegistry()));
 

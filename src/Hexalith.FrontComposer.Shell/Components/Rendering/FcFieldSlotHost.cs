@@ -118,7 +118,7 @@ public sealed class FcFieldSlotHost<TProjection, TField> : ComponentBase {
         }
 
         if (descriptor is null) {
-            RenderDefault?.Invoke(context)(builder);
+            RenderDefault?.Invoke(context)?.Invoke(builder);
             return;
         }
 
