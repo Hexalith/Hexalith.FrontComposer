@@ -165,9 +165,7 @@ public sealed class ProjectionSlotRegistry : IProjectionSlotRegistry {
                 comparison.Actual.Build);
         }
 
-        ProjectionSlotDescriptorIssue issue = CanBeSlotContextTypeArgument(descriptor.ProjectionType)
-            ? ProjectionSlotDescriptorIssue.None
-            : ProjectionSlotDescriptorIssue.InvalidProjectionType;
+        ProjectionSlotDescriptorIssue issue = GetDescriptorIssue(descriptor);
         string? reason = null;
         if (issue != ProjectionSlotDescriptorIssue.None || !IsCompatibleComponent(descriptor, out reason)) {
             FrontComposerWarningLog.ProjectionSlotInvalidComponent(
@@ -200,6 +198,18 @@ public sealed class ProjectionSlotRegistry : IProjectionSlotRegistry {
                     descriptor.ComponentType);
                 return new RegistryEntry(existing.Descriptor, Ambiguous: true);
             });
+    }
+
+    private static ProjectionSlotDescriptorIssue GetDescriptorIssue(ProjectionSlotDescriptor descriptor)
+    {
+        if (!CanBeSlotContextTypeArgument(descriptor.ProjectionType))
+        {
+            return ProjectionSlotDescriptorIssue.InvalidProjectionType;
+        }
+
+        return descriptor.Role is ProjectionRole role && !Enum.IsDefined(role)
+            ? ProjectionSlotDescriptorIssue.InvalidRole
+            : ProjectionSlotDescriptorIssue.None;
     }
 
     private static bool CanBeSlotContextTypeArgument(Type type)

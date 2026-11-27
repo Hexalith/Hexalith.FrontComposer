@@ -8,4 +8,7 @@ internal enum ProjectionSlotDescriptorIssue
 
     /// <summary>The projection type cannot be used as a closed generic argument.</summary>
     InvalidProjectionType,
+
+    /// <summary>The descriptor supplies an undefined projection role.</summary>
+    InvalidRole,
 }

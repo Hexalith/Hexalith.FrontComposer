@@ -311,6 +311,27 @@ public sealed class ProjectionSlotRegistryTests {
     }
 
     [Fact]
+    public void Register_UndefinedRole_LogsHfc1039AndPreservesAnyRoleFallback()
+    {
+        ListLogger<ProjectionSlotRegistry> logger = new();
+        const ProjectionRole undefinedRole = (ProjectionRole)(-123_456_789);
+        ProjectionSlotDescriptor invalid = Descriptor(
+            nameof(SlotProjection.Priority), typeof(int), undefinedRole, typeof(DetailPrioritySlot));
+        ProjectionSlotDescriptor anyRole = Descriptor(
+            nameof(SlotProjection.Priority), typeof(int), null, typeof(AnyPrioritySlot));
+        ProjectionSlotRegistry registry = new(logger, [new ProjectionSlotDescriptorSource([invalid, anyRole])]);
+
+        registry.Descriptors.ShouldHaveSingleItem().ShouldBe(anyRole);
+        registry.Resolve(typeof(SlotProjection), undefinedRole, nameof(SlotProjection.Priority)).ShouldBe(anyRole);
+
+        var entry = logger.Entries.ShouldHaveSingleItem();
+        entry.Level.ShouldBe(LogLevel.Warning);
+        entry.Message.ShouldContain("HFC1039");
+        entry.Message.ShouldContain("ReasonCategory=InvalidRole.");
+        entry.Message.ShouldNotContain("-123456789");
+    }
+
+    [Fact]
     public void Register_IncompatibleComponent_LogsHfc1039_WithSupportSafeShape() {
         ListLogger<ProjectionSlotRegistry> logger = new();
         ProjectionSlotRegistry registry = new(
