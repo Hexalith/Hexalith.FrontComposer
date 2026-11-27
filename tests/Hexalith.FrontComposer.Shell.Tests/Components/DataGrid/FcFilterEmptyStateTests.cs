@@ -66,10 +66,25 @@ public sealed class FcFilterEmptyStateTests : BunitContext {
         cut.Markup.ShouldNotContain("data-testid=\"fc-filter-reset\"");
     }
 
-    private IRenderedComponent<FcFilterEmptyState> RenderState(int activeFilterCount)
+    [Fact]
+    public void NegativeTotalCountFailsAtTheComponentBoundary() {
+        ArgumentOutOfRangeException error = Should.Throw<ArgumentOutOfRangeException>(() => RenderState(2, -1));
+
+        error.ParamName.ShouldBe(nameof(FcFilterEmptyState.TotalCount));
+    }
+
+    [Fact]
+    public void ZeroTotalCountIsAccepted() {
+        using CultureScope culture = new("en");
+        IRenderedComponent<FcFilterEmptyState> cut = RenderState(2, 0);
+
+        cut.Markup.ShouldContain("Reset filters to see all 0 orders.");
+    }
+
+    private IRenderedComponent<FcFilterEmptyState> RenderState(int activeFilterCount, int totalCount = 10)
         => Render<FcFilterEmptyState>(parameters => parameters
             .Add(s => s.ViewKey, ViewKeyValue)
-            .Add(s => s.TotalCount, 10)
+            .Add(s => s.TotalCount, totalCount)
             .Add(s => s.EntityPlural, "orders")
             .Add(s => s.ActiveFilterCount, activeFilterCount));
 }

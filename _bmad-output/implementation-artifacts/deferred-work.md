@@ -3654,7 +3654,8 @@ resolution: FilterEffects documentation now states that it timestamps and dispat
 origin: migrated from legacy ledger ("Deferred from: code review of 4-3-datagrid-filtering-sorting-and-search (2026-04-24 pass 2)"), 2026-08-27
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 reason: **`FcFilterEmptyState` does not guard against `TotalCount < 0`** — Contract-impossible in production, but an explicit `ArgumentOutOfRangeException` at the component boundary would catch buggy callers. Low priority; add alongside any future component-hardening pass. Reconciliation: Row: DW-0441; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of 4-3-datagrid-filtering-sorting-and-search (2026-04-24 pass 2).
-status: open
+status: done 2026-11-27
+resolution: The filtered-empty component rejects negative total counts when applying parameters and continues to accept zero and positive values.
 
 ### DW-1173: `FrontComposerShortcutRegistrar` slash handler does not wrap `DataGridFocusScope.IsFocusWithinDataGridAsync` in try/catch
 

@@ -20,7 +20,7 @@ public partial class FcFilterEmptyState : ComponentBase {
     [EditorRequired]
     public string ViewKey { get; set; } = string.Empty;
 
-    /// <summary>Total row count pre-filter.</summary>
+    /// <summary>Nonnegative total row count before filtering.</summary>
     [Parameter]
     [EditorRequired]
     public int TotalCount { get; set; }
@@ -38,8 +38,11 @@ public partial class FcFilterEmptyState : ComponentBase {
     private IStringLocalizer<FcShellResources> Localizer { get; set; } = default!;
 
     /// <inheritdoc />
-    protected override void OnParametersSet() => _message = Localizer[
+    protected override void OnParametersSet() {
+        ArgumentOutOfRangeException.ThrowIfNegative(TotalCount);
+        _message = Localizer[
             "EmptyFilteredStateTemplate",
             EntityPlural,
             TotalCount.ToString(CultureInfo.CurrentCulture)].Value;
+    }
 }

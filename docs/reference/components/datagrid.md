@@ -198,7 +198,7 @@ Complete component parameter reference follows. Internal Fluent children are imp
 | Parameter | Type | Contract |
 |---|---|---|
 | `ViewKey` | `string` | Stable per-view key. |
-| `TotalCount` | `int` | Total row count pre-filter. |
+| `TotalCount` | `int` | Nonnegative row count before filtering. The component throws `ArgumentOutOfRangeException` when it receives a negative count. |
 | `EntityPlural` | `string` | Humanised entity plural. |
 | `ActiveFilterCount` | `int` | Number of currently active filters (for the reset button's aria-label). |
 
