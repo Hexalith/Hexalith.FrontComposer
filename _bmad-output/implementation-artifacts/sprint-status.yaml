@@ -1,5 +1,5 @@
 # generated: 07-05-2026 17:13
-# last_updated: 11-27-2026 20:12
+# last_updated: 11-27-2026 21:50
 # project: frontcomposer
 # project_key: NOKEY
 # tracking_system: file-system
@@ -48,7 +48,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: '07-05-2026 17:13'
-last_updated: 11-27-2026 20:12
+last_updated: 11-27-2026 21:50
 project: frontcomposer
 project_key: NOKEY
 tracking_system: file-system
@@ -1397,3 +1397,7 @@ approved_change_backlog:
 # 2026-11-27 local graph verification at a3b1e3da2e354cbb03f446541e4988eaab7117c4 passed. Three successor comparisons passed and four earlier failures reproduced.
 # The 55ed3d84 plan remains superseded. Story 16.3 and Epic 16 remain in-progress, with G-3 open.
 # Source: spec-16-3-approve-or-reject-the-exact-runtime-migration.md#local-graph-verification-after-candidate-drift--2026-11-27.
+
+# 2026-11-27 Story 16.3 owner decisions: align Hexalith.Builds before qualifying a fresh candidate.
+# The Architect and Release Owner retained all four failed graph comparisons. Recovery stays open pending a passing actual base/candidate comparison and affected-module evidence.
+# 16.3 and Epic 16 remain in-progress. G-3 stays open. Source: spec-16-3-approve-or-reject-the-exact-runtime-migration.md#owner-decisions-after-local-graph-verification--2026-11-27.

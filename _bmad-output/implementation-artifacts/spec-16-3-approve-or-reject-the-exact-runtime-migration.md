@@ -1350,3 +1350,23 @@ Jérôme Piquot (`jpiquot`) replied in the Story 16.3 owner decision conversatio
 ### Package-version direction
 
 `jpiquot` answered “use latest hexalith packages versions.” In response to the follow-up addressed to the Architect, Release Owner, and FrontComposer maintainer, `jpiquot` selected “Align Hexalith.Builds to the latest Hexalith package versions first, then qualify a fresh candidate.” The first UTC clock read after that selection was `2026-11-27T21:11:31Z`. [Package preset disclosure](#prospective-preflight-plan--2026-11-27)
+
+## Builds alignment and graph recovery handoff — 2026-11-27
+
+The [owner decisions above](#owner-decisions-after-local-graph-verification--2026-11-27) settle the package posture and disposition of the four failed comparisons. Keep all four results as recorded. The Architect and Release Owner close dependency recovery only after the actual recovery event base and candidate pass the ordinary comparison and produce the required affected-module evidence. The local push comparison of `55b5db43d2504e7e82508db1d895bf9b9baac62a` to its receipt-only successor `ddb2e8a667f1fd7afa4bc3217a6d23307b055c70` passed with zero dependency changes and zero affected modules. That result covers the receipt commit only. [Exact failed comparisons](#local-graph-verification-after-candidate-drift--2026-11-27) · [Recovery rule](../planning-artifacts/sprint-change-proposal-2026-11-21.md#1-admit-a-platform-revision-change)
+
+**Package alignment lead.** FrontComposer still selects Builds `bf8a28b4bbcec619e8d9764d335f786f2bafb69e`. The local Builds `refs/remotes/origin/main` and `v6.9.0` tag resolve to `87d45477c16fef2b3db706d2531e1cf3ff98640f`. The table compares the committed root presets with the catalog defaults at those revisions. The newer local catalog matches the four previously divergent families and moves the Memories and Tenants defaults ahead of the root presets. This is a local lead. The alignment owners still need to confirm the eligible Builds revision, published package availability and effective selections.
+
+| Package family | FrontComposer root preset | Pinned Builds default | Local `v6.9.0` Builds default |
+| --- | --- | --- | --- |
+| EventStore | `5.6.0` | `5.5.1` | `5.6.0` |
+| Commons | `3.0.4` | `3.0.2` | `3.0.4` |
+| Conversations | `2.2.0` | `2.1.0` | `2.2.0` |
+| PolymorphicSerializations | `2.0.2` | `2.0.1` | `2.0.2` |
+| Memories | `4.1.1` | `4.1.1` | `4.1.2` |
+| Tenants | `8.0.4` | `8.0.4` | `8.1.0` |
+| Parties | `4.0.1` | `4.0.1` | `4.0.1` |
+
+**Ownership and sequencing.** The FrontComposer maintainer and Architect take the package alignment to Hexalith.Builds for catalog support and Hexalith.CiCd for the owned Builds gitlink and any affected workflow references. Review the full catalog delta and affected dependency graph, including the root presets that can mask updated defaults. The current Platform consumer source projection seals both the root Builds revision and the root MSBuild configuration. Use the adopted directional transition, with its policy-only preparation, exact selector move and policy retirement, for any change to that sealed projection. The Architect and Release Owner verify the real recovery event coordinates and affected-module evidence before a fresh candidate enters preflight. [Ownership contract](../../references/Hexalith.CiCd/templates/partials/ownership-block.txt.j2) · [Current graph policy](../../eng/dependency-graph-policy.json) · [Adopted transition](../planning-artifacts/sprint-change-proposal-2026-11-21.md#1-admit-a-platform-revision-change)
+
+**Qualification.** After alignment and recovery, the Release Owner with Architect completes candidate-specific readiness under adopted §3.2. It requires the exact candidate and live main check, an authorized window, coordinated writer hold, reviewer and approver availability, and authorized durable off-main record storage. The accepted CiCd follow-through and the retention disposition for merge `66250f89230e1b261b51ce873c83d96176a9d325` remain open. G-3 still requires timely exact-candidate Story 16.1 evidence, three separate migration decisions and the durable final Release Owner comparison. Story 16.3 and Epic 16 remain in progress and G-3 stays open. [Readiness rules](../planning-artifacts/sprint-change-proposal-2026-11-16.md#32-proposed-readiness-gate-before-qualification) · [Record retention](../planning-artifacts/sprint-change-proposal-2026-11-16.md#34-record-lineage-and-retention)
