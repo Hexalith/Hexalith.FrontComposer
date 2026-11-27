@@ -1387,6 +1387,10 @@ test.describe('Story 13.6 responsive operator surfaces', () => {
   for (const surface of surfaces) {
     for (const spacing of [false, true]) {
       for (const height of [900, 225]) test(`${surface.name}: 320 CSS-pixel reflow${spacing ? ' with all text-spacing overrides' : ''}${height === 225 ? ' at 225 CSS-pixel height (not browser zoom)' : ''}`, async ({ page }, testInfo) => {
+        if (surface.name === 'type') {
+          // Budget the complete forward and reverse focus audit for the dense type specimen.
+          test.setTimeout(120_000);
+        }
         await page.setViewportSize({ width: 320, height });
         await page.goto(surface.path);
         await expect(page.locator(surface.ready).first()).toBeVisible();
