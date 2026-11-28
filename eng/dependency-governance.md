@@ -1,5 +1,20 @@
 # Dependency governance source projection
 
+## 2026-11-28 v6.3 compatibility ledger and 6.2.0 baseline
+
+FrontComposer now plans release line `v6.3` and validates packs against published
+`6.2.0`. Consumer configuration digest is
+`a1b67aad9d16d9d9356ef10d970fcafcdbb4bde87c98a2a459eac55302ed845b`.
+Root selector digest remains
+`05f67b86a15c0ab8e7ef6ad5ae4eef3aedce05234c31a21d6ed76bdad187c3e7`.
+The graph still contains 76 edges.
+
+The matching policy reseal is `4ea2d16590f43378218a2a2c9d571bf614968662`.
+This documentation-only child is the later-base activation of that policy.
+The previous event-base policy rejected the changed consumer
+configuration, as expected. Hosted CI and Quality on this commit are the
+release evidence; local validation of 76 edges does not replace those gates.
+
 ## 2026-11-28 published Hexalith package cohort and module sources
 
 FrontComposer now selects Memories `4.1.4`, Tenants `8.1.1`, and Parties `4.0.2`
