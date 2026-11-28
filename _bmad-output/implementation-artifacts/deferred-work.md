@@ -11872,3 +11872,21 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-16-3-approve-or-reject-the-exact-runtime-migration.md`
   summary: Align Hexalith.Builds before qualifying a fresh candidate. The FrontComposer maintainer and Architect own the package inputs with Builds and CiCd, and the Architect and Release Owner own recovery acceptance for the actual event base and candidate.
   evidence: [Owner receipts](spec-16-3-approve-or-reject-the-exact-runtime-migration.md#owner-decisions-after-local-graph-verification--2026-11-27) settle the package direction and retain all four failed comparisons. The [alignment and recovery handoff](spec-16-3-approve-or-reject-the-exact-runtime-migration.md#builds-alignment-and-graph-recovery-handoff--2026-11-27) identifies the local catalog lead, remaining root-preset differences and sealed projection. Close recovery only with a passing actual base/candidate comparison and the required affected-module evidence. G-3 remains open pending the fresh candidate's evidence and receipts.
+
+## Deferred from: review pass 2 of spec-17-2-publish-and-exercise-the-release-incident-runbook.md (2026-11-28)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-17-2-publish-and-exercise-the-release-incident-runbook.md`
+  summary: Broaden anchor and heading regexes in `DocsSiteValidationTests.AuthenticationGuideCoversEveryValidatorHelpAnchor` to accept digits, hyphens, and punctuation.
+  evidence: Pre-existing defect at `tests/Hexalith.FrontComposer.SourceTools.Tests/Docs/DocsSiteValidationTests.cs:52-61` introduced by unrelated commit `793b9566`; `\"#([a-z][a-z-]+)\"` and `(?m)^## ([A-Za-z ]+)\r?$` silently skip anchors or headings containing digits (e.g., `#saml2-handler`).
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-17-2-publish-and-exercise-the-release-incident-runbook.md`
+  summary: Refresh `_bmad-output/implementation-artifacts/epic-17-context.md` with the 2026-11-17/19 literal-`false` emergency-stop observations, governance IDs in the Stories list, canonical runbook path, GOV-H asset-name constraint, and Story 17.15 sample-host assumption.
+  evidence: Verified at `_bmad-output/implementation-artifacts/epic-17-context.md:7,11-26,31`; deferred per review routing rule because `epic-17-context.md` is a compiled agent-context file. Canonical planning and architecture sources remain authoritative.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-17-2-publish-and-exercise-the-release-incident-runbook.md`
+  summary: Update the `ARCHITECTURE-SPINE.md` Deferred incident-preservation link from the superseded November 17 runbook approval receipt to the current approved Story 17.2 receipt during the next governed source-reconciliation update.
+  evidence: Verified at `_bmad-output/planning-artifacts/architecture/architecture-gov-1-2026-07-19/ARCHITECTURE-SPINE.md:1196`; deferred so Story 17.2 does not alter a `GOV-SRC-1` digest-sealed planning authority outside governed source reconciliation (`GOV-ACCEPT-2`).
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-17-2-publish-and-exercise-the-release-incident-runbook.md`
+  summary: Add negative end-to-end test coverage for `eng/validate-docs.ps1:1273` invoking `Build-DocsSite` without `-SkipDocFx`.
+  evidence: Pre-verified verification gap (VG2-3): `DocsSiteValidationTests.RenderedReleaseRunbookRequiresPageAndBothNavigationLinksAsync` invokes `Build-DocsSite` via `RunDocsCheckAsync`, while `AssertFluentPublicationAsync` passes `-SkipDocFx`. Testing the non-`-SkipDocFx` script path negatively requires separating full Release solution build + `docfx metadata` from site rendering in `eng/validate-docs.ps1`.

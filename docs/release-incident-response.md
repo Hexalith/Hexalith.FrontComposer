@@ -73,7 +73,7 @@ At detection, locate the selected private channel in the existing incident
 record's communications entry. If none is recorded, the Release Owner selects
 an access-controlled channel and records its locator, authorized participants
 and custodian there; keep the private locator in restricted owner custody and
-only a support-safe reference in this public record. No channel or contact
+only a support-safe reference in the public incident record. No channel or contact
 receipt is implied by this guide. Notify all required capacities through that
 channel, recording each capacity explicitly even when `jpiquot` fills them all.
 For provider escalation, sign in to the
@@ -109,9 +109,9 @@ they are instructions, not operations executed by this guide or the tabletop:
 
 | Action | Official administration reference |
 | --- | --- |
-| Stop flag and authenticated readback | GitHub [create repository variable](https://docs.github.com/en/rest/actions/variables#create-a-repository-variable), [update repository variable](https://docs.github.com/en/rest/actions/variables#update-a-repository-variable) and [get repository variable](https://docs.github.com/en/rest/actions/variables#get-a-repository-variable), targeting the exact variable/repository below. |
-| Refuse pending `production` approval | [Get pending deployments](https://docs.github.com/en/rest/actions/workflow-runs#get-pending-deployments-for-a-workflow-run), then an authorized reviewer uses [review pending deployments](https://docs.github.com/en/rest/actions/workflow-runs#review-pending-deployments-for-a-workflow-run) with `state: rejected` for the recorded environment IDs. |
-| Restrict new release execution | Administrator uses [disable workflow](https://docs.github.com/en/rest/actions/workflows#disable-a-workflow) for the identified publication-capable caller workflow, including `release.yml`, and confirms its state with [get workflow](https://docs.github.com/en/rest/actions/workflows#get-a-workflow). This does not terminate existing jobs or invalidate issued credentials. |
+| Stop flag and authenticated readback | GitHub [create repository variable](https://docs.github.com/en/rest/actions/variables#create-a-repository-variable), [update repository variable](https://docs.github.com/en/rest/actions/variables#update-a-repository-variable) and [get repository variable](https://docs.github.com/en/rest/actions/variables#get-a-repository-variable) for the repository variable, plus [list environment variables](https://docs.github.com/en/rest/actions/variables#list-environment-variables), [update an environment variable](https://docs.github.com/en/rest/actions/variables#update-an-environment-variable) and [delete an environment variable](https://docs.github.com/en/rest/actions/variables#delete-an-environment-variable) for any `production` environment override (and organization-level variables if applicable). |
+| Refuse pending `production` approval | [Get pending deployments](https://docs.github.com/en/rest/actions/workflow-runs#get-pending-deployments-for-a-workflow-run), then an authorized reviewer uses [review pending deployments](https://docs.github.com/en/rest/actions/workflow-runs#review-pending-deployments-for-a-workflow-run) with `state: rejected` for the recorded environment IDs. Both `prepare-candidate` in `release.yml` and `publish` in `.github/workflows/release-publish.yml` target `environment: production` and must be rejected. |
+| Restrict new release execution | Administrator uses [disable workflow](https://docs.github.com/en/rest/actions/workflows#disable-a-workflow) for every identified publication-capable workflow, including both `release.yml` and `.github/workflows/release-publish.yml` (the `workflow_call` publisher holding `production` write/OIDC authority), and confirms each state with [get workflow](https://docs.github.com/en/rest/actions/workflows#get-a-workflow). This does not terminate existing jobs or invalidate issued credentials. |
 | Stop and verify in-flight jobs | [Cancel workflow run](https://docs.github.com/en/rest/actions/workflow-runs#cancel-a-workflow-run), [force cancel](https://docs.github.com/en/rest/actions/workflow-runs#force-cancel-a-workflow-run) if needed, then [get run attempt](https://docs.github.com/en/rest/actions/workflow-runs#get-a-workflow-run-attempt) and [list jobs for that attempt](https://docs.github.com/en/rest/actions/workflow-jobs#list-jobs-for-a-workflow-run-attempt) for terminal status. |
 | Stop NuGet exchange / revoke static keys | Sign in to NuGet.org → username → [Trusted Publishing](https://www.nuget.org/account/TrustedPublishing), as described in [NuGet's setup guide](https://learn.microsoft.com/en-us/nuget/nuget-org/trusted-publishing#github-actions-setup), and select the affected owner/policy for removal. For static keys use username → [API Keys](https://www.nuget.org/account/apikeys), following [NuGet's delete/regenerate guidance](https://learn.microsoft.com/en-us/nuget/nuget-org/publish-a-package). If an authorized removal control is unavailable, record that gap and escalate through NuGet Contact Support; do not assume revocation. |
 
@@ -125,16 +125,24 @@ they are instructions, not operations executed by this guide or the tabletop:
    `HEXALITH_RELEASE_PUBLISH_ENABLED` to the exact lowercase string `false`.
    Update an existing variable. If an authenticated administrator confirms absence
    in the complete repository-variable listing, create it with that same value.
+   Because GitHub Actions `production` environment variables override repository
+   variables for jobs targeting `environment: production` (`.github/workflows/release-publish.yml`
+   and `prepare-candidate` in `release.yml`), also inspect the `production`
+   environment variables (and organization-level variables if applicable) and
+   remove or set literal `false` on any `HEXALITH_RELEASE_PUBLISH_ENABLED` override.
    On a permission error, incomplete listing or ambiguous 404, escalate the
    missing proof and keep the other restrictions in effect.
-   From a separately authenticated read-only request, capture the resulting value,
-   `updated_at`, HTTP status, server `Date`, observer and UTC observation time.
+   From separately authenticated read-only requests, capture the resulting values,
+   `updated_at`, HTTP status, server `Date`, observer and UTC observation time
+   for both the repository variable and the `production` environment variable
+   listing (and organization level if present).
    An unset or other non-`true` value may stop a future job mechanically, but does
    not satisfy the required literal-false receipt. A readback failure is a gap.
-   The following request is read-only and must not log request authorization:
+   The following requests are read-only and must not log request authorization:
 
    ```sh
    gh api --include repos/Hexalith/Hexalith.FrontComposer/actions/variables/HEXALITH_RELEASE_PUBLISH_ENABLED
+   gh api --include repos/Hexalith/Hexalith.FrontComposer/environments/production/variables
    ```
 
 3. **GitHub administrator:** after the dispatch restriction takes effect, list
@@ -150,7 +158,14 @@ they are instructions, not operations executed by this guide or the tabletop:
    delete runs, logs, artifacts, tags or assets to stop publication.
 4. **NuGet custodian + Security:** block further token exchanges by disabling or
    removing the affected trusted-publishing policy through owner administration;
-   preserve its non-secret identity, scopes and original settings. Inventory
+   preserve its non-secret identity, scopes and original settings. Inspect
+   repository and `production` environment variables `NUGET_USER` (to confirm the
+   affected NuGet owner/policy scope) and `RELEASE_ATTESTATION_FALLBACK_*`
+   (including `RELEASE_ATTESTATION_STATUS`, `RELEASE_ATTESTATION_FALLBACK_APPROVER`,
+   `RELEASE_ATTESTATION_FALLBACK_APPROVED_AT`, `RELEASE_ATTESTATION_FALLBACK_EXPIRES_AT`
+   and `RELEASE_ATTESTATION_FALLBACK_FINGERPRINTS_SHA256`), recording their
+   observed values and clearing or invalidating any unauthorized fallback
+   authorization. Inventory
    already-issued temporary NuGet keys, static keys and other publication
    credentials. When exposure is plausible, revoke each affected reusable NuGet
    key, GitHub App credential, PAT or dispatch credential, or rotate it and
@@ -212,7 +227,7 @@ over downloaded bytes before treating contents as data. Preserve authentication
 failures as quarantined bytes, not usable evidence. Missing/expired evidence is
 not reconstructed by rebuilding, repacking, rerunning or resealing an old release.
 Actions artifacts are supplemental replay material and can expire; local copies
-and this tabletop record are not immutable release evidence.
+and a tabletop record are not immutable release evidence.
 
 Reference the existing
 [REL-AI-1 release-evidence ledger](https://github.com/Hexalith/Hexalith.FrontComposer/blob/main/_bmad-output/implementation-artifacts/rel-ai-1-release-evidence-ledger.md) and
@@ -359,7 +374,7 @@ version restore remains possible; warn consumers accordingly. Do not overwrite,
 delete/recreate or reseal old packages, tags, product Releases or evidence.
 Retain original byte identities and append the corrective-version relationship
 through existing records. Product retry, preservation dispatch and unlisting
-each require their own applicable authority; none is authorized by this tabletop.
+each require their own applicable authority; none is authorized by a tabletop.
 See [NuGet unlisting policy](https://learn.microsoft.com/en-us/nuget/nuget-org/policies/deleting-packages)
 and [correcting a published package](https://learn.microsoft.com/en-us/dotnet/standard/library-guidance/publish-nuget-package).
 
@@ -380,7 +395,7 @@ evidence, owners and recorded completion:
   the Release Owner approves the recovery plan and an explicitly scoped re-enable
   decision with UTC time, candidate, policy/execution identities and evidence.
 - **All existing G-8 conditions are satisfied separately:** an owner-accepted
-  Builds split revision (EXT-BUILDS-1) enters approved AD-16 lineage through delayed
+  Builds implementation actions revision (EXT-BUILDS-1) enters approved AD-16 lineage through delayed
   activation under the
   [GOV-1 AD-16 lineage authority](https://github.com/Hexalith/Hexalith.FrontComposer/blob/main/_bmad-output/planning-artifacts/architecture/architecture-gov-1-2026-07-19/ARCHITECTURE-SPINE.md#ad-16--adopted-hexalithbuilds-workflow-revision-is-an-owner-accepted-external-input);
   GOV-B through GOV-H are implemented and evidenced; GOV-I has an
@@ -409,6 +424,6 @@ Each capacity must state its acknowledgement/containment decisions, evidence to
 verify, credential action, complete package inventory, unavailable-service response,
 recovery refusal/prerequisites and communications. Capture real response receipts,
 findings with criticality, assigned owners/deadlines, separate verification and
-Product/Release approval of the exact runbook raw-file SHA-256. Do not infer an
+Product/Release approval of the exact runbook raw-file SHA-256 and Git blob ID. Do not infer an
 exercise response or digest approval from a previous role assignment. Missing
 receipts or unresolved containment-critical findings leave GOV-I open.

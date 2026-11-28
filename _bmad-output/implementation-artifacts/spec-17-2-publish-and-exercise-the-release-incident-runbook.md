@@ -2,7 +2,7 @@
 title: 'Story 17.2: Publish and Exercise the Release Incident Runbook'
 type: 'chore'
 created: '2026-11-17'
-status: 'in-review'
+status: 'done'
 route: 'dispatch'
 story_id: '17.2'
 story_key: '17-2-i-gov-i-publish-and-exercise-the-release-incident-runbook'
@@ -160,6 +160,10 @@ Implementation workflow status is complete; sprint Story 17.2 and the GOV-I acti
 
 - 2026-11-28: recorded the actual owner receipt (“confirm 1A, 2A, and 3A”) at first post-receipt UTC observation `2026-11-28T07:29:30Z`, approving the revised runbook bytes from `9d1e4f4939b5991bd754b781fd0130f40c0736e0` (unchanged at `HEAD` `0e9912939cfe69c228d486725ebc23c830d657b5`), confirming independent-verification review of the `HEAD` verification results and limits, and closing the overdue F4 triage action by routing AD-15 preservation to Story 17.8 with product retry still forbidden.
 
+- 2026-11-28: completed review pass 2 (20 findings triaged) and applied surgical patches for BH2-1, BH2-2, BH2-4/BH2-5, BH2-6/ECH-2/ECH-3, BH2-7/ECH-1, and BH2-8/BH2-9/VG2-1/VG2-2; verified full docs gate (exit 0) and 80/80 `DocsSiteValidationTests`. Replacement digest approval for the patched runbook (`7f052cc6c489e73ae396e9e5fde03a2ef09a6a6651de1a3d3e03f4417d30c30f` / Git blob `e08ec3440184fa49c0b8cffe604d83fc5aace645`) is pending before finalization.
+
+- 2026-11-28: recorded the final replacement-digest approval (“approve”) at first post-receipt UTC observation `2026-11-28T08:00:47Z` for SHA-256 `7f052cc6c489e73ae396e9e5fde03a2ef09a6a6651de1a3d3e03f4417d30c30f` (Git blob `e08ec3440184fa49c0b8cffe604d83fc5aace645`); marked this spec `done` and moved Story 17.2 and `GOV-I` to `review` in `sprint-status.yaml`.
+
 ## Review Triage Log
 
 
@@ -228,6 +232,45 @@ The designated participant is `jpiquot` in the previously confirmed combined cap
 
 All Story 17.2 implementation tasks, review patches (`P1–P10`, `D1`, `F1–F4`), and acceptance criteria are now satisfied. This receipt neither closes `G-8`, `GOV-ACCEPT-1`, `GOV-ACCEPT-2`, or `REL-AI-1`, nor authorizes publication, unlisting, credential changes, workflow dispatch, or remote operations. Historical [rel-ai-1-release-evidence-ledger.md](rel-ai-1-release-evidence-ledger.md) records and NC-35/NC-36 dispositions remain untouched.
 
+### Review pass 2 — 2026-11-28
+
+All three context-free review layers ran on the Story 17.2 baseline-to-working-tree diff (excluding this spec so `claims_file` went only to Edge Case Hunter): Blind Hunter (12 findings), Edge Case Hunter (5 findings), and Verification Gap Reviewer (3 pre-verified gap findings). Every finding was independently verified against the live codebase before rendering a verdict:
+
+| ID | Finding | Verdict | Evidence and route |
+| --- | --- | --- | --- |
+| BH2-1 | `docs/release-incident-response.md` omits `production` environment-scoped variable overrides and `NUGET_USER`/`RELEASE_ATTESTATION_FALLBACK_*` checks. | medium | Verified against `.github/workflows/release-publish.yml:23,43-50` and `.github/workflows/release.yml:225,295-299`: `environment: production` overrides repository variables, so Step 2's repo-only write/readback misses a `production` override. Route: `patch`. |
+| BH2-2 | `docs/release-incident-response.md` limits workflow-disable containment to caller workflows (`release.yml`) and omits `release-publish.yml` and `prepare-candidate` review scope. | medium | Verified against `.github/workflows/release-publish.yml:6` and `docs/release-incident-response.md:114`: disabling only `release.yml` omits the `workflow_call` publisher (`release-publish.yml`) holding write/OIDC authority; `prepare-candidate` also targets `environment: production`. Route: `patch`. |
+| BH2-3 | `docs/release-incident-response.md` creates an undefined governance deadlock when original AD-15 evidence contains secrets. | false | Intentional fail-closed behavior added by 2026-11-22 review patch P1; the runbook explicitly escalates to Security and Release Owner without inventing an unauthorized AD-15 exception mechanism. Reject. |
+| BH2-4 | `docs/release-incident-response.md` digest verification omits clean-tree checks, platform alternatives, and blob-ID in rehearsal section. | low | Line 27 already requires a clean, trusted checkout and lines 27–33 require both Git blob ID and raw-file SHA-256; aligning `## Rehearse without live effects` to also name Git blob ID is a trivial direct correction included while runbook bytes are patched. Route: `patch`. |
+| BH2-5 | `docs/release-incident-response.md` has self-referential wording (`this public record`/`this tabletop`), pre-amendment `Builds split revision` wording, and unlinked `NC-35/NC-36`. | low | Confirmed minor wording drift at lines 76, 215, 362, and 383; direct text cleanup included while patching the runbook for BH2-1/BH2-2. Route: `patch`. |
+| BH2-6 | `eng/validate-docs.ps1`: `Import-DocFxAssembly` uses dynamically scoped `$RepoRoot`, omits `$version.ToLowerInvariant()`, and `Build-DocsSite` calls it without `try/catch`. | medium | Verified at `eng/validate-docs.ps1:495-512,926`: unlike `Test-DocFxExclusion`, `Build-DocsSite` lets cache/loader exceptions abort before writing `validation-manifest.json` and leak paths, and uppercase prerelease labels fail on Linux. Route: `patch` (grouped with ECH-2, ECH-3). |
+| BH2-7 | `eng/validate-docs.ps1`: runbook wiring unchecked under `-SkipDocFx`, plus `toc.json` / `docfx build` throw behavior. | medium | Verified `-SkipDocFx` gap: `docs/release-incident-response.md` enters `inputRoots` without verifying existence or `docfx.json`/`toc.yml`/`how-to/index.md` wiring (grouped with ECH-1, route: `patch`). `docfx build` throw matches existing `dotnet build`/`docfx metadata` script behavior (`false` as a new defect); `toc.json` is redundant with verified `toc.html`. |
+| BH2-8 | `DocsSiteValidationTests.cs`: `RenderedReleaseRunbookRequiresPageAndBothNavigationLinksAsync` omits stale navigation cleanup and dangling-link failure cases. | medium | Verified at `DocsSiteValidationTests.cs:538-580`: only `release-incident-response.html` is pre-seeded stale; stale `toc.html`/`how-to/index.html` cleanup is untested (grouped with VG2-1). Route: `patch`. |
+| BH2-9 | `DocsSiteValidationTests.cs`: `RunbookMissingMetadata` uses `ShouldContain` without exact count/path-redaction checks; `Match` omits runbook `inputRoots` check. | medium | Verified at `DocsSiteValidationTests.cs:724-738`: `RunbookMissingMetadata` can mask extra unexpected failures or leaked temp paths. Route: `patch`. |
+| BH2-10 | `DocsSiteValidationTests.cs`: `AuthenticationGuideCoversEveryValidatorHelpAnchor` uses narrow regexes and diff mixes unrelated commits. | medium | Unrelated commits (`793b9566`, `d5ee9fae`, `ed60b984`, `be9b965a`, `7cd673a1`) entered `main` after `baseline_commit` (`false` as Story 17.2 scope mixing). The narrow regex at lines 52–61 is real but pre-existing in unrelated commit `793b9566` (grouped with ECH-4). Route: `defer`. |
+| BH2-11 | `epic-17-context.md` retains stale 2026-11-16 `true` emergency-stop observation and drops governance IDs/constraints. | medium | Verified at `epic-17-context.md:7,11-26,31`: omits 2026-11-17/19 literal-`false` observations and governance IDs in the Stories list. Agent-context cache file; per review routing rule, route: `defer`. |
+| BH2-12 | `deferred-work.md` format, `sprint-status.yaml` lag, and `ARCHITECTURE-SPINE.md` stale November 17 approval link. | medium | `deferred-work.md` existing-entry preservation is required by workflow policy (`false`). `sprint-status.yaml` lag (grouped with ECH-5) updates after replacement digest approval (`patch`). `ARCHITECTURE-SPINE.md` is digest-sealed under `GOV-SRC-1` and must not be mutated inside Story 17.2 (`defer`). |
+| ECH-1 | `eng/validate-docs.ps1:1270-1275` — `-SkipDocFx` exits 0 when `docs/release-incident-response.md` is missing or unwired while emitting it in `inputRoots`. | medium | Verified TRUE (shared root cause with BH2-7 part 1). Route: `patch`. |
+| ECH-2 | `eng/validate-docs.ps1:926` — `Import-DocFxAssembly 'HtmlAgilityPack.dll'` throws unhandled in `Build-DocsSite` before manifest write. | medium | Verified TRUE (shared root cause with BH2-6 part 3). Route: `patch`. |
+| ECH-3 | `eng/validate-docs.ps1:498-506` — Uppercase prerelease DocFX version breaks on case-sensitive Linux global-packages cache. | low | Verified TRUE (shared with BH2-6 part 2); trivial `$version.ToLowerInvariant()` fix. Route: `patch`. |
+| ECH-4 | `DocsSiteValidationTests.cs:52-61` — Narrow regex skips anchors/headings with digits in `AuthenticationGuideCoversEveryValidatorHelpAnchor`. | medium | Verified TRUE but pre-existing in unrelated commit `793b9566` (shared with BH2-10). Route: `defer`. |
+| ECH-5 | `sprint-status.yaml:286,1282-1283` — `17-2` and `GOV-I` lag behind the November 28 approval and triage receipt. | medium | Verified TRUE (shared with BH2-12). Will update `sprint-status.yaml` once the patched runbook receives replacement digest approval (keeping `17-2` `in-progress` and `GOV-I` `open` while replacement approval is pending). Route: `patch`. |
+| VG2-1 | `Build-DocsSite` stale navigation cleanup (`toc.html`, `how-to/index.html`) and missing navigation output branch are unverified. | medium | Pre-verified verification gap; filed disposition `patch` (shared with BH2-8). Route: `patch`. |
+| VG2-2 | `Build-DocsSite` subdirectory-relative link check is unverified against root-absolute or wrong-path links. | medium | Pre-verified verification gap; filed disposition `patch`. Route: `patch`. |
+| VG2-3 | `eng/validate-docs.ps1:1273` invocation of `Build-DocsSite` has no negative end-to-end verification without `-SkipDocFx`. | medium | Pre-verified verification gap; filed disposition `defer` (requires splitting API metadata build from DocFX site rendering, outside Story 17.2 scope). Route: `defer`. |
+
+Patching `docs/release-incident-response.md` for containment-critical findings BH2-1 and BH2-2 supersedes the November 28 digest approval (`24d1e9b5666b89fe16a9382bce0630b83f25bea2f5c9bae476c284785611476e`) and requires a fresh digest-bound owner approval after post-patch verification. No `intent_gap` or `bad_spec` loopback is required.
+
+### Final replacement-runbook approval and completion receipt — 2026-11-28
+
+This dated receipt supersedes the pending-replacement-approval state above while preserving all prior receipts, tabletop records, and review history. In response to the request naming the review-pass-2 patched [docs/release-incident-response.md](../../docs/release-incident-response.md) hashes and post-patch verification results, the user replied **“approve”**. The first UTC clock observation after receipt was **`2026-11-28T08:00:47Z`**; this is an observation bound, not message authorship or scenario time.
+
+The primary agent rehashed the unchanged UTF-8/CRLF runbook before recording this receipt, observed external `HEAD` advancement to `36b1775364284cc952e1e8b8c77fe8fc6c7e5148` (preserving original `baseline_commit` `66250f89230e1b261b51ce873c83d96176a9d325`), and verified byte-for-byte identity:
+
+- **Product / Release Owner (`jpiquot`):** Approves the exact raw UTF-8/CRLF SHA-256 **`7f052cc6c489e73ae396e9e5fde03a2ef09a6a6651de1a3d3e03f4417d30c30f`** and Git blob ID **`e08ec3440184fa49c0b8cffe604d83fc5aace645`**. Supersedes the earlier November 28 (`24d1e9b5666b89fe16a9382bce0630b83f25bea2f5c9bae476c284785611476e`) and November 17 (`24814b2f4a13b76b2c88e3ae72dfcd22b52abb09b0ba5b496683bd7fe0c69d5c`) digest receipts; any later byte change requires a new digest-bound receipt.
+- **Independent verification capacity (`jpiquot`):** Confirms separate review of the post-patch verification results (`eng/validate-docs.ps1` exit 0 with DocFX `2.81.0`, `DocsSiteValidationTests` 80/80 passed, `eng/validate-story-artifacts.py` and `git diff --check` passed) and unchanged limits (no live containment, revocation, immutable AD-15 preservation, or wall-clock SLA performance proven; combined-role limitation remains explicit; no unresolved containment-critical finding remains).
+- **Status and separate gates:** This spec is marked `done`; Story 17.2 (`17-2-i-gov-i-publish-and-exercise-the-release-incident-runbook`) and `GOV-I` move to `review` in [sprint-status.yaml](sprint-status.yaml). `F4` triage remains closed with AD-15 preservation routed to Story 17.8 (real product retry stays forbidden until implemented and independently verified). `G-8`, `GOV-ACCEPT-1`, `GOV-ACCEPT-2`, `REL-AI-1`, and publication authorization remain separate/open; no remote operation or push was performed.
+
 ## Verification
 
 - Run the existing `eng/validate-docs.ps1` gate, including DocFX; confirm the generated runbook page and navigation. Use a disposable repository copy beneath `run-with-temp`; retain useful logs outside its scratch directory.
@@ -295,6 +338,19 @@ Both focused xUnit tests passed, including the negative case that removes the ru
 - In a disposable clone of `HEAD` with direct root-declared `references/Hexalith.Builds` and `references/Hexalith.Platform` (no nested submodules initialized), `dotnet tool restore` (DocFX `2.81.0`) and `pwsh -NoProfile -File eng/validate-docs.ps1` (no skip switches) exited **0 (`Docs validation passed.`)**, generating `docs/_site/release-incident-response.html` (35,828 bytes) with verified links in `docs/_site/toc.html` and `docs/_site/how-to/index.html`.
 - Rehashed `docs/release-incident-response.md` at `2026-11-28T07:29:30Z`: raw UTF-8/CRLF SHA-256 `24d1e9b5666b89fe16a9382bce0630b83f25bea2f5c9bae476c284785611476e`, Git blob ID `15b453a464a28a7cd245b5076bfebece3445c094` (identical at both `9d1e4f4939b5991bd754b781fd0130f40c0736e0` and `HEAD`). Confirmed `.github/workflows/release-incident-preservation.yml` remains absent.
 - `run-with-temp env PYTHONDONTWRITEBYTECODE=1 python3 eng/validate-story-artifacts.py --project-root .` and `git diff --check` passed after recording the November 28 receipt.
+
+### Verification after review pass 2 patches — 2026-11-28
+
+- Applied all review pass 2 patches across `docs/release-incident-response.md` (BH2-1 `production` environment-variable override + `NUGET_USER`/`RELEASE_ATTESTATION_FALLBACK_*` checks, BH2-2 `release-publish.yml` disable + `prepare-candidate` pending-deployment note, BH2-4/BH2-5 wording & blob-ID alignment), `eng/validate-docs.ps1` (explicit `$Root` parameter + `$version.ToLowerInvariant()` in `Import-DocFxAssembly`, sanitized `try/catch` around `HtmlAgilityPack.dll` in `Build-DocsSite`, unconditional `Assert-ReleaseIncidentRunbookPublication` even under `-SkipDocFx`), and `DocsSiteValidationTests.cs` (`stale-toc`, `stale-index`, `root-absolute-index`, tightened `RunbookMissingMetadata`, `Match` runbook `inputRoots`, and 5-case `-SkipDocFx` runbook wiring theory).
+- In a clean disposable clone of `HEAD` (`0e9912939cfe69c228d486725ebc23c830d657b5`) with only direct root-declared `references/Hexalith.Builds` (`bf8a28b4bbcec619e8d9764d335f786f2bafb69e`) and `references/Hexalith.Platform` (`3bcac63c6fe20b46687b6e0bb7a333ea8c66fb4d`) checked out from local `.git/modules/*` (no nested submodules initialized) and the 5 patched working files overlaid:
+  - `dotnet tool restore` restored DocFX `2.81.0`.
+  - `pwsh -NoProfile -File eng/validate-docs.ps1` (no skip flags) exited **0 (`Docs validation passed.`)**, rendering `docs/_site/release-incident-response.html` (37,975 bytes) with verified links at `docs/_site/toc.html:33` and `docs/_site/how-to/index.html:80`.
+  - `dotnet build tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj --configuration Release` succeeded with **0 warnings / 0 errors**.
+  - Direct xUnit v3 execution of `DocsSiteValidationTests` passed **80/80** tests (**0 errors, 0 failed, 0 skipped, 0 not run**).
+- Patched `docs/release-incident-response.md` identity (UTF-8, CRLF verified with 0 LF-only lines):
+  - Raw-file SHA-256: `7f052cc6c489e73ae396e9e5fde03a2ef09a6a6651de1a3d3e03f4417d30c30f`
+  - Git blob ID (`git hash-object docs/release-incident-response.md`): `e08ec3440184fa49c0b8cffe604d83fc5aace645`
+- `run-with-temp env PYTHONDONTWRITEBYTECODE=1 python3 eng/validate-story-artifacts.py --project-root .` and `git diff --check` passed. Replacement digest approval for `7f052cc6...` / `e08ec344...` is pending before finalizing `sprint-status.yaml` (`17-2` and `GOV-I`).
 
 ## File List
 

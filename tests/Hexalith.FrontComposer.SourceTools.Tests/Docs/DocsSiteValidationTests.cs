@@ -527,14 +527,32 @@ public sealed partial class DocsSiteValidationTests {
     }
 
     /// <summary>
+    /// Verifies that the documentation command checks release incident runbook existence and wiring even when DocFX is skipped.
+    /// </summary>
+    /// <param name="scenario">The runbook publication wiring defect to inject.</param>
+    [Theory]
+    [InlineData("RunbookMissingPage")]
+    [InlineData("RunbookMissingDocfx")]
+    [InlineData("RunbookExcludedDocfx")]
+    [InlineData("RunbookMissingToc")]
+    [InlineData("RunbookMissingHowToIndex")]
+    public async Task ReleaseIncidentRunbookPublicationCommandChecksWiringAsync(string scenario)
+    {
+        await AssertFluentPublicationAsync(scenario);
+    }
+
+    /// <summary>
     /// Builds a small DocFX site and checks that both navigation surfaces lead to a freshly rendered runbook.
     /// </summary>
-    /// <param name="missing">The publication input removed from the fixture.</param>
+    /// <param name="missing">The publication input removed or broken in the fixture.</param>
     [Theory]
     [InlineData("none")]
     [InlineData("toc")]
     [InlineData("index")]
     [InlineData("page")]
+    [InlineData("stale-toc")]
+    [InlineData("stale-index")]
+    [InlineData("root-absolute-index")]
     public async Task RenderedReleaseRunbookRequiresPageAndBothNavigationLinksAsync(string missing)
     {
         string root = NewFluentFixtureRoot();
@@ -555,18 +573,24 @@ public sealed partial class DocsSiteValidationTests {
             {
                 File.WriteAllText(Path.Combine(docs, "release-incident-response.md"), "# Release incident response");
                 if (missing != "toc") { toc += "  items:\n  - name: Runbook\n    href: release-incident-response.md\n"; }
-                if (missing != "index") { index += "[Runbook](../release-incident-response.md)"; }
+                if (missing == "root-absolute-index") { index += "[Runbook](/release-incident-response.html)"; }
+                else if (missing != "index") { index += "[Runbook](../release-incident-response.md)"; }
             }
-            File.WriteAllText(Path.Combine(docs, "toc.yml"), toc);
-            File.WriteAllText(Path.Combine(howTo, "index.md"), index);
+            if (missing != "stale-toc") { File.WriteAllText(Path.Combine(docs, "toc.yml"), toc); }
+            if (missing != "stale-index") { File.WriteAllText(Path.Combine(howTo, "index.md"), index); }
             string site = Directory.CreateDirectory(Path.Combine(docs, "_site")).FullName;
+            string siteHowTo = Directory.CreateDirectory(Path.Combine(site, "how-to")).FullName;
             File.WriteAllText(Path.Combine(site, "release-incident-response.html"), "stale output");
+            File.WriteAllText(Path.Combine(site, "toc.html"), "<a href=\"release-incident-response.html\">stale</a>");
+            File.WriteAllText(Path.Combine(siteHowTo, "index.html"), "<a href=\"../release-incident-response.html\">stale</a>");
 
             string[] failures = await RunDocsCheckAsync(root, "Build-DocsSite");
             string[] expected = missing switch
             {
                 "toc" => ["docs/_site/toc.html is missing a link to release-incident-response.html."],
-                "index" => ["docs/_site/how-to/index.html is missing a link to release-incident-response.html."],
+                "index" or "root-absolute-index" => ["docs/_site/how-to/index.html is missing a link to release-incident-response.html."],
+                "stale-toc" => ["docs/_site/toc.html was not generated."],
+                "stale-index" => ["docs/_site/how-to/index.html was not generated."],
                 "page" => [
                     "docs/_site/release-incident-response.html was not generated.",
                     "docs/_site/toc.html is missing a link to release-incident-response.html.",
@@ -691,11 +715,20 @@ public sealed partial class DocsSiteValidationTests {
                 }
                 File.WriteAllText(toc, text);
             }
-            if (scenario is "RecursiveMarkdownExclusion" or "UnrelatedDocfxExclusion" or "ExactDocfxExclusion" or "EmptyDocfxCache")
+            if (scenario is "RecursiveMarkdownExclusion" or "UnrelatedDocfxExclusion" or "ExactDocfxExclusion" or "EmptyDocfxCache" or "RunbookExcludedDocfx")
             {
                 string config = Path.Combine(root, "docs", "docfx.json");
                 System.Text.Json.Nodes.JsonNode json = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(config))!;
-                json["build"]!["content"]![0]!["exclude"] = JsonSerializer.SerializeToNode(new[] { scenario == "RecursiveMarkdownExclusion" ? "**/*.md" : scenario == "ExactDocfxExclusion" ? "fluent-ui-v5-contingency.md" : "reference/**/*.md" });
+                json["build"]!["content"]![0]!["exclude"] = JsonSerializer.SerializeToNode(new[]
+                {
+                    scenario switch
+                    {
+                        "RecursiveMarkdownExclusion" => "**/*.md",
+                        "ExactDocfxExclusion" => "fluent-ui-v5-contingency.md",
+                        "RunbookExcludedDocfx" => "release-incident-response.md",
+                        _ => "reference/**/*.md",
+                    },
+                });
                 File.WriteAllText(config, json.ToJsonString());
             }
             if (scenario == "MissingDocfx")
@@ -712,6 +745,25 @@ public sealed partial class DocsSiteValidationTests {
                 string runbook = Path.Combine(root, "docs", "release-incident-response.md");
                 File.WriteAllText(runbook, Regex.Replace(File.ReadAllText(runbook), @"(?m)^reviewed:[^\n]*\n", ""));
             }
+            if (scenario == "RunbookMissingPage")
+            {
+                File.Delete(Path.Combine(root, "docs", "release-incident-response.md"));
+            }
+            if (scenario == "RunbookMissingDocfx")
+            {
+                string config = Path.Combine(root, "docs", "docfx.json");
+                File.WriteAllText(config, File.ReadAllText(config).Replace("\"release-incident-response.md\",", "", StringComparison.Ordinal));
+            }
+            if (scenario == "RunbookMissingToc")
+            {
+                string toc = Path.Combine(root, "docs", "toc.yml");
+                File.WriteAllText(toc, File.ReadAllText(toc).Replace("    href: release-incident-response.md", "    # href: release-incident-response.md", StringComparison.Ordinal));
+            }
+            if (scenario == "RunbookMissingHowToIndex")
+            {
+                string howToIndex = Path.Combine(root, "docs", "how-to", "index.md");
+                File.WriteAllText(howToIndex, File.ReadAllText(howToIndex).Replace("- [Respond to a release incident](../release-incident-response.md)", "", StringComparison.Ordinal));
+            }
             IReadOnlyDictionary<string, string>? environment = null;
             if (scenario == "EmptyDocfxCache")
             {
@@ -721,20 +773,23 @@ public sealed partial class DocsSiteValidationTests {
             }
             (int exitCode, string output, string error) = await RunFluentProcessWithEnvironmentAsync(root, "pwsh", environment, "-NoProfile", "-File", "eng/validate-docs.ps1", "-SkipDocFx", "-SkipSnippetBuild").ConfigureAwait(false);
             using var manifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(root, "artifacts", "docs", "validation-manifest.json")));
-            manifest.RootElement.GetProperty("inputRoots").EnumerateArray().Select(value => value.GetString())
-                .ShouldContain("docs/fluent-ui-v5-contingency.md");
+            string[] inputRoots = manifest.RootElement.GetProperty("inputRoots").EnumerateArray().Select(value => value.GetString()!).ToArray();
+            inputRoots.ShouldContain("docs/fluent-ui-v5-contingency.md");
+            inputRoots.ShouldContain("docs/release-incident-response.md");
             string[] failures = manifest.RootElement.GetProperty("blockingFailures").EnumerateArray().Select(value => value.GetString()!).ToArray();
-            if (scenario == "RunbookMissingMetadata")
-            {
-                exitCode.ShouldNotBe(0, output + error);
-                failures.ShouldContain("docs/release-incident-response.md is missing required front matter 'reviewed'.");
-                manifest.RootElement.GetProperty("inputRoots").EnumerateArray().Select(value => value.GetString())
-                    .ShouldContain("docs/release-incident-response.md");
-            }
-            else if (scenario is "Match" or "UnrelatedDocfxExclusion")
+            if (scenario is "Match" or "UnrelatedDocfxExclusion")
             {
                 exitCode.ShouldBe(0, output + error);
                 failures.ShouldBeEmpty();
+            }
+            else if (scenario == "RecursiveMarkdownExclusion")
+            {
+                exitCode.ShouldNotBe(0, output + error);
+                failures.ShouldBe([
+                    "docs/docfx.json: must publish the Fluent contingency page at its documentation path.",
+                    "docs/docfx.json: must publish the release incident runbook page at its documentation path."
+                ]);
+                foreach (string failure in failures) { failure.ShouldNotContain(root); }
             }
             else
             {
@@ -744,8 +799,13 @@ public sealed partial class DocsSiteValidationTests {
                 {
                     "MissingToc" or "TocDescriptionScalar" or "TocItemNameScalar" => "docs/toc.yml: missing Fluent contingency page under How-to.",
                     "EmptyDocfxCache" => "Pinned DocFX glob matcher is unavailable; run dotnet tool restore before documentation validation (including -SkipDocFx).",
-                    "MissingDocfx" or "RecursiveMarkdownExclusion" or "ExactDocfxExclusion" => "docs/docfx.json: must publish the Fluent contingency page at its documentation path.",
+                    "MissingDocfx" or "ExactDocfxExclusion" => "docs/docfx.json: must publish the Fluent contingency page at its documentation path.",
                     "MissingMetadata" => "docs/fluent-ui-v5-contingency.md is missing required front matter 'reviewed'.",
+                    "RunbookMissingMetadata" => "docs/release-incident-response.md is missing required front matter 'reviewed'.",
+                    "RunbookMissingPage" => "docs/release-incident-response.md: missing release incident runbook page.",
+                    "RunbookMissingDocfx" or "RunbookExcludedDocfx" => "docs/docfx.json: must publish the release incident runbook page at its documentation path.",
+                    "RunbookMissingToc" => "docs/toc.yml: missing release incident runbook page under How-to.",
+                    "RunbookMissingHowToIndex" => "docs/how-to/index.md: missing link to ../release-incident-response.md.",
                     _ => "docs/fluent-ui-v5-contingency.md: version for Microsoft.FluentUI.AspNetCore.Components" + (scenario == "IconsDrift" ? ".Icons" : "") + " must match the root HEAD-selected catalog.",
                 };
                 failures[0].ShouldBe(expected);

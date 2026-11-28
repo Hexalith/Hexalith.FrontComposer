@@ -492,17 +492,18 @@ function Assert-FluentContingencyParity([string]$Root, [System.Collections.Gener
     }
 }
 
-function Import-DocFxAssembly([string]$Name) {
-    $toolManifest = Get-Content -LiteralPath (Join-Path $RepoRoot '.config/dotnet-tools.json') -Raw | ConvertFrom-Json
+function Import-DocFxAssembly([string]$Name, [string]$Root = $null) {
+    if ([string]::IsNullOrWhiteSpace($Root)) { $Root = $RepoRoot }
+    $toolManifest = Get-Content -LiteralPath (Join-Path $Root '.config/dotnet-tools.json') -Raw | ConvertFrom-Json
     $version = [string]$toolManifest.tools.docfx.version
     if ($version -cnotmatch '^[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$') { throw 'Unresolved DocFX tool version.' }
     $packageRoot = $env:NUGET_PACKAGES
     if ([string]::IsNullOrWhiteSpace($packageRoot)) {
-        $location = Invoke-Process 'dotnet' @('nuget', 'locals', 'global-packages', '--list', '--force-english-output') $RepoRoot
+        $location = Invoke-Process 'dotnet' @('nuget', 'locals', 'global-packages', '--list', '--force-english-output') $Root
         $packageRoot = [regex]::Match($location, '(?m)^global-packages: (.+?)\r?$').Groups[1].Value
     }
     if ([string]::IsNullOrWhiteSpace($packageRoot)) { throw 'DocFX package cache is unavailable.' }
-    $toolsPath = Join-Path $packageRoot "docfx/$version/tools"
+    $toolsPath = Join-Path $packageRoot "docfx/$($version.ToLowerInvariant())/tools"
     if (-not (Test-Path -LiteralPath $toolsPath -PathType Container)) { throw 'Pinned DocFX tools are unavailable.' }
     $assemblies = @(Get-ChildItem -LiteralPath $toolsPath -Filter $Name -Recurse -File -ErrorAction Stop |
         Where-Object { $_.Directory.Name -eq 'any' -and $_.Directory.Parent.Name -match '^net[0-9]+\.[0-9]+$' -and [version]$_.Directory.Parent.Name.Substring(3) -le [System.Environment]::Version } |
@@ -511,10 +512,10 @@ function Import-DocFxAssembly([string]$Name) {
     [System.Reflection.Assembly]::LoadFrom($assemblies[0].FullName) | Out-Null
 }
 
-function Test-DocFxExclusion([string]$Page, [array]$Patterns) {
+function Test-DocFxExclusion([string]$Page, [array]$Patterns, [string]$Root = $null) {
     # Reuse the pinned DocFX matcher: **/ includes zero directories, unlike PowerShell -like.
     try {
-        Import-DocFxAssembly 'Docfx.Glob.dll'
+        Import-DocFxAssembly 'Docfx.Glob.dll' $Root
     }
     catch {
         # Never expose a runner/cache path or the loader's raw exception in publication diagnostics.
@@ -546,7 +547,7 @@ function Assert-FluentContingencyPublication([System.Collections.Generic.List[st
             @($_.files | Where-Object { $_ -ceq $page }).Count -eq 1 -and
             (-not $_.ContainsKey('src') -or $_.src -ceq '.') -and
             (-not $_.ContainsKey('dest') -or $_.dest -ceq '.') -and
-            (-not $_.ContainsKey('exclude') -or -not (Test-DocFxExclusion $page @($_.exclude)))
+            (-not $_.ContainsKey('exclude') -or -not (Test-DocFxExclusion $page @($_.exclude) $RepoRoot))
         })
         if ($entries.Count -ne 1) { throw 'Missing publication mapping.' }
     }
@@ -554,6 +555,48 @@ function Assert-FluentContingencyPublication([System.Collections.Generic.List[st
         $prerequisite = 'Pinned DocFX glob matcher is unavailable; run dotnet tool restore before documentation validation (including -SkipDocFx).'
         if ($_.Exception.Message -ceq $prerequisite) { Add-Failure $Failures $prerequisite }
         else { Add-Failure $Failures 'docs/docfx.json: must publish the Fluent contingency page at its documentation path.' }
+    }
+}
+
+function Assert-ReleaseIncidentRunbookPublication([System.Collections.Generic.List[string]]$Failures) {
+    $page = 'release-incident-response.md'
+    if (-not (Test-Path -LiteralPath (Join-Path $DocsRoot $page) -PathType Leaf)) {
+        Add-Failure $Failures 'docs/release-incident-response.md: missing release incident runbook page.'
+    }
+    $tocPath = Join-Path $DocsRoot 'toc.yml'
+    $toc = if (Test-Path -LiteralPath $tocPath -PathType Leaf) { Get-Content -LiteralPath $tocPath -Raw } else { '' }
+    $howTo = [regex]::Match($toc, '(?ms)^- name: How-to\r?\n(?<section>.*?)(?=^- name:|\z)').Groups['section'].Value
+    $items = [regex]::Match($howTo, '(?ms)^  items:[ \t]*\r?\n(?<items>.*?)(?=^  (?!- )[^\s#]|\z)').Groups['items'].Value
+    $linked = $false
+    foreach ($item in [regex]::Matches($items, '(?ms)^  - name:[ \t]+[^\r\n|>]+\r?\n(?<item>.*?)(?=^  - |\z)')) {
+        if ([regex]::IsMatch($item.Groups['item'].Value, '(?m)^    href: ' + [regex]::Escape($page) + '[ \t]*\r?$')) { $linked = $true }
+    }
+    if (-not $linked) {
+        Add-Failure $Failures 'docs/toc.yml: missing release incident runbook page under How-to.'
+    }
+    $indexPath = Join-Path $DocsRoot 'how-to/index.md'
+    $indexText = if (Test-Path -LiteralPath $indexPath -PathType Leaf) {
+        [regex]::Replace((Get-Content -LiteralPath $indexPath -Raw), '<!--.*?(?:-->|\z)', '', [System.Text.RegularExpressions.RegexOptions]::Singleline)
+    } else { '' }
+    if (-not [regex]::IsMatch($indexText, '\[[^\]\r\n]+\]\(\.\./' + [regex]::Escape($page) + '(?:[?#][^)\s]*)?\)')) {
+        Add-Failure $Failures 'docs/how-to/index.md: missing link to ../release-incident-response.md.'
+    }
+    try {
+        $config = Get-Content -LiteralPath (Join-Path $DocsRoot 'docfx.json') -Raw | ConvertFrom-Json -AsHashtable
+        $entries = @($config.build.content | Where-Object {
+            @($_.files | Where-Object { $_ -ceq $page }).Count -eq 1 -and
+            (-not $_.ContainsKey('src') -or $_.src -ceq '.') -and
+            (-not $_.ContainsKey('dest') -or $_.dest -ceq '.') -and
+            (-not $_.ContainsKey('exclude') -or -not (Test-DocFxExclusion $page @($_.exclude) $RepoRoot))
+        })
+        if ($entries.Count -ne 1) { throw 'Missing publication mapping.' }
+    }
+    catch {
+        $prerequisite = 'Pinned DocFX glob matcher is unavailable; run dotnet tool restore before documentation validation (including -SkipDocFx).'
+        if ($_.Exception.Message -ceq $prerequisite) {
+            if (-not $Failures.Contains($prerequisite)) { Add-Failure $Failures $prerequisite }
+        }
+        else { Add-Failure $Failures 'docs/docfx.json: must publish the release incident runbook page at its documentation path.' }
     }
 }
 
@@ -923,7 +966,13 @@ function Build-DocsSite([string]$RepoRoot, [System.Collections.Generic.List[stri
         Add-Failure $Failures "docs/_site/$runbook was not generated."
     }
 
-    Import-DocFxAssembly 'HtmlAgilityPack.dll'
+    try {
+        Import-DocFxAssembly 'HtmlAgilityPack.dll' $RepoRoot
+    }
+    catch {
+        Add-Failure $Failures 'Pinned DocFX HTML parser is unavailable; run dotnet tool restore.'
+        return
+    }
     # Resolve links as if the site were deployed under a repository subdirectory.
     $siteUri = [uri]'https://docs.invalid/FrontComposer/'
     $target = [uri]::new($siteUri, $runbook)
@@ -1167,6 +1216,7 @@ else {
 
 Assert-FluentContingencyParity $RepoRoot $failures
 Assert-FluentContingencyPublication $failures
+Assert-ReleaseIncidentRunbookPublication $failures
 Assert-ComponentDocumentation $failures
 
 $registryPath = Join-Path $DocsRoot 'diagnostics/diagnostic-registry.json'
