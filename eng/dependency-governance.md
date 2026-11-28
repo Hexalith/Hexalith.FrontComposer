@@ -1,5 +1,26 @@
 # Dependency governance source projection
 
+## 2026-11-28 published Hexalith package cohort and module sources
+
+FrontComposer now selects Memories `4.1.4`, Tenants `8.1.1`, and Parties `4.0.2`
+with EventStore `5.6.0`, Commons `3.0.4`, PolymorphicSerializations `2.0.2`, and
+Conversations `2.2.0`. Direct module gitlinks match current origin/main, including
+Builds `aebabdadadffa108801992253c7910f37437b115` and Platform
+`d72ec18aa07250f632e5e23a43f0fa79931fe71a`. Root selector digest is
+`05f67b86a15c0ab8e7ef6ad5ae4eef3aedce05234c31a21d6ed76bdad187c3e7`.
+Consumer configuration digest is
+`60258dfc12c24beafc497c672847fa9ae24d6b5f6c4e7bc66edc5aed2ede87f6`.
+Platform inventory digest is
+`a26c3353d0e75206ff8762f3cc39289fd8461ac56d35b0be987fa56eeec78033`.
+The FrontComposer catalog profile requires Verify `33.7.3` to match that Builds
+catalog. The graph still contains 76 edges.
+
+The matching policy reseal is `add44c91cb8d5877741112ac03247a9be4b823fa`.
+This documentation-only child is the later-base activation of that policy.
+The previous event-base policy rejected the changed selectors and consumer
+configuration, as expected. Hosted CI and Quality on this commit are the
+release evidence; local validation of 76 edges does not replace those gates.
+
 ## 2026-11-25 v6.2 compatibility ledger and 6.1.0 baseline
 
 FrontComposer now plans release line `v6.2` and validates packs against published
