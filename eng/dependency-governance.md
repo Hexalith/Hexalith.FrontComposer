@@ -1,5 +1,22 @@
 # Dependency governance source projection
 
+## 2026-11-28 EventStore 5.7.0 compatibility in umbrella workspaces
+
+FrontComposer's standalone checkout retains its sealed EventStore `5.6.0`
+cohort. When an enclosing workspace supplies the Builds catalog, FrontComposer
+now also admits its `5.7.0` default alongside `5.4.0`, `5.5.1`, `5.5.2`, and
+`5.6.0`. Consumer configuration digest is
+`03fc65cb0df4432b69572c482951249d7a12013934efd4ec2f0256be6b7ab584`.
+Root selector digest remains
+`05f67b86a15c0ab8e7ef6ad5ae4eef3aedce05234c31a21d6ed76bdad187c3e7`.
+The graph still contains 76 edges.
+
+The matching policy reseal is `c9da9b17f5f487c21f770a026f16b680f7ec807d`.
+This documentation-only child is the later-base activation of that policy.
+The previous event-base policy rejected the changed consumer
+configuration, as expected. Hosted CI and Quality on this commit are the
+release evidence; local validation does not replace those gates.
+
 ## 2026-11-28 v6.3 compatibility ledger and 6.2.0 baseline
 
 FrontComposer now plans release line `v6.3` and validates packs against published
