@@ -85,7 +85,7 @@
     <PropertyGroup Condition="'$(_FrontComposerExternalCatalog)' != ''">
       <_FrontComposerRequiredEventStore>$(_FrontComposerSiblingEventStore)</_FrontComposerRequiredEventStore>
     </PropertyGroup>
-    <Error Condition="'$(_FrontComposerRequiredEventStore)' != '5.4.0' And '$(_FrontComposerRequiredEventStore)' != '5.5.1' And '$(_FrontComposerRequiredEventStore)' != '5.5.2' And '$(_FrontComposerRequiredEventStore)' != '5.6.0'"
+    <Error Condition="'$(_FrontComposerRequiredEventStore)' != '5.4.0' And '$(_FrontComposerRequiredEventStore)' != '5.5.1' And '$(_FrontComposerRequiredEventStore)' != '5.5.2' And '$(_FrontComposerRequiredEventStore)' != '5.6.0' And '$(_FrontComposerRequiredEventStore)' != '5.7.0'"
            Text="FrontComposer has no qualification for the selected catalog's EventStore version '$(_FrontComposerRequiredEventStore)'." />
     <Error Condition="'$(HexalithEventStoreVersion)' != '$(_FrontComposerRequiredEventStore)'"
            Text="FrontComposer requires EventStore $(_FrontComposerRequiredEventStore). Selected version: '$(HexalithEventStoreVersion)'." />
