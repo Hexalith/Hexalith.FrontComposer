@@ -11890,3 +11890,13 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-17-2-publish-and-exercise-the-release-incident-runbook.md`
   summary: Add negative end-to-end test coverage for `eng/validate-docs.ps1:1273` invoking `Build-DocsSite` without `-SkipDocFx`.
   evidence: Pre-verified verification gap (VG2-3): `DocsSiteValidationTests.RenderedReleaseRunbookRequiresPageAndBothNavigationLinksAsync` invokes `Build-DocsSite` via `RunDocsCheckAsync`, while `AssertFluentPublicationAsync` passes `-SkipDocFx`. Testing the non-`-SkipDocFx` script path negatively requires separating full Release solution build + `docfx metadata` from site rendering in `eng/validate-docs.ps1`.
+
+## Owner-approved SourceTools mutation deferrals (2026-11-28)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-source-tools-fresh-mutation-controls.md`
+  summary: Track hash-distribution performance for arithmetic mutants `13760`, `13761`, `15088`, `15089`, `15413`, `15414`, `15735`, and `15736`. The owner approved deferral on the tested equal-value and nested-identity hashing contract.
+  evidence: All eight passed the focused literal controls and had survived both historical native cohorts. See the [decision record](spec-source-tools-fresh-mutation-controls.md#owner-approved-deferrals) for replay identity and scope.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-source-tools-fresh-mutation-controls.md`
+  summary: Record the owner-approved nonprogress deferral for namespace collision mutant `14194`. Review any future native allowance separately.
+  evidence: The isolated literal replay exceeded the 25-second bound because the collision loop reused the same occupied root. See the [decision record](spec-source-tools-fresh-mutation-controls.md#owner-approved-deferrals) for native statuses and replay evidence.

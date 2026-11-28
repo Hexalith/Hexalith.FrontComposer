@@ -10,6 +10,7 @@ namespace Hexalith.FrontComposer.SourceTools.Tests.Parsing;
 
 public class CommandDefaultValueTests {
     [Fact]
+    [Trait("Category", "MutationErrorRegression")]
     public void Hfc1012PointsToTheAttributeInTheOtherPartialDeclaration()
     {
         const string command = """
