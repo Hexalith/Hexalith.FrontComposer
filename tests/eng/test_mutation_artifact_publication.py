@@ -68,6 +68,38 @@ class PublicationTests(unittest.TestCase):
         self.assertIn('{token:x}', normalized)
         self.assertIn('var cancellationToken = pending.Token;', normalized)
 
+    def testExactXunitCancellationAssignmentIsSafeInBothReportFormats(self):
+        report, html, _ = self.fixture()
+        statement = 'CancellationToken token = TestContext.Current.CancellationToken;'
+        source = 'void Verify() {\r\n    ' + statement + '\r\n}'
+        report.write_text(json.dumps({'source': source}))
+        html.write_text('<script>window.report = ' + json.dumps({'source': source}) + ';</script>')
+        original_html = html.read_bytes()
+        process = self.run_guard('happy-path')
+        self.assertEqual(process.returncode, 0, process.stderr)
+        self.assertEqual(json.loads(report.read_text())['source'], source)
+        self.assertEqual(html.read_bytes(), original_html)
+
+    def testExactXunitCancellationAssignmentCanEndAnEscapedHtmlSourceString(self):
+        statement = 'CancellationToken token = TestContext.Current.CancellationToken;'
+        for segment, source, other in [
+            ('happy-path', 'void Verify() {\r\n    ' + statement, {}),
+            ('error-handling', statement, {'status': 'Killed'}),
+        ]:
+            with self.subTest(segment=segment):
+                report, html, _ = self.fixture(segment)
+                report.write_text(json.dumps({'source': source}))
+                original = '<script>window.report = ' + json.dumps({'source': source, **other}) + ';</script>'
+                html.write_text(original)
+                process = self.run_guard(segment)
+                self.assertEqual(process.returncode, 0, process.stderr)
+                self.assertEqual(html.read_text(), original)
+
+        html.write_text('<script>window.report = ' + json.dumps({'source': statement, 'other': 'password=synthetic'}) + ';</script>')
+        process = self.run_guard('error-handling')
+        self.assertNotEqual(process.returncode, 0)
+        self.assertIn('secret-like value', process.stderr)
+
     def testSafeFailedAggregatePreservesBothReportsAndNormalizesSummaries(self):
         paths = [*self.fixture(), *self.fixture('error-handling')]
         for name in ['job-summary.md', 'mutation-report-audit.json', 'mutation-triage-admission.json', 'mutation-validation-errors.txt']:
@@ -92,6 +124,8 @@ class PublicationTests(unittest.TestCase):
             ('password=synthetic', 'secret-like value'),
             ('secret=synthetic', 'secret-like value'),
             ('token=synthetic', 'secret-like value'),
+            ('CancellationToken token = "synthetic";', 'secret-like value'),
+            ('CancellationToken token = OtherContext.Current.CancellationToken;', 'secret-like value'),
             ('tenant_id=01234567-89ab-cdef-0123-456789abcdef', 'tenant identifier'),
             ('C:\\Users\\', 'machine-local path'),
         ]:

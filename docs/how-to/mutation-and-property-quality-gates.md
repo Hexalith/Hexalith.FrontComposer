@@ -94,7 +94,11 @@ Every `Survived`, `NoCoverage`, `Timeout`, and remaining `CompileError` mutant n
 - `deferred-with-owner`: the gap is real and has an owner/follow-up story.
 - `blocking`: the gate cannot pass until the mutant is addressed.
 
-Record accepted or deferred problem mutants in `tests/Hexalith.FrontComposer.SourceTools.Tests/Mutation/mutation-target-manifest.json` under `problemMutantTriage`; validation fails when report counts exceed reviewed triage entries.
+The `problemMutantTriage` groups in `tests/Hexalith.FrontComposer.SourceTools.Tests/Mutation/mutation-target-manifest.json` cap accepted or deferred problems by segment and status. The report validator fails when a cohort exceeds those reviewed counts.
+
+When the manifest selects `currentIdentityLedger`, record exact reviewed native identities and permitted statuses in `mutation-current-identities.json`. Bind the manifest groups to that file's digest and list their exact current IDs. Retain both reviewed report digests, the source commit and source fingerprints, and the historical ledger digest. Account for each historical identity through a current binding or an evidenced retirement. Keep the existing assertion fingerprint for a relocated control and bind a replayed control to its current identity, assertion sources, and retained result.
+
+The ledger records the publication artifacts used to review those bindings, including the original and published report digests. Each future CI run verifies its own inputs and execution provenance. The finite admission audit records the SHA-256 of the report bytes it reads after strict validation normalizes them.
 
 ## Property Counterexamples
 

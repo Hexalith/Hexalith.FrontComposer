@@ -1,4 +1,4 @@
-# Shared private publication policy; function bodies are unchanged from the strict validator.
+# Shared publication policy for report preparation and strict validation.
 function Normalize-ArtifactText([string] $Text) {
   $normalizedRoot = [regex]::Escape($RepoRoot)
   $text = [regex]::Replace($Text, $normalizedRoot, ".", [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
@@ -16,6 +16,10 @@ function Test-UnsafeText([string] $Text) {
   # A C# token variable initialized from another variable's .Token property
   # contains no literal credential value. Preserve all ordinary/prefixed markers.
   $credentialText = [regex]::Replace($credentialText, 'var\s+[A-Za-z_][A-Za-z0-9_]*Token\s*=\s*[A-Za-z_][A-Za-z0-9_]*\.Token\s*;', 'cancellation-reference')
+  # Stryker embeds xUnit cancellation declarations as source lines in both report formats.
+  $credentialText = [regex]::Replace($credentialText,
+    '(?m)(?<line>^|\\n|"source"[ \t]*:[ \t]*")[ \t]*CancellationToken[ \t]+token[ \t]*=[ \t]*TestContext\.Current\.CancellationToken[ \t]*;(?=[ \t]*(?:\r?$|(?:\\r)?\\n|"[ \t]*[,}]))',
+    '${line}cancellation-reference')
   if ($credentialText -match '(?i)(bearer\s+[a-z0-9._-]{12,}|api[_-]?key\s*[:=]|password\s*[:=]|secret\s*[:=]|(?<!cancellation)token\s*(?::|=(?!>|\\u003e)))') { return "secret-like value" }
   if ($Text -match '(?i)tenant[_-]?id\s*[:=]\s*["'']?[0-9a-f-]{16,}') { return "tenant identifier" }
   return $null
