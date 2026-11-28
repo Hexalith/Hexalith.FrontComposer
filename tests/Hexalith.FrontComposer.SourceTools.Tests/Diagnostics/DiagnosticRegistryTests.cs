@@ -698,7 +698,7 @@ public sealed partial class DiagnosticRegistryTests {
         JsonObject json = JsonNode.Parse(File.ReadAllText(suppression.FullName, Encoding.UTF8))!.AsObject();
         ValidateCompatibilitySuppressionsJson(json).ShouldBeEmpty();
         json["schemaVersion"]!.GetValue<string>().ShouldBe(CompatibilitySuppressionsSchemaVersion);
-        json["currentRelease"]!.GetValue<string>().ShouldBe("v6.2");
+        json["currentRelease"]!.GetValue<string>().ShouldBe("v6.3");
         JsonArray suppressions = json["suppressions"]!.AsArray();
 
         suppressions.Count.ShouldBe(0, "the v6.0 framework-migration exceptions expired at v6.1 after the 6.0.1 baseline advance.");
@@ -1029,7 +1029,7 @@ public sealed partial class DiagnosticRegistryTests {
             @"<FrontComposerPackageValidationBaselineVersion Condition=""'\$\(FrontComposerPackageValidationBaselineVersion\)' == ''"">(?<version>[^<]+)</FrontComposerPackageValidationBaselineVersion>");
         sharedBaseline.Success.ShouldBeTrue("Directory.Build.targets must default the package-validation baseline.");
         string packageValidationBaseline = sharedBaseline.Groups["version"].Value;
-        packageValidationBaseline.ShouldBe("6.1.0");
+        packageValidationBaseline.ShouldBe("6.2.0");
         directoryBuildTargets.ShouldContain("Condition=\"'$(IsPackable)' == 'true' AND '$(EnableFrontComposerPackageValidation)' == 'true'\"");
         directoryBuildTargets.ShouldContain("<EnablePackageValidation>true</EnablePackageValidation>");
         directoryBuildTargets.ShouldContain("<PackageValidationBaselineVersion Condition=\"'$(FrontComposerPackageValidationSkipBaseline)' != 'true'\">$(FrontComposerPackageValidationBaselineVersion)</PackageValidationBaselineVersion>");
@@ -1042,6 +1042,7 @@ public sealed partial class DiagnosticRegistryTests {
         directoryBuildTargets.ShouldNotContain(">4.3.0</FrontComposerPackageValidationBaselineVersion>");
         directoryBuildTargets.ShouldNotContain(">5.0.0</FrontComposerPackageValidationBaselineVersion>");
         directoryBuildTargets.ShouldNotContain(">6.0.1</FrontComposerPackageValidationBaselineVersion>");
+        directoryBuildTargets.ShouldNotContain(">6.1.0</FrontComposerPackageValidationBaselineVersion>");
 
         string contractsUiProject = File.ReadAllText(Path.Combine(ProjectRoot().FullName, "src", "Hexalith.FrontComposer.Contracts.UI", "Hexalith.FrontComposer.Contracts.UI.csproj"), Encoding.UTF8);
         contractsUiProject.ShouldContain($"<FrontComposerPackageValidationBaselineVersion>{packageValidationBaseline}</FrontComposerPackageValidationBaselineVersion>");
