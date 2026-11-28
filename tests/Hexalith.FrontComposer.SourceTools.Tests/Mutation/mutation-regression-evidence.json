@@ -7,18 +7,18 @@
  },
  "cases": {
   "11924": {
-   "identitySha256": "5ce7acbac2f075100e10713cb7dc82aea7bf8baa50fb66a32412f803d9fa573f",
+   "identitySha256": "2cf1d50635f412d85eafc89f6f8fe4d2e777b69a90ff5f1124f670e9c10979f5",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Parsing/AttributeParser.cs",
     "span": [
-     218,
+     239,
      20,
-     218,
+     239,
      42
     ],
     "original": "outerTds.Modifiers.Any",
     "replacement": "outerTds.Modifiers.All",
-    "sourceSha256": "97fe865d859f8d03c985ca5be168841b5797e0686ab077a9b37340589a0f7309"
+    "sourceSha256": "5f7a5045e6f56c4c771055a1d9ce93471651635d79d6b5a9ba0a791ff88ed16d"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
@@ -116,18 +116,18 @@
    }
   },
   "12009": {
-   "identitySha256": "811990907385f2193243466ce8b184524628b3355c5ef2b582eb7f5cf22e8e51",
+   "identitySha256": "1d78eec7bce9f32cdedfc0d4417c48d756cbc7271b40fda07b73d944d76dd669",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Parsing/AttributeParser.cs",
     "span": [
-     363,
+     384,
      13,
-     363,
+     384,
      40
     ],
     "original": "statusProperty ??= property",
     "replacement": "statusProperty = property",
-    "sourceSha256": "97fe865d859f8d03c985ca5be168841b5797e0686ab077a9b37340589a0f7309"
+    "sourceSha256": "5f7a5045e6f56c4c771055a1d9ce93471651635d79d6b5a9ba0a791ff88ed16d"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
@@ -225,18 +225,18 @@
    }
   },
   "12192": {
-   "identitySha256": "51100e14bec0d4b16a7ca41d842a5d5a8ae71fa5935803662af4703bd6c3d5aa",
+   "identitySha256": "d18b66973829970d600ed3eac27f42d64746101a5dad164137cbdfad69736a74",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Parsing/AttributeParser.cs",
     "span": [
-     720,
+     741,
      21,
-     720,
+     741,
      57
     ],
     "original": "attr.ConstructorArguments.Length > 0",
     "replacement": "attr.ConstructorArguments.Length >= 0",
-    "sourceSha256": "97fe865d859f8d03c985ca5be168841b5797e0686ab077a9b37340589a0f7309"
+    "sourceSha256": "5f7a5045e6f56c4c771055a1d9ce93471651635d79d6b5a9ba0a791ff88ed16d"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
@@ -334,18 +334,18 @@
    }
   },
   "12209": {
-   "identitySha256": "4e28bdb225614499daec4f620d3cf9035948e9933f1efb6b48deb4a6b30d9726",
+   "identitySha256": "cdff92e2e4aaeb6eebc70cb38c046665c8239b4aa93481e6128f4a639b2c5504",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Parsing/AttributeParser.cs",
     "span": [
-     730,
+     751,
      31,
-     730,
+     751,
      37
     ],
     "original": "\"null\"",
     "replacement": "\"\"",
-    "sourceSha256": "97fe865d859f8d03c985ca5be168841b5797e0686ab077a9b37340589a0f7309"
+    "sourceSha256": "5f7a5045e6f56c4c771055a1d9ce93471651635d79d6b5a9ba0a791ff88ed16d"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
@@ -443,18 +443,18 @@
    }
   },
   "12234": {
-   "identitySha256": "0bbc775850656c6b5037e6b9a8aabe727d9fcd8c94f670a02595d93177a42faa",
+   "identitySha256": "59f5ab25649f179499c62f377c82287b277296d066d1038a0e791b5a6fd1d463",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Parsing/AttributeParser.cs",
     "span": [
-     764,
+     785,
      59,
-     764,
+     785,
      97
     ],
     "original": "propertyType.TypeKind == TypeKind.Enum",
     "replacement": "propertyType.TypeKind != TypeKind.Enum",
-    "sourceSha256": "97fe865d859f8d03c985ca5be168841b5797e0686ab077a9b37340589a0f7309"
+    "sourceSha256": "5f7a5045e6f56c4c771055a1d9ce93471651635d79d6b5a9ba0a791ff88ed16d"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
@@ -552,18 +552,18 @@
    }
   },
   "12235": {
-   "identitySha256": "f3280d10268de0e29ff0c1af02c6d4b0b81df5522929449fef7aaaec5d31dcd5",
+   "identitySha256": "9d12d25677da135516b5f9a598a1bbed5f94c361f6cb8768fcf6133b196edfd9",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Parsing/AttributeParser.cs",
     "span": [
-     765,
+     786,
      21,
-     765,
+     786,
      108
     ],
     "original": "\"Apply [RelativeTime] only to DateTime/DateTimeOffset fields or remove the annotation.\"",
     "replacement": "\"\"",
-    "sourceSha256": "97fe865d859f8d03c985ca5be168841b5797e0686ab077a9b37340589a0f7309"
+    "sourceSha256": "5f7a5045e6f56c4c771055a1d9ce93471651635d79d6b5a9ba0a791ff88ed16d"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
@@ -661,18 +661,18 @@
    }
   },
   "12251": {
-   "identitySha256": "8b3f84afac153e043ff0386001d6979bbfda778ea3c9df500f37498ed3ffe2cd",
+   "identitySha256": "8b999a64a3b021a7bd7dd7539ff332cfaf109e8d5782660398996b6b4afc05c2",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Parsing/AttributeParser.cs",
     "span": [
-     797,
+     818,
      51,
-     797,
+     818,
      89
     ],
     "original": "propertyType.TypeKind == TypeKind.Enum",
     "replacement": "propertyType.TypeKind != TypeKind.Enum",
-    "sourceSha256": "97fe865d859f8d03c985ca5be168841b5797e0686ab077a9b37340589a0f7309"
+    "sourceSha256": "5f7a5045e6f56c4c771055a1d9ce93471651635d79d6b5a9ba0a791ff88ed16d"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
@@ -770,18 +770,18 @@
    }
   },
   "12252": {
-   "identitySha256": "3456592123726ee7172216a1deb455c9d4619545283fe115b350c94717f15254",
+   "identitySha256": "35618472924b82e5794f86b06515000262f757337111f66c7d5445d10b370df2",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Parsing/AttributeParser.cs",
     "span": [
-     798,
+     819,
      13,
-     798,
+     819,
      93
     ],
     "original": "\"Apply [Currency] only to decimal/double/float fields or remove the annotation.\"",
     "replacement": "\"\"",
-    "sourceSha256": "97fe865d859f8d03c985ca5be168841b5797e0686ab077a9b37340589a0f7309"
+    "sourceSha256": "5f7a5045e6f56c4c771055a1d9ce93471651635d79d6b5a9ba0a791ff88ed16d"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
@@ -879,18 +879,18 @@
    }
   },
   "12280": {
-   "identitySha256": "6e29292dcaff3043dea4c8f6642657306c6d3978fbacdeb7fa67e88dfd45166d",
+   "identitySha256": "9964f0d3bb2e7cada09000524cea1d20a1ea3c58a9a9e6121eb555601eba5137",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Parsing/AttributeParser.cs",
     "span": [
-     850,
+     871,
      20,
-     850,
+     871,
      56
     ],
     "original": "attr.ConstructorArguments.Length > 0",
     "replacement": "attr.ConstructorArguments.Length >= 0",
-    "sourceSha256": "97fe865d859f8d03c985ca5be168841b5797e0686ab077a9b37340589a0f7309"
+    "sourceSha256": "5f7a5045e6f56c4c771055a1d9ce93471651635d79d6b5a9ba0a791ff88ed16d"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
@@ -988,18 +988,18 @@
    }
   },
   "12303": {
-   "identitySha256": "093898b2fc8e3f97af017aa525280664532ba65ebc0f0e9d2ea7cc49af17ceb9",
+   "identitySha256": "6f57ef6f1963854e9b84e318d1543d6902c61bba43c6d3ffa96296e0d6a7035e",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Parsing/AttributeParser.cs",
     "span": [
-     870,
+     891,
      20,
-     870,
+     891,
      56
     ],
     "original": "attr.ConstructorArguments.Length > 0",
     "replacement": "attr.ConstructorArguments.Length >= 0",
-    "sourceSha256": "97fe865d859f8d03c985ca5be168841b5797e0686ab077a9b37340589a0f7309"
+    "sourceSha256": "5f7a5045e6f56c4c771055a1d9ce93471651635d79d6b5a9ba0a791ff88ed16d"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
@@ -1097,18 +1097,18 @@
    }
   },
   "12334": {
-   "identitySha256": "1f388eb8ea62e498714c5d1b085dfda5ae2271675479d5b5ead9dcef8f931e8e",
+   "identitySha256": "4782f7b3404837618610d772f071e22e795d941fb9355c9d9a328793689f5522",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Parsing/AttributeParser.cs",
     "span": [
-     935,
+     956,
      20,
-     935,
+     956,
      56
     ],
     "original": "attr.ConstructorArguments.Length > 0",
     "replacement": "attr.ConstructorArguments.Length >= 0",
-    "sourceSha256": "97fe865d859f8d03c985ca5be168841b5797e0686ab077a9b37340589a0f7309"
+    "sourceSha256": "5f7a5045e6f56c4c771055a1d9ce93471651635d79d6b5a9ba0a791ff88ed16d"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
@@ -1206,18 +1206,18 @@
    }
   },
   "12376": {
-   "identitySha256": "a30d25a172588a2fc5c032f70b255a5c1460772ce468368909f111154d227a25",
+   "identitySha256": "7c4351bbebeda1cd8d8864a1c113574407158a8d7680ddfb301861111c6c5246",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Parsing/AttributeParser.cs",
     "span": [
-     1013,
+     1034,
      20,
-     1013,
+     1034,
      56
     ],
     "original": "attr.ConstructorArguments.Length > 0",
     "replacement": "attr.ConstructorArguments.Length >= 0",
-    "sourceSha256": "97fe865d859f8d03c985ca5be168841b5797e0686ab077a9b37340589a0f7309"
+    "sourceSha256": "5f7a5045e6f56c4c771055a1d9ce93471651635d79d6b5a9ba0a791ff88ed16d"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
@@ -1315,18 +1315,18 @@
    }
   },
   "12455": {
-   "identitySha256": "05b528ac168edf568b6e24cd68acc29daea9a1c245317a8a4f9c7ee9045585db",
+   "identitySha256": "895ad446c014eeeb6a0594586b329a39c5d6601dc8b488c23cb07dd35ea0944d",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Parsing/AttributeParser.cs",
     "span": [
-     1112,
+     1133,
      49,
-     1112,
+     1133,
      98
     ],
     "original": "field.Locations.FirstOrDefault() ?? Location.None",
     "replacement": "Location.None",
-    "sourceSha256": "97fe865d859f8d03c985ca5be168841b5797e0686ab077a9b37340589a0f7309"
+    "sourceSha256": "5f7a5045e6f56c4c771055a1d9ce93471651635d79d6b5a9ba0a791ff88ed16d"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
@@ -1424,18 +1424,18 @@
    }
   },
   "12457": {
-   "identitySha256": "1d43f173735654dc5f432b9f56031d12c7d670f4bf3dc73e689e2c0588b25716",
+   "identitySha256": "723da995c01ede6669f3a144f86e62d4f8fec94ca641e0e5aa5446307856af34",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Parsing/AttributeParser.cs",
     "span": [
-     1114,
+     1135,
      52,
-     1114,
+     1135,
      93
     ],
     "original": "location.SourceTree?.FilePath ?? filePath",
     "replacement": "filePath",
-    "sourceSha256": "97fe865d859f8d03c985ca5be168841b5797e0686ab077a9b37340589a0f7309"
+    "sourceSha256": "5f7a5045e6f56c4c771055a1d9ce93471651635d79d6b5a9ba0a791ff88ed16d"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
@@ -1533,18 +1533,18 @@
    }
   },
   "12460": {
-   "identitySha256": "711ceb8218b37e3bff18fa3cd355de2944332ec4bd9fec35ef7a27b2442cb3d9",
+   "identitySha256": "b076c35ee35ba0b700e42c23f96543e5a56266d302f3c76d25cdd713d8b8be7b",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Parsing/AttributeParser.cs",
     "span": [
-     1118,
+     1139,
      47,
-     1118,
+     1139,
      158
     ],
     "original": "\"Invalid argument for attribute 'ProjectionBadge' on enum member '{0}': slot must be a defined BadgeSlot value\"",
     "replacement": "\"\"",
-    "sourceSha256": "97fe865d859f8d03c985ca5be168841b5797e0686ab077a9b37340589a0f7309"
+    "sourceSha256": "5f7a5045e6f56c4c771055a1d9ce93471651635d79d6b5a9ba0a791ff88ed16d"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
@@ -1653,18 +1653,18 @@
    }
   },
   "12461": {
-   "identitySha256": "f6261cceeb54a566564ceda152a764ef42397efb01f47a6b9fe63f048d162bc3",
+   "identitySha256": "620e3543668e2f8d630ac2f2721c6581447004e6be995ada23d13489a358fca8",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Parsing/AttributeParser.cs",
     "span": [
-     1119,
+     1140,
      33,
-     1119,
+     1140,
      42
     ],
     "original": "\"Warning\"",
     "replacement": "\"\"",
-    "sourceSha256": "97fe865d859f8d03c985ca5be168841b5797e0686ab077a9b37340589a0f7309"
+    "sourceSha256": "5f7a5045e6f56c4c771055a1d9ce93471651635d79d6b5a9ba0a791ff88ed16d"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
@@ -1773,18 +1773,18 @@
    }
   },
   "12529": {
-   "identitySha256": "8a85feaceb31607050b7f1c0080a74389a7b6c3a4708325291842f49c0e700e2",
+   "identitySha256": "6388b8327015389abda82468af3a96204b1817a9580e51797ac6b0d1aad92934",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Parsing/AttributeParser.cs",
     "span": [
-     1222,
+     1243,
      34,
-     1222,
+     1243,
      66
     ],
     "original": "\"{0} (enum underlying type {1})\"",
     "replacement": "\"\"",
-    "sourceSha256": "97fe865d859f8d03c985ca5be168841b5797e0686ab077a9b37340589a0f7309"
+    "sourceSha256": "5f7a5045e6f56c4c771055a1d9ce93471651635d79d6b5a9ba0a791ff88ed16d"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
@@ -1893,7 +1893,7 @@
    }
   },
   "12763": {
-   "identitySha256": "517a0b20fe305dcd5d5dc1e4bd30b9376612918b59c098d2bf7c938d6ac928c7",
+   "identitySha256": "1cd155cceaa745038ac81d196e520668674572c5612d30de39ff06d8a7a7b033",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Parsing/CommandParser.cs",
     "span": [
@@ -1904,7 +1904,7 @@
     ],
     "original": "projectionType.ContainingNamespace?.IsGlobalNamespace == false\r\n            ? projectionType.ContainingNamespace.ToDisplayString()\r\n            : string.Empty",
     "replacement": "(true?projectionType.ContainingNamespace.ToDisplayString()\r\n:string.Empty)",
-    "sourceSha256": "dbd2a79507385a65e76b3fe72968bc26969c96bcf5e5a4c77626a544fa38903b"
+    "sourceSha256": "778d66c0ec40a9b2eb1082e84c67a7b3972f348200da40b3eaed2f5f8f7c3a9a"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
@@ -2002,7 +2002,7 @@
    }
   },
   "12767": {
-   "identitySha256": "46b40592563b1cc125c56fb069ee7d91e893d033e00b4cc20d2d3ae452594745",
+   "identitySha256": "efd811d6906b4d64c73aea37903e1bd29b6e94238987fcb6815b7d089d0e43a3",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Parsing/CommandParser.cs",
     "span": [
@@ -2013,7 +2013,7 @@
     ],
     "original": "string.Empty",
     "replacement": "\"Stryker was here!\"",
-    "sourceSha256": "dbd2a79507385a65e76b3fe72968bc26969c96bcf5e5a4c77626a544fa38903b"
+    "sourceSha256": "778d66c0ec40a9b2eb1082e84c67a7b3972f348200da40b3eaed2f5f8f7c3a9a"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
@@ -2111,7 +2111,7 @@
    }
   },
   "12839": {
-   "identitySha256": "503ad9957fc1705e045ecc58cfba83d1ac068a21d609c04a2a9ae523c547cfdc",
+   "identitySha256": "842259d1808d44342dd96cd7247055f432d02d454e5e334236ac8ea898685335",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Parsing/CommandParser.cs",
     "span": [
@@ -2122,7 +2122,7 @@
     ],
     "original": "diagnostics.Add(new DiagnosticInfo(\r\n                \"HFC1004\",\r\n                string.Format(\"[Command] attribute on '{0}' is not supported: abstract types are not supported.\", typeSymbol.Name),\r\n                \"Warning\",\r\n                filePath,\r\n                linePos.Line,\r\n                linePos.Character));",
     "replacement": ";",
-    "sourceSha256": "dbd2a79507385a65e76b3fe72968bc26969c96bcf5e5a4c77626a544fa38903b"
+    "sourceSha256": "778d66c0ec40a9b2eb1082e84c67a7b3972f348200da40b3eaed2f5f8f7c3a9a"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
@@ -2220,7 +2220,7 @@
    }
   },
   "12840": {
-   "identitySha256": "fc1aeeb2d60689d78b149b50308d380d8153b31a2c64b19a196073591e269b24",
+   "identitySha256": "926c5b58543243e0d8d9324844bd3224ec4bb9fc87ab4a8e86deb91054530d1c",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Parsing/CommandParser.cs",
     "span": [
@@ -2231,7 +2231,7 @@
     ],
     "original": "\"HFC1004\"",
     "replacement": "\"\"",
-    "sourceSha256": "dbd2a79507385a65e76b3fe72968bc26969c96bcf5e5a4c77626a544fa38903b"
+    "sourceSha256": "778d66c0ec40a9b2eb1082e84c67a7b3972f348200da40b3eaed2f5f8f7c3a9a"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
@@ -2329,7 +2329,7 @@
    }
   },
   "12841": {
-   "identitySha256": "984c01a65568b13cbf09abf7ce9f06f2c02cc89369c19a775b8340260808d4d0",
+   "identitySha256": "d92c1ccdbe82038548f20f00746af322d01f9af856b6c5e32a0ea1d729df7b19",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Parsing/CommandParser.cs",
     "span": [
@@ -2340,7 +2340,7 @@
     ],
     "original": "\"[Command] attribute on '{0}' is not supported: abstract types are not supported.\"",
     "replacement": "\"\"",
-    "sourceSha256": "dbd2a79507385a65e76b3fe72968bc26969c96bcf5e5a4c77626a544fa38903b"
+    "sourceSha256": "778d66c0ec40a9b2eb1082e84c67a7b3972f348200da40b3eaed2f5f8f7c3a9a"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
@@ -2438,7 +2438,7 @@
    }
   },
   "12842": {
-   "identitySha256": "f8b48e211f796ec7d6084ac23a3007804e03910060599418cbe30641dff127c9",
+   "identitySha256": "adb4d552f805b8d59aeda64655ce9b85a3f04aa9d59745225291bc2f37f76089",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Parsing/CommandParser.cs",
     "span": [
@@ -2449,7 +2449,7 @@
     ],
     "original": "\"Warning\"",
     "replacement": "\"\"",
-    "sourceSha256": "dbd2a79507385a65e76b3fe72968bc26969c96bcf5e5a4c77626a544fa38903b"
+    "sourceSha256": "778d66c0ec40a9b2eb1082e84c67a7b3972f348200da40b3eaed2f5f8f7c3a9a"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
@@ -2547,7 +2547,7 @@
    }
   },
   "12845": {
-   "identitySha256": "0172cfea6b1727dffcdcd39310e20adb08b57a9c6b91137186fc398f3b89c1b1",
+   "identitySha256": "3bfee6396d7e60542cf8b4aaec9de93a4b3e5d03d54b8f89814bacba643ff6ea",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Parsing/CommandParser.cs",
     "span": [
@@ -2558,7 +2558,7 @@
     ],
     "original": "diagnostics.Add(new DiagnosticInfo(\r\n                \"HFC1004\",\r\n                string.Format(\"[Command] attribute on '{0}' is not supported: generic types are not supported.\", typeSymbol.Name),\r\n                \"Warning\",\r\n                filePath,\r\n                linePos.Line,\r\n                linePos.Character));",
     "replacement": ";",
-    "sourceSha256": "dbd2a79507385a65e76b3fe72968bc26969c96bcf5e5a4c77626a544fa38903b"
+    "sourceSha256": "778d66c0ec40a9b2eb1082e84c67a7b3972f348200da40b3eaed2f5f8f7c3a9a"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
@@ -2656,7 +2656,7 @@
    }
   },
   "12846": {
-   "identitySha256": "015328a7352e5f0d64544adb83ab0e44c0e35a40593a99d84a4d4e146e9743ed",
+   "identitySha256": "83849a8b76314fb124363e290d72f373595bdcd0417fcfe7e8ff086077a5bd99",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Parsing/CommandParser.cs",
     "span": [
@@ -2667,7 +2667,7 @@
     ],
     "original": "\"HFC1004\"",
     "replacement": "\"\"",
-    "sourceSha256": "dbd2a79507385a65e76b3fe72968bc26969c96bcf5e5a4c77626a544fa38903b"
+    "sourceSha256": "778d66c0ec40a9b2eb1082e84c67a7b3972f348200da40b3eaed2f5f8f7c3a9a"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
@@ -2765,7 +2765,7 @@
    }
   },
   "12847": {
-   "identitySha256": "99ed7fdaa1557ca63f95258a9ad27aadc6404c8ee0c7ee4372d2b58a6bcd28b5",
+   "identitySha256": "43ae7218b25a4cb90da8c78ac932e2ebc9a91a4e12dde321fd3063c82d654e5c",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Parsing/CommandParser.cs",
     "span": [
@@ -2776,7 +2776,7 @@
     ],
     "original": "\"[Command] attribute on '{0}' is not supported: generic types are not supported.\"",
     "replacement": "\"\"",
-    "sourceSha256": "dbd2a79507385a65e76b3fe72968bc26969c96bcf5e5a4c77626a544fa38903b"
+    "sourceSha256": "778d66c0ec40a9b2eb1082e84c67a7b3972f348200da40b3eaed2f5f8f7c3a9a"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
@@ -2874,7 +2874,7 @@
    }
   },
   "12848": {
-   "identitySha256": "201ab9e2c96da00906f7fb992688981e2029bc6f86d353b6c49b2ec3ddf45385",
+   "identitySha256": "8d12c7ccde6c56d87b7eb05d64045d8b96840efae25217af5c486bfd83456886",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Parsing/CommandParser.cs",
     "span": [
@@ -2885,7 +2885,7 @@
     ],
     "original": "\"Warning\"",
     "replacement": "\"\"",
-    "sourceSha256": "dbd2a79507385a65e76b3fe72968bc26969c96bcf5e5a4c77626a544fa38903b"
+    "sourceSha256": "778d66c0ec40a9b2eb1082e84c67a7b3972f348200da40b3eaed2f5f8f7c3a9a"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
@@ -2983,7 +2983,7 @@
    }
   },
   "12915": {
-   "identitySha256": "65b76a86ae8d9632c4209ea4dce83275d4f3427162d5fd85f8bb8643984ca9cb",
+   "identitySha256": "6b9e91498f8d77b3fccfa4d42f02148564743b0b38d949efae5c775203b9a969",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Parsing/CommandParser.cs",
     "span": [
@@ -2994,7 +2994,7 @@
     ],
     "original": "policyAttribute.ConstructorArguments.Length > 0",
     "replacement": "policyAttribute.ConstructorArguments.Length >= 0",
-    "sourceSha256": "dbd2a79507385a65e76b3fe72968bc26969c96bcf5e5a4c77626a544fa38903b"
+    "sourceSha256": "778d66c0ec40a9b2eb1082e84c67a7b3972f348200da40b3eaed2f5f8f7c3a9a"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
@@ -3092,7 +3092,7 @@
    }
   },
   "12951": {
-   "identitySha256": "913394cc16392db9ef637c11e599b626c84645a454c2b4074b9451df2c4a62f7",
+   "identitySha256": "8e7f5a845a8769802ff98f2766a724d9ad4d8170b4adfa7d98d9a856d115922b",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Parsing/CommandParser.cs",
     "span": [
@@ -3103,7 +3103,7 @@
     ],
     "original": "\"<null>\"",
     "replacement": "\"\"",
-    "sourceSha256": "dbd2a79507385a65e76b3fe72968bc26969c96bcf5e5a4c77626a544fa38903b"
+    "sourceSha256": "778d66c0ec40a9b2eb1082e84c67a7b3972f348200da40b3eaed2f5f8f7c3a9a"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
@@ -3201,7 +3201,7 @@
    }
   },
   "13013": {
-   "identitySha256": "36503825bfd445e27a08ed748adce1118924ab674551708bb9c93ce8c0fa4cbd",
+   "identitySha256": "14352182282a4548c1b52486d1d31aa5b0d6d18bfff08d14664660be06c99fab",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Parsing/CommandParser.cs",
     "span": [
@@ -3212,7 +3212,7 @@
     ],
     "original": "attr.ConstructorArguments.Length > 0",
     "replacement": "attr.ConstructorArguments.Length >= 0",
-    "sourceSha256": "dbd2a79507385a65e76b3fe72968bc26969c96bcf5e5a4c77626a544fa38903b"
+    "sourceSha256": "778d66c0ec40a9b2eb1082e84c67a7b3972f348200da40b3eaed2f5f8f7c3a9a"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
@@ -3310,7 +3310,7 @@
    }
   },
   "13027": {
-   "identitySha256": "74b7f17845ec281c9de79a961b922a5a325f1c35fc73700da6f390e7fafec76d",
+   "identitySha256": "a98c2f57e29d72a99016b62a7749d8c3376b7c8db97555335233796d2237ca19",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Parsing/CommandParser.cs",
     "span": [
@@ -3321,7 +3321,7 @@
     ],
     "original": "continue;",
     "replacement": ";",
-    "sourceSha256": "dbd2a79507385a65e76b3fe72968bc26969c96bcf5e5a4c77626a544fa38903b"
+    "sourceSha256": "778d66c0ec40a9b2eb1082e84c67a7b3972f348200da40b3eaed2f5f8f7c3a9a"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
@@ -3419,7 +3419,7 @@
    }
   },
   "13047": {
-   "identitySha256": "8c9ef4a5bf1d9212df4b2ac169154db2f7aa1a820e3c3b3f3718d7a911a53447",
+   "identitySha256": "f9651a3b9aeeaa4ac74122059e5ee31a9fb33fda98c223e4250640df3ca20bf5",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Parsing/CommandParser.cs",
     "span": [
@@ -3430,7 +3430,7 @@
     ],
     "original": "continue;",
     "replacement": ";",
-    "sourceSha256": "dbd2a79507385a65e76b3fe72968bc26969c96bcf5e5a4c77626a544fa38903b"
+    "sourceSha256": "778d66c0ec40a9b2eb1082e84c67a7b3972f348200da40b3eaed2f5f8f7c3a9a"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
@@ -3528,7 +3528,7 @@
    }
   },
   "13068": {
-   "identitySha256": "e3b5359f4a6999c9b78f30b5ed523852a8566c490458287d55000ba183e2a549",
+   "identitySha256": "6686c94e95fa036da1a5df6e9440f56512bf86e5c7262df5648249f1eefb7e08",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Parsing/CommandParser.cs",
     "span": [
@@ -3539,7 +3539,7 @@
     ],
     "original": "SpecialType.System_Int16 or SpecialType.System_Int32",
     "replacement": "SpecialType.System_Int16 and SpecialType.System_Int32",
-    "sourceSha256": "dbd2a79507385a65e76b3fe72968bc26969c96bcf5e5a4c77626a544fa38903b"
+    "sourceSha256": "778d66c0ec40a9b2eb1082e84c67a7b3972f348200da40b3eaed2f5f8f7c3a9a"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
@@ -3637,7 +3637,7 @@
    }
   },
   "13075": {
-   "identitySha256": "2e675f01bd2eb8acd16084fcd4a23b5d191205316396a797bbb4fa359e0f52ac",
+   "identitySha256": "d913eaa058ed0b82c5c14b3430b0d72d86835ba6f7824fae5ce2ad257ea9a3d6",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Parsing/CommandParser.cs",
     "span": [
@@ -3648,7 +3648,7 @@
     ],
     "original": "SpecialType.System_Int16 or SpecialType.System_UInt16 or SpecialType.System_Int32 or SpecialType.System_UInt32",
     "replacement": "SpecialType.System_Int16 or SpecialType.System_UInt16 or SpecialType.System_Int32 and SpecialType.System_UInt32",
-    "sourceSha256": "dbd2a79507385a65e76b3fe72968bc26969c96bcf5e5a4c77626a544fa38903b"
+    "sourceSha256": "778d66c0ec40a9b2eb1082e84c67a7b3972f348200da40b3eaed2f5f8f7c3a9a"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
@@ -3746,7 +3746,7 @@
    }
   },
   "13076": {
-   "identitySha256": "de70d24d4ae3d12c8fea8c5cf9a402803f5c4cfa7f11ba3dc4678a0d26b83400",
+   "identitySha256": "c986161cee603bbfdca168ce139d087a007dd21dd0c4006e76565f1b5a3ef46f",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Parsing/CommandParser.cs",
     "span": [
@@ -3757,7 +3757,7 @@
     ],
     "original": "SpecialType.System_Int16 or SpecialType.System_UInt16 or SpecialType.System_Int32",
     "replacement": "SpecialType.System_Int16 or SpecialType.System_UInt16 and SpecialType.System_Int32",
-    "sourceSha256": "dbd2a79507385a65e76b3fe72968bc26969c96bcf5e5a4c77626a544fa38903b"
+    "sourceSha256": "778d66c0ec40a9b2eb1082e84c67a7b3972f348200da40b3eaed2f5f8f7c3a9a"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
@@ -3855,7 +3855,7 @@
    }
   },
   "13089": {
-   "identitySha256": "805a4d3ab62da5fead08766b4d7b6c673312c28d855418c3d02b3fc718a342cf",
+   "identitySha256": "35ab02b35ea141cff6aa2930b67d1ca0d42a74721b9dfab835ce3635ecfeb29f",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Parsing/CommandParser.cs",
     "span": [
@@ -3866,7 +3866,7 @@
     ],
     "original": "SpecialType.System_Int32 or SpecialType.System_UInt32",
     "replacement": "SpecialType.System_Int32 and SpecialType.System_UInt32",
-    "sourceSha256": "dbd2a79507385a65e76b3fe72968bc26969c96bcf5e5a4c77626a544fa38903b"
+    "sourceSha256": "778d66c0ec40a9b2eb1082e84c67a7b3972f348200da40b3eaed2f5f8f7c3a9a"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
@@ -3964,7 +3964,7 @@
    }
   },
   "13109": {
-   "identitySha256": "bee27df2f741d49d22db93113e779b074ebae23bc1d571fb9db6ee67c20b8294",
+   "identitySha256": "3fb886ee88524d1894b75841a4f180c376af4ca8f753dd162532a8b01cde1364",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Parsing/CommandParser.cs",
     "span": [
@@ -3975,7 +3975,7 @@
     ],
     "original": "SpecialType.System_UInt16 or SpecialType.System_Int32 or SpecialType.System_UInt32",
     "replacement": "SpecialType.System_UInt16 or SpecialType.System_Int32 and SpecialType.System_UInt32",
-    "sourceSha256": "dbd2a79507385a65e76b3fe72968bc26969c96bcf5e5a4c77626a544fa38903b"
+    "sourceSha256": "778d66c0ec40a9b2eb1082e84c67a7b3972f348200da40b3eaed2f5f8f7c3a9a"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
@@ -4073,7 +4073,7 @@
    }
   },
   "13110": {
-   "identitySha256": "156ec336f160dad9b7db7e0c77b559cf1dd73ada960f4a181960be39e224dda7",
+   "identitySha256": "3ce480898fba2c199075232354696aa1c0a1c2e7c6fd01e84e31f1c625ac1527",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Parsing/CommandParser.cs",
     "span": [
@@ -4084,7 +4084,7 @@
     ],
     "original": "SpecialType.System_UInt16 or SpecialType.System_Int32",
     "replacement": "SpecialType.System_UInt16 and SpecialType.System_Int32",
-    "sourceSha256": "dbd2a79507385a65e76b3fe72968bc26969c96bcf5e5a4c77626a544fa38903b"
+    "sourceSha256": "778d66c0ec40a9b2eb1082e84c67a7b3972f348200da40b3eaed2f5f8f7c3a9a"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
@@ -4182,18 +4182,18 @@
    }
   },
   "13143": {
-   "identitySha256": "df04a1e585a9cb33afb8db25cd8d1b8ed2fcfd7cf49b29e5e418c700ee7dee01",
+   "identitySha256": "b99b7b6bcdbb45d2526fd5615edf4dbc3e16937023709eb5923a35ce5bd66134",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Parsing/DomainModel.cs",
     "span": [
-     33,
+     53,
      44,
-     33,
+     53,
      56
     ],
     "original": "string.Empty",
     "replacement": "\"Stryker was here!\"",
-    "sourceSha256": "03797b63cd736daee22c9c1839c388d99e07e6139da10d9586d147c7b91f3aff"
+    "sourceSha256": "dff7bc3d2754e62f6c13c5f3bad70c3c8157d3b19113f6e935fb049b271bffeb"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
@@ -4347,18 +4347,18 @@
    }
   },
   "13180": {
-   "identitySha256": "a5b57ec049a39bd06636a62194b555bf91214cfbe224b48597a5af2e826c8943",
+   "identitySha256": "c6cfed43e8ca5ee9fce70b1509c8165227db1885288f2c13ee4bbdf08a2e8ecf",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Parsing/DomainModel.cs",
     "span": [
-     104,
+     132,
      35,
-     104,
+     132,
      63
     ],
     "original": "TypeName?.GetHashCode() ?? 0",
     "replacement": "0",
-    "sourceSha256": "03797b63cd736daee22c9c1839c388d99e07e6139da10d9586d147c7b91f3aff"
+    "sourceSha256": "dff7bc3d2754e62f6c13c5f3bad70c3c8157d3b19113f6e935fb049b271bffeb"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
@@ -4456,18 +4456,18 @@
    }
   },
   "13382": {
-   "identitySha256": "6af4a097cf289a64ce4fe24d3c34f9f22deccc1de6e4a2f05f7d29b6bb7a7f4a",
+   "identitySha256": "7771b4d239111258c802bcceb8ffb474aac6aa35eaac17fb6db1c8911262ed5b",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Parsing/DomainModel.cs",
     "span": [
-     613,
+     642,
      35,
-     613,
+     642,
      59
     ],
     "original": "Name?.GetHashCode() ?? 0",
     "replacement": "0",
-    "sourceSha256": "03797b63cd736daee22c9c1839c388d99e07e6139da10d9586d147c7b91f3aff"
+    "sourceSha256": "dff7bc3d2754e62f6c13c5f3bad70c3c8157d3b19113f6e935fb049b271bffeb"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
@@ -4565,18 +4565,18 @@
    }
   },
   "13419": {
-   "identitySha256": "a5990bc76c867ec242ec4bfb0ca5195e77a8b31cb6c25f475c18f074566a9b31",
+   "identitySha256": "8bf91048f77e292ffdeb49e47de05f0f87b582a010ecb7111e2898da6d7f8cd5",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Parsing/DomainModel.cs",
     "span": [
-     627,
+     656,
      35,
-     627,
+     656,
      77
     ],
     "original": "RelativeTimeWindowDays?.GetHashCode() ?? 0",
     "replacement": "0",
-    "sourceSha256": "03797b63cd736daee22c9c1839c388d99e07e6139da10d9586d147c7b91f3aff"
+    "sourceSha256": "dff7bc3d2754e62f6c13c5f3bad70c3c8157d3b19113f6e935fb049b271bffeb"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
@@ -4674,18 +4674,18 @@
    }
   },
   "13452": {
-   "identitySha256": "8eb0f89d17167b621feeb5c5184d0367087f91ef82d53077496c2568f2fe7a92",
+   "identitySha256": "24b72591541f103942bf1243f6cdf83c40ab3db827acead03e11d4aebfa6cd2a",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Parsing/DomainModel.cs",
     "span": [
-     687,
+     716,
      20,
-     687,
+     716,
      25
     ],
     "original": "false",
     "replacement": "true",
-    "sourceSha256": "03797b63cd736daee22c9c1839c388d99e07e6139da10d9586d147c7b91f3aff"
+    "sourceSha256": "dff7bc3d2754e62f6c13c5f3bad70c3c8157d3b19113f6e935fb049b271bffeb"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
@@ -4839,18 +4839,18 @@
    }
   },
   "13455": {
-   "identitySha256": "770f3f60dad0eed49d2951fc627d2ee0e4a724a30191bf231926820e7221c5e1",
+   "identitySha256": "b47dadbc9743c9b3162b7a9420313cfac19a06b582b8210d7dbf7ac6427855bf",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Parsing/DomainModel.cs",
     "span": [
-     691,
+     720,
      20,
-     691,
+     720,
      24
     ],
     "original": "true",
     "replacement": "false",
-    "sourceSha256": "03797b63cd736daee22c9c1839c388d99e07e6139da10d9586d147c7b91f3aff"
+    "sourceSha256": "dff7bc3d2754e62f6c13c5f3bad70c3c8157d3b19113f6e935fb049b271bffeb"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
@@ -5004,18 +5004,18 @@
    }
   },
   "13457": {
-   "identitySha256": "0e43b788c4f96f9e0c03e29828ac928b19c12e868e4276029bdb90a7c6f149e4",
+   "identitySha256": "a7ff66568f6297a41282fed532e5c04fcd9757f7280de11bb29022b6860d27b5",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Parsing/DomainModel.cs",
     "span": [
-     694,
+     723,
      29,
-     694,
+     723,
      65
     ],
     "original": "Model is null && other.Model is null",
     "replacement": "Model is null || other.Model is null",
-    "sourceSha256": "03797b63cd736daee22c9c1839c388d99e07e6139da10d9586d147c7b91f3aff"
+    "sourceSha256": "dff7bc3d2754e62f6c13c5f3bad70c3c8157d3b19113f6e935fb049b271bffeb"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
@@ -5169,18 +5169,18 @@
    }
   },
   "13458": {
-   "identitySha256": "fb7b6aba8dd1ba7dab7852a8ca33a977474bc206daf6017cfb110ed252c5454b",
+   "identitySha256": "090420d00fd8c06e2c9e659ee735f064267d44137dd0d715b36062ee4fd9281f",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Parsing/DomainModel.cs",
     "span": [
-     694,
+     723,
      29,
-     694,
+     723,
      42
     ],
     "original": "Model is null",
     "replacement": "Model is not null",
-    "sourceSha256": "03797b63cd736daee22c9c1839c388d99e07e6139da10d9586d147c7b91f3aff"
+    "sourceSha256": "dff7bc3d2754e62f6c13c5f3bad70c3c8157d3b19113f6e935fb049b271bffeb"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
@@ -5334,18 +5334,18 @@
    }
   },
   "13459": {
-   "identitySha256": "7566c09bd5a96eae616596ec620c8dd4083fa60e65af7e00197f199a15a0b565",
+   "identitySha256": "75cd822dbf16a92ff27e2156acffc2e5f32691bbdc8fd09d0a7a07aaf04d7cbc",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Parsing/DomainModel.cs",
     "span": [
-     694,
+     723,
      46,
-     694,
+     723,
      65
     ],
     "original": "other.Model is null",
     "replacement": "other.Model is not null",
-    "sourceSha256": "03797b63cd736daee22c9c1839c388d99e07e6139da10d9586d147c7b91f3aff"
+    "sourceSha256": "dff7bc3d2754e62f6c13c5f3bad70c3c8157d3b19113f6e935fb049b271bffeb"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
@@ -5499,18 +5499,18 @@
    }
   },
   "13475": {
-   "identitySha256": "eefbf7706115db3df091e2424e51acddfdd6c92ba10b205b0778ae3b4ac28c06",
+   "identitySha256": "fcfac75662b940eee8ca08e7b9e6d692bf783b3ef7b1542d61f4326d40070bdf",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Parsing/DomainModel.cs",
     "span": [
-     739,
+     768,
      20,
-     739,
+     768,
      25
     ],
     "original": "false",
     "replacement": "true",
-    "sourceSha256": "03797b63cd736daee22c9c1839c388d99e07e6139da10d9586d147c7b91f3aff"
+    "sourceSha256": "dff7bc3d2754e62f6c13c5f3bad70c3c8157d3b19113f6e935fb049b271bffeb"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
@@ -5664,18 +5664,18 @@
    }
   },
   "13478": {
-   "identitySha256": "8ef887ee8acad3e8248fd67b37fa101d513e861f7b0c7810f10d257ef72b42be",
+   "identitySha256": "6745292c1664c0044dcfebf54c7703a8c7c2b43a5a5b46e8b9bb4487e75e70e6",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Parsing/DomainModel.cs",
     "span": [
-     743,
+     772,
      20,
-     743,
+     772,
      24
     ],
     "original": "true",
     "replacement": "false",
-    "sourceSha256": "03797b63cd736daee22c9c1839c388d99e07e6139da10d9586d147c7b91f3aff"
+    "sourceSha256": "dff7bc3d2754e62f6c13c5f3bad70c3c8157d3b19113f6e935fb049b271bffeb"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
@@ -9138,18 +9138,18 @@
    }
   },
   "14941": {
-   "identitySha256": "faf5688f3fef03df9643ba36435cfc851d66f7e87dc8bb2b7f278428899ad22c",
+   "identitySha256": "39f6495f9547cceb36e2b1f04f4a09cf761ac971b1048ebc96e3685e5a12dd74",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Transforms/RazorModelTransform.cs",
     "span": [
-     220,
+     221,
      73,
-     222,
+     223,
      14
     ],
     "original": "{\r\n                _ = annotatedNames.Add(mapping.EnumMemberName);\r\n            }",
     "replacement": "{}",
-    "sourceSha256": "4e32209507f76b5359513de65dd7c022978b321e865ce89db0b164a53d575c6d"
+    "sourceSha256": "cde4d1b27f0949bf6b9c362c4fef5b4d91a15dcbb0c61c3cb014a8276e59a29a"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
@@ -9240,18 +9240,18 @@
    }
   },
   "14949": {
-   "identitySha256": "49644f44db0f32d2452e0eab348fd7097ca422c2fedd7be0348511de2ab1ebd2",
+   "identitySha256": "604bc0fefe720beca9c3d76ce5215bf8aa309472b2b12415bce8029802220539",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Transforms/RazorModelTransform.cs",
     "span": [
-     239,
+     240,
      33,
-     239,
+     240,
      37
     ],
     "original": "\", \"",
     "replacement": "\"\"",
-    "sourceSha256": "4e32209507f76b5359513de65dd7c022978b321e865ce89db0b164a53d575c6d"
+    "sourceSha256": "cde4d1b27f0949bf6b9c362c4fef5b4d91a15dcbb0c61c3cb014a8276e59a29a"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
@@ -9342,18 +9342,18 @@
    }
   },
   "15211": {
-   "identitySha256": "5a5fe4d01a9ad4f1a1da299bf44aa6886ab92673917361d5007f93d40367f68a",
+   "identitySha256": "4cfa8f1aea9780ec509abfb988685cf7ae1a2df3a80f41d0b154d541264fead0",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Transforms/SchemaFingerprintTransform.cs",
     "span": [
-     180,
+     184,
      13,
-     180,
+     184,
      34
     ],
     "original": "\"SkillCorpusResource\"",
     "replacement": "\"\"",
-    "sourceSha256": "12a143587908b65798e2ecb08eed4b29e5a999f4e53cff333d03c7e7fd1549ae"
+    "sourceSha256": "bb5b2914c020b4d294f657fff55fa1e17053c1d973a7bd735ca1285124f00084"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
@@ -9444,18 +9444,18 @@
    }
   },
   "15212": {
-   "identitySha256": "106411c390fb453dc4f82a24ac2a5ee0405782168dae5f067b5e85081a7c7100",
+   "identitySha256": "d68fb41668a151201f2604ebde73398a84209763582c939b1acdd5f67306744c",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Transforms/SchemaFingerprintTransform.cs",
     "span": [
-     183,
+     187,
      13,
-     183,
+     187,
      15
     ],
     "original": "\"\"",
     "replacement": "\"Stryker was here!\"",
-    "sourceSha256": "12a143587908b65798e2ecb08eed4b29e5a999f4e53cff333d03c7e7fd1549ae"
+    "sourceSha256": "bb5b2914c020b4d294f657fff55fa1e17053c1d973a7bd735ca1285124f00084"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
@@ -9546,18 +9546,18 @@
    }
   },
   "15213": {
-   "identitySha256": "a94aefb3a645948468a8337c9f2fefa7c38ce932bcdb9344d3a951d77919ecab",
+   "identitySha256": "9b798beb68d03f4bb35f48a60bc6f6760b1c3d8f06c58b4582a08682f4950f12",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Transforms/SchemaFingerprintTransform.cs",
     "span": [
-     184,
+     187,
      13,
-     184,
+     187,
      15
     ],
     "original": "\"\"",
     "replacement": "\"Stryker was here!\"",
-    "sourceSha256": "12a143587908b65798e2ecb08eed4b29e5a999f4e53cff333d03c7e7fd1549ae"
+    "sourceSha256": "bb5b2914c020b4d294f657fff55fa1e17053c1d973a7bd735ca1285124f00084"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
@@ -9648,18 +9648,18 @@
    }
   },
   "15214": {
-   "identitySha256": "d4aa3e9259c950879018943e834dfe9aafad2fa407180b004f9ce9d6fa00f276",
+   "identitySha256": "e84f2c342155a1885032df23705ba9cc6956fbe6de5253c5c4eff5b26e95c0ec",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Transforms/SchemaFingerprintTransform.cs",
     "span": [
-     187,
+     191,
      13,
-     194,
+     198,
      14
     ],
-    "original": "new Dictionary<string, string>(StringComparer.Ordinal) {\r\n                [\"contentType\"] = contentType,\r\n                [\"order\"] = order.ToString(System.Globalization.CultureInfo.InvariantCulture),\r\n                [\"publicApiReferences\"] = string.Join(\"|\", publicApiReferences.OrderBy(v => v, StringComparer.Ordinal)),\r\n                [\"samplePaths\"] = string.Join(\"|\", samplePaths.OrderBy(v => v, StringComparer.Ordinal)),\r\n                [\"title\"] = title,\r\n                [\"version\"] = version,\r\n            }",
+    "original": "new Dictionary<string, string>(StringComparer.Ordinal) {\r\n                [\"contentType\"] = contentType,\r\n                [\"order\"] = order.ToString(System.Globalization.CultureInfo.InvariantCulture),\r\n                [\"publicApiReferences\"] = EncodeSkillCollection(publicApiReferences, requiresFraming),\r\n                [\"samplePaths\"] = EncodeSkillCollection(samplePaths, requiresFraming),\r\n                [\"title\"] = title,\r\n                [\"version\"] = version,\r\n            }",
     "replacement": "new Dictionary<string, string>(StringComparer.Ordinal) {}",
-    "sourceSha256": "12a143587908b65798e2ecb08eed4b29e5a999f4e53cff333d03c7e7fd1549ae"
+    "sourceSha256": "bb5b2914c020b4d294f657fff55fa1e17053c1d973a7bd735ca1285124f00084"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
@@ -9750,18 +9750,18 @@
    }
   },
   "15215": {
-   "identitySha256": "7b0925dc423daa148e2d481bd0e2360b25785b60256a663cb0e6a322e0ee2317",
+   "identitySha256": "93aed721317c8ac77817891afc75ab051103931ad04ac6154b76d05d9e70ce81",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Transforms/SchemaFingerprintTransform.cs",
     "span": [
-     188,
+     192,
      18,
-     188,
+     192,
      31
     ],
     "original": "\"contentType\"",
     "replacement": "\"\"",
-    "sourceSha256": "12a143587908b65798e2ecb08eed4b29e5a999f4e53cff333d03c7e7fd1549ae"
+    "sourceSha256": "bb5b2914c020b4d294f657fff55fa1e17053c1d973a7bd735ca1285124f00084"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
@@ -9852,18 +9852,18 @@
    }
   },
   "15216": {
-   "identitySha256": "744acb1f36adea2a1c8ace86bd75f7c8eb01a4827bcc6c0d14046b7bf62fa8a2",
+   "identitySha256": "ee3880b077b9fe4ca38296edcaf04439ac4e0959aad401060c90a25084d64a75",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Transforms/SchemaFingerprintTransform.cs",
     "span": [
-     189,
+     193,
      18,
-     189,
+     193,
      25
     ],
     "original": "\"order\"",
     "replacement": "\"\"",
-    "sourceSha256": "12a143587908b65798e2ecb08eed4b29e5a999f4e53cff333d03c7e7fd1549ae"
+    "sourceSha256": "bb5b2914c020b4d294f657fff55fa1e17053c1d973a7bd735ca1285124f00084"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
@@ -9954,18 +9954,18 @@
    }
   },
   "15217": {
-   "identitySha256": "e9cc4ac519891cd5a1606e149364f2c9d4766dfa4237fb0ee42690e621853a56",
+   "identitySha256": "ab2b5fa03f6e721f764dca81405dfda3901708e5edd84605189ab66cf652e2af",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Transforms/SchemaFingerprintTransform.cs",
     "span": [
-     190,
+     194,
      18,
-     190,
+     194,
      39
     ],
     "original": "\"publicApiReferences\"",
     "replacement": "\"\"",
-    "sourceSha256": "12a143587908b65798e2ecb08eed4b29e5a999f4e53cff333d03c7e7fd1549ae"
+    "sourceSha256": "bb5b2914c020b4d294f657fff55fa1e17053c1d973a7bd735ca1285124f00084"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
@@ -10056,18 +10056,18 @@
    }
   },
   "15218": {
-   "identitySha256": "71c8c1bceb7ccdf16a6a7a494a476334b1ebcb5b6723066e1ce409ca7ba1a7af",
+   "identitySha256": "004760e84066855094fed7b2a71f4901e3b432a87b6549bc5d13dfd5ec4063a9",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Transforms/SchemaFingerprintTransform.cs",
     "span": [
-     190,
-     55,
-     190,
-     58
+     206,
+     32,
+     206,
+     35
     ],
     "original": "\"|\"",
     "replacement": "\"\"",
-    "sourceSha256": "12a143587908b65798e2ecb08eed4b29e5a999f4e53cff333d03c7e7fd1549ae"
+    "sourceSha256": "bb5b2914c020b4d294f657fff55fa1e17053c1d973a7bd735ca1285124f00084"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
@@ -10158,18 +10158,18 @@
    }
   },
   "15219": {
-   "identitySha256": "13b0c97a2a79237229c50c698fc4a9e79052144bfb8207ef0f7082fd620e6acb",
+   "identitySha256": "994dfcf85c9113973adbd6f49c19749b6ee5069bd33f64cceea1df087ab7cbc7",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Transforms/SchemaFingerprintTransform.cs",
     "span": [
-     190,
-     60,
-     190,
-     87
+     206,
+     37,
+     206,
+     51
     ],
-    "original": "publicApiReferences.OrderBy",
-    "replacement": "publicApiReferences.OrderByDescending",
-    "sourceSha256": "12a143587908b65798e2ecb08eed4b29e5a999f4e53cff333d03c7e7fd1549ae"
+    "original": "values.OrderBy",
+    "replacement": "values.OrderByDescending",
+    "sourceSha256": "bb5b2914c020b4d294f657fff55fa1e17053c1d973a7bd735ca1285124f00084"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
@@ -10260,18 +10260,18 @@
    }
   },
   "15220": {
-   "identitySha256": "bf17ad48f8f2e8d8110084dcdeb879d1b1680441e930f1de25722f311b4e28d2",
+   "identitySha256": "3dc61e19dbb3152c1a633078a595da08f33e3e5d6961912a281930656aab0b68",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Transforms/SchemaFingerprintTransform.cs",
     "span": [
-     191,
+     195,
      18,
-     191,
+     195,
      31
     ],
     "original": "\"samplePaths\"",
     "replacement": "\"\"",
-    "sourceSha256": "12a143587908b65798e2ecb08eed4b29e5a999f4e53cff333d03c7e7fd1549ae"
+    "sourceSha256": "bb5b2914c020b4d294f657fff55fa1e17053c1d973a7bd735ca1285124f00084"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
@@ -10362,18 +10362,18 @@
    }
   },
   "15221": {
-   "identitySha256": "e3e0517f2cdcac5d8c55323237d57d4422c1e1a86a8970d21ec5d2079388bc07",
+   "identitySha256": "a3ee8cf7230aa9627c7b5d913c6245ca7388ab83d0e458750cf7813d4a8be23a",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Transforms/SchemaFingerprintTransform.cs",
     "span": [
-     191,
-     47,
-     191,
-     50
+     206,
+     32,
+     206,
+     35
     ],
     "original": "\"|\"",
     "replacement": "\"\"",
-    "sourceSha256": "12a143587908b65798e2ecb08eed4b29e5a999f4e53cff333d03c7e7fd1549ae"
+    "sourceSha256": "bb5b2914c020b4d294f657fff55fa1e17053c1d973a7bd735ca1285124f00084"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
@@ -10464,18 +10464,18 @@
    }
   },
   "15222": {
-   "identitySha256": "3d894eb935288515845c14cf8d86b4bd04cc8378c099a6e674816c53f881f7ec",
+   "identitySha256": "e069e2795af015ef7cde709376bcaa03d1495e55c79a619a2ee04cbd63f7a654",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Transforms/SchemaFingerprintTransform.cs",
     "span": [
-     191,
-     52,
-     191,
-     71
+     210,
+     13,
+     210,
+     61
     ],
-    "original": "samplePaths.OrderBy",
-    "replacement": "samplePaths.OrderByDescending",
-    "sourceSha256": "12a143587908b65798e2ecb08eed4b29e5a999f4e53cff333d03c7e7fd1549ae"
+    "original": ".OrderBy(value => value, StringComparer.Ordinal)",
+    "replacement": ".OrderByDescending(value => value, StringComparer.Ordinal)",
+    "sourceSha256": "bb5b2914c020b4d294f657fff55fa1e17053c1d973a7bd735ca1285124f00084"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
@@ -10566,18 +10566,18 @@
    }
   },
   "15223": {
-   "identitySha256": "39f8ff131df9ce1d3f9ed763bfa83d155a21a569d54eb59e33049a6636afe2a5",
+   "identitySha256": "81b82784faf35dce36c5bf968b6e46f32bc217b0b8472f80c030a3c4273fdefd",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Transforms/SchemaFingerprintTransform.cs",
     "span": [
-     192,
+     196,
      18,
-     192,
+     196,
      25
     ],
     "original": "\"title\"",
     "replacement": "\"\"",
-    "sourceSha256": "12a143587908b65798e2ecb08eed4b29e5a999f4e53cff333d03c7e7fd1549ae"
+    "sourceSha256": "bb5b2914c020b4d294f657fff55fa1e17053c1d973a7bd735ca1285124f00084"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
@@ -10668,18 +10668,18 @@
    }
   },
   "15224": {
-   "identitySha256": "788c776332cea490a22afc360e064953f941aba3828575eb6fa63d7c87b7019c",
+   "identitySha256": "8b2b05d527db05e541704be8b38528379f3a40b8fda6de947d3b2fdffd8af097",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Transforms/SchemaFingerprintTransform.cs",
     "span": [
-     193,
+     197,
      18,
-     193,
+     197,
      27
     ],
     "original": "\"version\"",
     "replacement": "\"\"",
-    "sourceSha256": "12a143587908b65798e2ecb08eed4b29e5a999f4e53cff333d03c7e7fd1549ae"
+    "sourceSha256": "bb5b2914c020b4d294f657fff55fa1e17053c1d973a7bd735ca1285124f00084"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
@@ -10770,18 +10770,18 @@
    }
   },
   "15288": {
-   "identitySha256": "03efc2c638ec0d9bb32bc5bcb624cd5bc66b0285ec78088713f1805ed3844c3f",
+   "identitySha256": "f9c5d98e259a47ca296a4561639818e9819edb8f1fb88b559bbc81c352ce06d6",
    "production": {
     "path": "src/Hexalith.FrontComposer.SourceTools/Transforms/SchemaFingerprintTransform.cs",
     "span": [
-     273,
+     291,
      36,
-     273,
+     291,
      46
     ],
     "original": "\"nullable\"",
     "replacement": "\"\"",
-    "sourceSha256": "12a143587908b65798e2ecb08eed4b29e5a999f4e53cff333d03c7e7fd1549ae"
+    "sourceSha256": "bb5b2914c020b4d294f657fff55fa1e17053c1d973a7bd735ca1285124f00084"
    },
    "executed": {
     "sourceBase": "b34be9245443d21b72a6076cf205bbbc8a8c521f",
