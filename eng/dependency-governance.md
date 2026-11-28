@@ -18,8 +18,9 @@ catalog. The graph still contains 76 edges.
 The matching policy reseal is `add44c91cb8d5877741112ac03247a9be4b823fa`.
 This documentation-only child is the later-base activation of that policy.
 The previous event-base policy rejected the changed selectors and consumer
-configuration, as expected. Hosted CI and Quality on this commit are the
-release evidence; local validation of 76 edges does not replace those gates.
+configuration, as expected. Local replay under the new seal validated 76 edges.
+Hosted CI and Quality on this commit are the release evidence; that local
+validation does not replace those gates.
 
 ## 2026-11-25 v6.2 compatibility ledger and 6.1.0 baseline
 
