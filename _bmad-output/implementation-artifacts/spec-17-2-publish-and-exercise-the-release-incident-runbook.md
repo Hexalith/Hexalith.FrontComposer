@@ -2,7 +2,7 @@
 title: 'Story 17.2: Publish and Exercise the Release Incident Runbook'
 type: 'chore'
 created: '2026-11-17'
-status: 'in-progress'
+status: 'in-review'
 route: 'dispatch'
 story_id: '17.2'
 story_key: '17-2-i-gov-i-publish-and-exercise-the-release-incident-runbook'
@@ -158,6 +158,8 @@ Implementation workflow status is complete; sprint Story 17.2 and the GOV-I acti
 
 - 2026-11-17: recorded the actual replacement-digest approval at first post-receipt UTC observation `2026-11-17T07:48:14Z`; all story tasks are complete and the implementation workflow is finalized.
 
+- 2026-11-28: recorded the actual owner receipt (“confirm 1A, 2A, and 3A”) at first post-receipt UTC observation `2026-11-28T07:29:30Z`, approving the revised runbook bytes from `9d1e4f4939b5991bd754b781fd0130f40c0736e0` (unchanged at `HEAD` `0e9912939cfe69c228d486725ebc23c830d657b5`), confirming independent-verification review of the `HEAD` verification results and limits, and closing the overdue F4 triage action by routing AD-15 preservation to Story 17.8 with product retry still forbidden.
+
 ## Review Triage Log
 
 
@@ -211,6 +213,20 @@ The surviving patches share no root cause merely because they touch the same gui
 **Story 17.8 (F4).** The accepted triage deadline was November 18 at 00:00 UTC. Asked for a new date or a dated triage receipt, the user replied **“I dont know”**. The follow-up remains overdue with `jpiquot` and the Story 17.8 owner. A new date and the triage outcome are unconfirmed. Verified immutable preservation remains a prerequisite for product retry.
 
 **Replacement runbook approval.** The November 17 receipt covers the earlier bytes. The revised working file based on FrontComposer `6d90c6154d2ca6155eeae17a3f280dc22ff9560b` has UTF-8/CRLF SHA-256 `24d1e9b5666b89fe16a9382bce0630b83f25bea2f5c9bae476c284785611476e` and Git-normalized blob ID `15b453a464a28a7cd245b5076bfebece3445c094`. The base commit identifies the starting tree. Product/Release approval of these revised bytes is pending. Story 17.2 is in progress and GOV-I is open.
+
+### Revised runbook approval, verification confirmation, and F4 triage receipt — 2026-11-28
+
+This dated receipt supersedes the pending-approval and overdue-triage states from November 22 above while preserving all prior receipts, tabletop records, and review history. In response to the explicit approval, verification-review, and F4 triage options naming the exact revised runbook hashes, the user replied **“confirm 1A, 2A, and 3A”**. The first UTC clock observation after receipt was **`2026-11-28T07:29:30Z`**; this is an observation bound, not a supplied message-authoring time or fictional incident time.
+
+The designated participant is `jpiquot` in the previously confirmed combined capacities (Product/Release Owner, Security, GitHub administrator/operations, NuGet policy owner/credential custodian, and independent verification capacity). The primary agent rehashed the unchanged runbook at `HEAD` (`0e9912939cfe69c228d486725ebc23c830d657b5`) before recording this receipt:
+
+| Capacity / actual receipt | Decision confirmed at `2026-11-28T07:29:30Z` |
+| --- | --- |
+| Product / Release Owner (1A) | Approve the revised [docs/release-incident-response.md](../../docs/release-incident-response.md) committed in `9d1e4f4939b5991bd754b781fd0130f40c0736e0` and unchanged at `HEAD` `0e9912939cfe69c228d486725ebc23c830d657b5`: raw UTF-8/CRLF SHA-256 **`24d1e9b5666b89fe16a9382bce0630b83f25bea2f5c9bae476c284785611476e`** and Git blob ID **`15b453a464a28a7cd245b5076bfebece3445c094`**. Supersedes the historical November 17 approval (`24814b2f4a13b76b2c88e3ae72dfcd22b52abb09b0ba5b496683bd7fe0c69d5c`); any later byte change requires a new digest-bound receipt. |
+| Independent verification capacity (2A) | Confirm separate review of the `HEAD` (`0e9912939cfe69c228d486725ebc23c830d657b5`) post-patch verification results and limits below, with no additional containment-critical finding raised. Combined-role capacity (`jpiquot` filling all roles) remains explicit; no live containment, credential revocation, immutable AD-15 preservation, or wall-clock SLA performance is claimed. |
+| Release Owner / Story 17.8 triage (`F4` / `17.2-R2`, 3A) | Triaged: missing `.github/workflows/release-incident-preservation.yml` remains routed to Story 17.8 in normal Epic 17 sequence (after Stories 17.3–17.7) with no interim ambient workaround. Closes the overdue `2026-11-18T00:00:00Z` triage action without claiming preservation capability exists; real product retry remains forbidden until Story 17.8 is implemented and independently verified. |
+
+All Story 17.2 implementation tasks, review patches (`P1–P10`, `D1`, `F1–F4`), and acceptance criteria are now satisfied. This receipt neither closes `G-8`, `GOV-ACCEPT-1`, `GOV-ACCEPT-2`, or `REL-AI-1`, nor authorizes publication, unlisting, credential changes, workflow dispatch, or remote operations. Historical [rel-ai-1-release-evidence-ledger.md](rel-ai-1-release-evidence-ledger.md) records and NC-35/NC-36 dispositions remain untouched.
 
 ## Verification
 
@@ -271,6 +287,14 @@ Both focused xUnit tests passed, including the negative case that removes the ru
 - A disposable checkout of `6d90c6154d2ca6155eeae17a3f280dc22ff9560b` used the root-selected dependency commits and the revised story sources. The original and revised PowerShell file-selection functions returned the same 148 Markdown paths.
 - `pwsh -NoProfile -File eng/validate-docs.ps1` passed with all eight snippets and zero blocking failures. DocFX 2.81.0 generated the revised runbook. Both `toc.html` and `how-to/index.html` linked to it, as independently checked against the generated files. The runbook used for this build matched the proposed SHA-256 in the patch disposition.
 - The Release build of the SourceTools test project passed with zero warnings and errors. The first build had identified xUnit1030 in the new fixture. After removing the disallowed await configuration, all **71** cases in `DocsSiteValidationTests` passed, with zero skipped or not run. The four new real DocFX fixtures covered successful publication, removing each navigation link independently, and removing the page with stale HTML pre-seeded from a prior build.
+
+### Verification on HEAD — 2026-11-28
+
+- At FrontComposer `HEAD` `0e9912939cfe69c228d486725ebc23c830d657b5` (containing Story 17.2 commits `b23b4cb9`, `eae2cccf`, and `9d1e4f4939b5991bd754b781fd0130f40c0736e0`), `run-with-temp dotnet build tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj --configuration Release` succeeded with **0 warnings / 0 errors**.
+- Direct xUnit v3 execution of `DocsSiteValidationTests` passed **72/72** tests (**0 failed, 0 skipped, 0 not run**), including the negative metadata test and the four real DocFX page/navigation link tests (`none`, `toc`, `index`, `page`).
+- In a disposable clone of `HEAD` with direct root-declared `references/Hexalith.Builds` and `references/Hexalith.Platform` (no nested submodules initialized), `dotnet tool restore` (DocFX `2.81.0`) and `pwsh -NoProfile -File eng/validate-docs.ps1` (no skip switches) exited **0 (`Docs validation passed.`)**, generating `docs/_site/release-incident-response.html` (35,828 bytes) with verified links in `docs/_site/toc.html` and `docs/_site/how-to/index.html`.
+- Rehashed `docs/release-incident-response.md` at `2026-11-28T07:29:30Z`: raw UTF-8/CRLF SHA-256 `24d1e9b5666b89fe16a9382bce0630b83f25bea2f5c9bae476c284785611476e`, Git blob ID `15b453a464a28a7cd245b5076bfebece3445c094` (identical at both `9d1e4f4939b5991bd754b781fd0130f40c0736e0` and `HEAD`). Confirmed `.github/workflows/release-incident-preservation.yml` remains absent.
+- `run-with-temp env PYTHONDONTWRITEBYTECODE=1 python3 eng/validate-story-artifacts.py --project-root .` and `git diff --check` passed after recording the November 28 receipt.
 
 ## File List
 

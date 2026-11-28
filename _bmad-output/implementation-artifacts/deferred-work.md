@@ -11779,6 +11779,8 @@ This is one human-owned continuation of the existing G-3 readiness/approval resi
 
 November 22 disposition for Story 17.2. F1 (the earlier BH-7), F2 and F3 were applied to the Epic 17 context following the user's instruction. F4 remains overdue with `jpiquot` and the Story 17.8 owner. The user could supply neither a new date nor a triage receipt. The existing recovery hold still applies.
 
+November 28 disposition for Story 17.2 (observed `2026-11-28T07:29:30Z`). `jpiquot` triaged F4 (“confirm 1A, 2A, and 3A”): AD-15 immutable preservation remains routed to Story 17.8 in normal Epic 17 order (after Stories 17.3–17.7) with no interim ambient workaround. This closes the overdue November 18 triage action while keeping real product retry forbidden until Story 17.8 is implemented and independently verified. See [the November 28 approval and triage receipt](spec-17-2-publish-and-exercise-the-release-incident-runbook.md#revised-runbook-approval-verification-confirmation-and-f4-triage-receipt--2026-11-28).
+
 ## Deferred from review of story Markdown task evidence — 2026-11-23
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-story-markdown-task-evidence.md`
